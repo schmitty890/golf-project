@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Scorecard page for tracking golf rounds
 - Create new round form with course name, date, and player names
 - Scorecard table with editable par and score inputs for 18 holes
+- "Set Pars" button to lock par values after configuration (admin sets pars once, then they become read-only)
 - Auto-calculated totals and +/- par display
 - Round list view showing all user's rounds
 - Edit functionality for existing rounds

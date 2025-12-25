@@ -20,6 +20,7 @@ function Scorecard() {
   const [holes, setHoles] = useState(
     Array.from({ length: 18 }, (_, i) => ({ holeNumber: i + 1, par: 4 })),
   );
+  const [parsLocked, setParsLocked] = useState(false);
 
   const resetForm = useCallback(() => {
     setCourseName('');
@@ -27,6 +28,7 @@ function Scorecard() {
     setPlayers([{ name: '', scores: Array(18).fill(0) }]);
     setHoles(Array.from({ length: 18 }, (_, i) => ({ holeNumber: i + 1, par: 4 })));
     setSelectedRound(null);
+    setParsLocked(false);
   }, []);
 
   const fetchRounds = useCallback(async () => {
@@ -115,6 +117,7 @@ function Scorecard() {
     setDate(round.date.split('T')[0]);
     setHoles(round.holes);
     setPlayers(round.players);
+    setParsLocked(true);
     setView('edit');
   };
 
@@ -227,27 +230,33 @@ function Scorecard() {
                     const actualIndex = startHole + index;
                     return (
                       <td key={hole.holeNumber} className="px-1 py-2">
-                        <div
-                          className="flex flex-col gap-0.5"
-                          role="radiogroup"
-                          aria-label={`Hole ${hole.holeNumber} par`}
-                        >
-                          {[3, 4, 5].map((parValue) => (
-                            <button
-                              key={parValue}
-                              type="button"
-                              onClick={() => updateHolePar(actualIndex, parValue)}
-                              aria-pressed={hole.par === parValue}
-                              className={`w-11 h-8 text-sm font-semibold rounded transition-all ${
-                                hole.par === parValue
-                                  ? 'bg-blue-600 text-white shadow-sm'
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
-                            >
-                              {parValue}
-                            </button>
-                          ))}
-                        </div>
+                        {parsLocked ? (
+                          <div className="w-11 h-11 flex items-center justify-center text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg">
+                            {hole.par}
+                          </div>
+                        ) : (
+                          <div
+                            className="flex flex-col gap-0.5"
+                            role="radiogroup"
+                            aria-label={`Hole ${hole.holeNumber} par`}
+                          >
+                            {[3, 4, 5].map((parValue) => (
+                              <button
+                                key={parValue}
+                                type="button"
+                                onClick={() => updateHolePar(actualIndex, parValue)}
+                                aria-pressed={hole.par === parValue}
+                                className={`w-11 h-8 text-sm font-semibold rounded transition-all ${
+                                  hole.par === parValue
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {parValue}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </td>
                     );
                   })}
@@ -553,6 +562,19 @@ function Scorecard() {
             {/* Scorecard Card */}
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6">Scorecard</h3>
+
+              {!parsLocked && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg flex items-center justify-between">
+                  <p className="text-sm text-blue-800">Set the par for each hole, then lock it in.</p>
+                  <button
+                    type="button"
+                    onClick={() => setParsLocked(true)}
+                    className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Set Pars
+                  </button>
+                </div>
+              )}
 
               {renderNineHoles(0, 9, 'Front 9', 'OUT')}
               {renderNineHoles(9, 18, 'Back 9', 'IN')}
