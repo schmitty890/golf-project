@@ -15,11 +15,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Round list view showing all user's rounds
 - Edit functionality for existing rounds
 - Route `/scorecard` for scorecard page
+- Visual empty state with icon when no rounds exist
+- Front 9 / Back 9 scorecard sections with OUT/IN subtotals
+- Card-based responsive grid layout for rounds list
+- Gradient totals summary section with final scores
+- Color-coded score feedback (green for under par, red for over par)
+- Loading spinner animation for save operations
+- SVG icons throughout the UI
 
 ### Changed
 - Homepage now displays Scorecard instead of StringForm
 - API URLs now use `REACT_APP_API_URL` environment variable instead of hardcoded localhost
 - Updated StringForm.js, Login.js, and Register.js to use environment variable
+- Scorecard redesigned with modern Tailwind CSS styling
+- Score inputs now have 44px touch targets for mobile accessibility
+- Form inputs have improved spacing and visual hierarchy
+- Rounds list now displays as responsive card grid (1-3 columns)
+- Player input fields styled as cards with numbered indicators
+- Buttons have improved visual hierarchy (primary, secondary, destructive)
 
 ## [1.3.0] - 2025-11-24
 
