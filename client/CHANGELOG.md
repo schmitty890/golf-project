@@ -5,6 +5,15 @@ All notable changes to the client project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- API URLs now use `REACT_APP_API_URL` environment variable instead of hardcoded localhost
+- Updated StringForm.js, Login.js, and Register.js to use environment variable
+
+### Added
+- `.env.development` file with `REACT_APP_API_URL=http://localhost:5001` for local development
+
 ## [1.3.0] - 2025-11-24
 
 ### Added
