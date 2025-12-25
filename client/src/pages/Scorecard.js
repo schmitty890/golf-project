@@ -5,11 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 function Scorecard() {
-  const { token, user } = useContext(AuthContext);
+  const { token, user, loading: authLoading } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [rounds, setRounds] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [view, setView] = useState('list');
   const [selectedRound, setSelectedRound] = useState(null);
@@ -42,8 +42,8 @@ function Scorecard() {
   }, [token]);
 
   useEffect(() => {
-    if (!token) navigate('/login');
-  }, [token, navigate]);
+    if (!authLoading && !token) navigate('/login');
+  }, [token, authLoading, navigate]);
 
   useEffect(() => {
     if (token) fetchRounds();
@@ -51,7 +51,7 @@ function Scorecard() {
 
   const handleCreateRound = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
     setError('');
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/rounds`, {
@@ -72,13 +72,13 @@ function Scorecard() {
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   const handleUpdateRound = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
     setError('');
     try {
       // eslint-disable-next-line no-underscore-dangle
@@ -105,7 +105,7 @@ function Scorecard() {
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -169,6 +169,21 @@ function Scorecard() {
   };
 
   const getRoundId = (round) => round._id; // eslint-disable-line no-underscore-dangle
+
+  // Show loading state while auth is being checked
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <svg className="animate-spin w-8 h-8 text-blue-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) return null;
 
@@ -537,10 +552,10 @@ function Scorecard() {
             <div className="flex flex-col sm:flex-row gap-4">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={saving}
                 className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-lg hover:bg-blue-700 hover:shadow-xl disabled:bg-blue-400 disabled:shadow-none transition-all duration-200"
               >
-                {loading ? (
+                {saving ? (
                   <>
                     <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

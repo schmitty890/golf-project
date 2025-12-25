@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
@@ -8,8 +8,13 @@ function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login } = useContext(AuthContext);
+  const { login, token, loading: authLoading } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  // Redirect to home if already authenticated
+  useEffect(() => {
+    if (!authLoading && token) navigate('/');
+  }, [token, authLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,6 +44,15 @@ function Login() {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
