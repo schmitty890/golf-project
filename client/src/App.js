@@ -6,6 +6,7 @@ import StringForm from './components/StringForm';
 import Footer from './components/Footer';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Scorecard from './pages/Scorecard';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
             <Route path="/" element={<StringForm />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/scorecard" element={<Scorecard />} />
           </Routes>
           <Footer />
         </div>

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Round model for golf scorecards with embedded players and scores
+- POST `/api/rounds` - Create new round (authenticated)
+- GET `/api/rounds` - Get user's rounds (authenticated)
+- GET `/api/rounds/:id` - Get single round (authenticated)
+- PUT `/api/rounds/:id` - Update round scores (authenticated)
+- Swagger documentation for rounds endpoints
+
 ### Changed
 - User model now uses Mongoose `{ timestamps: true }` for automatic `createdAt` and `updatedAt` fields
 - Updated `.env.example` with documentation for dev vs production database names
