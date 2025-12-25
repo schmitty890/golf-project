@@ -7,12 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Scorecard page for tracking golf rounds
+- Create new round form with course name, date, and player names
+- Scorecard table with editable par and score inputs for 18 holes
+- Auto-calculated totals and +/- par display
+- Round list view showing all user's rounds
+- Edit functionality for existing rounds
+- Route `/scorecard` for scorecard page
+
 ### Changed
+- Homepage now displays Scorecard instead of StringForm
 - API URLs now use `REACT_APP_API_URL` environment variable instead of hardcoded localhost
 - Updated StringForm.js, Login.js, and Register.js to use environment variable
-
-### Added
-- `.env.development` file with `REACT_APP_API_URL=http://localhost:5001` for local development
 
 ## [1.3.0] - 2025-11-24
 

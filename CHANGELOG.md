@@ -7,13 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Golf scorecard feature for tracking rounds
+- Round model with course name, date, holes, players, and scores
+- REST API endpoints for rounds (POST, GET, PUT) with JWT authentication
+- Scorecard page with create/edit functionality
+- Score tracking table with 18 holes, par configuration, and auto-calculated totals
+
 ### Changed
 - Client now uses environment variable for API URL to support production deployment
 - Fixed ESLint errors in server authentication routes and middleware
 - Separated development and production databases (golf-project-dev vs golf-project)
-
-### Added
-- Client `.env.development` file for local development API URL
 - User model now has automatic `updatedAt` timestamp via Mongoose timestamps option
 
 ## [1.5.0] - 2025-11-25
