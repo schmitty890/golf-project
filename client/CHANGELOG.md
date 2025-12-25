@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Route `/scorecard` for scorecard page
 
 ### Changed
+- Homepage now displays Scorecard instead of StringForm
 - API URLs now use `REACT_APP_API_URL` environment variable instead of hardcoded localhost
 - Updated StringForm.js, Login.js, and Register.js to use environment variable
 
