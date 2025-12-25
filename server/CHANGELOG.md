@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- User model now uses Mongoose `{ timestamps: true }` for automatic `createdAt` and `updatedAt` fields
+- Updated `.env.example` with documentation for dev vs production database names
+
 ### Fixed
 - Fixed ESLint `consistent-return` errors in auth middleware and routes
 - Added `return` statements to all route handler branches

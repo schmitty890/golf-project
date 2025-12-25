@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Client now uses environment variable for API URL to support production deployment
 - Fixed ESLint errors in server authentication routes and middleware
+- Separated development and production databases (golf-project-dev vs golf-project)
 
 ### Added
 - Client `.env.development` file for local development API URL
+- User model now has automatic `updatedAt` timestamp via Mongoose timestamps option
 
 ## [1.5.0] - 2025-11-25
 
