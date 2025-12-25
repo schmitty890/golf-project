@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rounds list now displays as responsive card grid (1-3 columns)
 - Player input fields styled as cards with numbered indicators
 - Buttons have improved visual hierarchy (primary, secondary, destructive)
+- Par input now uses tap buttons (3/4/5) instead of number inputs for better mobile/tablet usability
 
 ## [1.3.0] - 2025-11-24
 
