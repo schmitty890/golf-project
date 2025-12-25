@@ -5,6 +5,13 @@ All notable changes to the server project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Fixed ESLint `consistent-return` errors in auth middleware and routes
+- Added `return` statements to all route handler branches
+- Added eslint-disable comments for MongoDB `_id` underscore usage
+
 ## [1.2.0] - 2025-11-24
 
 ### Added

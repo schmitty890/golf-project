@@ -91,14 +91,16 @@ router.post('/register', async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
+      // eslint-disable-next-line no-underscore-dangle
       { userId: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '7d' },
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       token,
       user: {
+        // eslint-disable-next-line no-underscore-dangle
         id: user._id,
         email: user.email,
       },
@@ -108,9 +110,9 @@ router.post('/register', async (req, res) => {
     if (error.name === 'ValidationError') {
       return res.status(400).json({ error: error.message });
     }
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Server error during registration',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -162,23 +164,25 @@ router.post('/login', async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
+      // eslint-disable-next-line no-underscore-dangle
       { userId: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '7d' },
     );
 
-    res.json({
+    return res.json({
       token,
       user: {
+        // eslint-disable-next-line no-underscore-dangle
         id: user._id,
         email: user.email,
       },
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Server error during login',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
