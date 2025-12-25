@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Color-coded score feedback (green for under par, red for over par)
 - Loading spinner animation for save operations
 - SVG icons throughout the UI
+- Loading spinner while authentication state is being restored
+
+### Fixed
+- Fixed redirect to login on page refresh even when logged in (race condition between auth restoration and redirect logic)
+- Login and Register pages now redirect to home if user is already authenticated
 
 ### Changed
 - Homepage now displays Scorecard instead of StringForm
