@@ -227,16 +227,27 @@ function Scorecard() {
                     const actualIndex = startHole + index;
                     return (
                       <td key={hole.holeNumber} className="px-1 py-2">
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          min="3"
-                          max="5"
-                          value={hole.par}
-                          onChange={(e) => updateHolePar(actualIndex, e.target.value)}
+                        <div
+                          className="flex flex-col gap-0.5"
+                          role="radiogroup"
                           aria-label={`Hole ${hole.holeNumber} par`}
-                          className="w-11 h-11 text-center text-sm font-medium border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                        />
+                        >
+                          {[3, 4, 5].map((parValue) => (
+                            <button
+                              key={parValue}
+                              type="button"
+                              onClick={() => updateHolePar(actualIndex, parValue)}
+                              aria-pressed={hole.par === parValue}
+                              className={`w-11 h-8 text-sm font-semibold rounded transition-all ${
+                                hole.par === parValue
+                                  ? 'bg-blue-600 text-white shadow-sm'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {parValue}
+                            </button>
+                          ))}
+                        </div>
                       </td>
                     );
                   })}
