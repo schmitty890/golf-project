@@ -23,12 +23,20 @@ function ProfileDropdown() {
     <Menu as="div" className="relative">
       <MenuButton className="-m-1.5 flex items-center p-1.5">
         <span className="sr-only">Open user menu</span>
-        {/* User avatar placeholder */}
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-500">
-          <span className="text-sm font-medium leading-none text-white">
-            {user?.email?.charAt(0).toUpperCase() || 'U'}
+        {/* User avatar */}
+        {user?.profilePicture ? (
+          <img
+            src={user.profilePicture}
+            alt="Profile"
+            className="h-8 w-8 rounded-full object-cover"
+          />
+        ) : (
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500">
+            <span className="text-sm font-medium leading-none text-white">
+              {user?.email?.charAt(0).toUpperCase() || 'U'}
+            </span>
           </span>
-        </span>
+        )}
         <span className="hidden lg:flex lg:items-center">
           <span
             className="ml-4 text-sm font-semibold leading-6 text-gray-900"
