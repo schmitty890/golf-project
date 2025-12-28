@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Tailwind UI sidebar layout with fixed desktop sidebar and slide-in mobile sidebar
+- New layout components: SidebarLayout, Sidebar, MobileSidebar, TopHeader, ProfileDropdown
+- Settings page placeholder
+- HeadlessUI Dialog for mobile sidebar with smooth slide-in animation
+- HeadlessUI Menu for profile dropdown
+- Top header with search bar, notifications button, and user profile dropdown
+- Navigation items: Dashboard, Rounds, Settings with active state highlighting
+- User avatar showing email initial in profile dropdown
 - Scorecard page for tracking golf rounds
 - Shared scorecards feature with real-time updates
 - "Join Round" button to join rounds using a 6-character share code
@@ -38,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Netlify 404 errors on direct URL access by adding `_redirects` file for SPA routing
 
 ### Changed
+- Replaced top Navbar with sidebar navigation layout
+- Login and Register pages remain standalone without sidebar
+- Removed Footer component (no longer needed with sidebar layout)
 - Homepage now displays Scorecard instead of StringForm
 - API URLs now use `REACT_APP_API_URL` environment variable instead of hardcoded localhost
 - Updated StringForm.js, Login.js, and Register.js to use environment variable
@@ -49,7 +60,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Buttons have improved visual hierarchy (primary, secondary, destructive)
 - Par input now uses tap buttons (3/4/5) instead of number inputs for better mobile/tablet usability
 
+### Removed
+- Navbar component (replaced by sidebar layout)
+- Footer component (not needed with new layout)
+
 ### Dependencies
+- Added `@headlessui/react@^2.2.9` for accessible UI components
+- Added `@heroicons/react@^2.2.0` for navigation icons
 - Added `socket.io-client@^4`
 
 ## [1.3.0] - 2025-11-24
