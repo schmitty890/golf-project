@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hole-by-hole card view for mobile score entry with large tap targets
 - ScoreInput component with +/- buttons for easy on-course score entry
 - HoleCard component for single hole display with score input and other players' scores
-- HoleStepper component with previous/next navigation and progress dots
+- HoleStepper component with previous/next navigation and numbered hole grid (Front 9 / Back 9)
 - RoundCard component with enhanced round preview showing player scores and totals
 - View mode toggle (Hole View / Table View) when editing rounds
 - Score labels with color coding (Birdie, Par, Bogey, Double Bogey, etc.)
