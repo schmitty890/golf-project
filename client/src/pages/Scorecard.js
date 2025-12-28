@@ -816,10 +816,11 @@ function Scorecard() {
                         value={player.name}
                         onChange={(e) => updatePlayerName(index, e.target.value)}
                         required
+                        disabled={view === 'edit' && !isAdmin()}
                         aria-label={`Player ${index + 1} name`}
-                        className="flex-1 h-11 px-4 text-base border-2 border-gray-200 rounded-lg bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                        className={`flex-1 h-11 px-4 text-base border-2 border-gray-200 rounded-lg bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all ${view === 'edit' && !isAdmin() ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       />
-                      {players.length > 1 && (
+                      {players.length > 1 && (view === 'create' || isAdmin()) && (
                         <button
                           type="button"
                           onClick={() => removePlayer(index)}
