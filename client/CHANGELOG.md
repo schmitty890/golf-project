@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Netlify 404 errors on direct URL access by adding `_redirects` file for SPA routing
 
 ### Changed
+- Replaced Bank of America logo with golf flag SVG icon and "Golf Tracker" branding
 - Restyled Login page with Tailwind UI form patterns (indigo colors, outline inputs, visible labels)
 - Restyled Register page with Tailwind UI form patterns (indigo colors, outline inputs, visible labels)
 - Restyled Account page with Tailwind UI form patterns
