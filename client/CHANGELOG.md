@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Hole-by-hole card view for mobile score entry with large tap targets
+- ScoreInput component with +/- buttons for easy on-course score entry
+- HoleCard component for single hole display with score input and other players' scores
+- HoleStepper component with previous/next navigation and numbered hole grid (Front 9 / Back 9)
+- RoundCard component with enhanced round preview showing player scores and totals
+- View mode toggle (Hole View / Table View) when editing rounds
+- Score labels with color coding (Birdie, Par, Bogey, Double Bogey, etc.)
+- Collapsible desktop sidebar with icon-only collapsed state
+- Toggle button on sidebar edge to expand/collapse
 - Account settings page (`/account`) for managing user profile
 - Profile picture upload and removal with avatar preview
 - Personal information form (first name, last name, email read-only)
@@ -22,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HeadlessUI Dialog for mobile sidebar with smooth slide-in animation
 - HeadlessUI Menu for profile dropdown
 - Top header with search bar, notifications button, and user profile dropdown
-- Navigation items: Dashboard, Rounds, Settings with active state highlighting
+- Navigation items: Dashboard, Rounds, Account with active state highlighting
 - User avatar showing email initial in profile dropdown
 - Scorecard page for tracking golf rounds
 - Shared scorecards feature with real-time updates
@@ -54,6 +63,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Netlify 404 errors on direct URL access by adding `_redirects` file for SPA routing
 
 ### Changed
+- Replaced Bank of America logo with golf flag SVG icon and "Golf Tracker" branding
+- Restyled Login page with Tailwind UI form patterns (indigo colors, outline inputs, visible labels)
+- Restyled Register page with Tailwind UI form patterns (indigo colors, outline inputs, visible labels)
+- Restyled Account page with Tailwind UI form patterns
+- Updated form inputs to use outline-based styling with indigo focus states
+- Applied responsive grid layout with first/last name side-by-side on larger screens
+- Changed color scheme from blue to indigo throughout Account page
+- Unified section layout with border-separated sections instead of card-based design
+- Added Cancel/Save buttons in footer for profile changes
 - Replaced top Navbar with sidebar navigation layout
 - Login and Register pages remain standalone without sidebar
 - Removed Footer component (no longer needed with sidebar layout)
@@ -67,8 +85,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Player input fields styled as cards with numbered indicators
 - Buttons have improved visual hierarchy (primary, secondary, destructive)
 - Par input now uses tap buttons (3/4/5) instead of number inputs for better mobile/tablet usability
+- Rounds list redesigned as card grid with player score previews
+- Improved mobile UX with minimal scrolling for on-course score entry
 
 ### Removed
+- Settings navigation item from sidebar
 - Navbar component (replaced by sidebar layout)
 - Footer component (not needed with new layout)
 

@@ -4,6 +4,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { AuthContext } from '../context/AuthContext';
+import RoundCard from '../components/scorecard/RoundCard';
+import HoleCard from '../components/scorecard/HoleCard';
+import HoleStepper from '../components/scorecard/HoleStepper';
 
 function Scorecard() {
   const { token, user, loading: authLoading } = useContext(AuthContext);
@@ -25,6 +28,10 @@ function Scorecard() {
   const [parsLocked, setParsLocked] = useState(false);
   const [editingPars, setEditingPars] = useState(false);
 
+  // Hole-by-hole entry state
+  const [entryMode, setEntryMode] = useState('holes'); // 'holes' | 'table'
+  const [currentHoleIndex, setCurrentHoleIndex] = useState(0);
+
   // Sharing state
   const [shareCode, setShareCode] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
@@ -42,6 +49,7 @@ function Scorecard() {
     setParsLocked(false);
     setEditingPars(false);
     setShareCode('');
+    setCurrentHoleIndex(0);
   }, []);
 
   // WebSocket connection for real-time updates
@@ -398,6 +406,34 @@ function Scorecard() {
 
   const getRoundId = (round) => round._id; // eslint-disable-line no-underscore-dangle
 
+  // Hole navigation helpers
+  const goToNextHole = () => {
+    if (currentHoleIndex < holes.length - 1) {
+      setCurrentHoleIndex(currentHoleIndex + 1);
+    }
+  };
+
+  const goToPreviousHole = () => {
+    if (currentHoleIndex > 0) {
+      setCurrentHoleIndex(currentHoleIndex - 1);
+    }
+  };
+
+  const jumpToHole = (holeNumber) => {
+    setCurrentHoleIndex(holeNumber - 1);
+  };
+
+  // Get current user's player index
+  const getCurrentUserPlayerIndex = useCallback(() => {
+    if (!user) return 0;
+    const index = players.findIndex(
+      // eslint-disable-next-line no-underscore-dangle
+      (p) => p.userId === user._id || p.userId === user.id,
+    );
+    // If user hasn't claimed a slot, default to first player (for round creator)
+    return index >= 0 ? index : 0;
+  }, [user, players]);
+
   // Show loading state while auth is being checked
   if (authLoading) {
     return (
@@ -622,7 +658,7 @@ function Scorecard() {
                   <button
                     type="button"
                     onClick={() => setView('create')}
-                    className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                    className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                   >
                     New Round
                   </button>
@@ -645,7 +681,7 @@ function Scorecard() {
                 <button
                   type="button"
                   onClick={() => setView('create')}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-500 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-500 transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -654,77 +690,17 @@ function Scorecard() {
                 </button>
               </div>
             ) : (
-              /* Rounds List */
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <ul className="divide-y divide-gray-200">
-                  {rounds.map((round) => (
-                    <li key={getRoundId(round)} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        {/* Left side - Course name and players */}
-                        <div className="min-w-0 flex-1">
-                          <button
-                            type="button"
-                            onClick={() => openEditView(round)}
-                            className="text-blue-600 hover:text-blue-800 font-medium text-sm truncate text-left"
-                          >
-                            {round.courseName}
-                          </button>
-                          <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-                            <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
-                            <span className="truncate">{round.players.map((p) => p.name).join(', ')}</span>
-                          </div>
-                        </div>
-
-                        {/* Right side - Share code badge and action buttons */}
-                        <div className="flex items-center gap-3 ml-4">
-                          {round.shareCode && (
-                            <span className="inline-flex items-center rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700">
-                              {round.shareCode}
-                            </span>
-                          )}
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openEditView(round)}
-                              className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                            >
-                              Edit
-                            </button>
-                            {/* eslint-disable-next-line no-underscore-dangle */}
-                            {(round.createdBy === user._id || round.createdBy === user.id) && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleGenerateShareCode(getRoundId(round))}
-                                  className="rounded-md bg-white p-1.5 text-purple-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-purple-50"
-                                  title="Share Round"
-                                  aria-label="Share Round"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteRound(getRoundId(round))}
-                                  className="rounded-md bg-white p-1.5 text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-red-50"
-                                  title="Delete Round"
-                                  aria-label="Delete Round"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+              /* Rounds List with RoundCard */
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {rounds.map((round) => (
+                  <RoundCard
+                    key={getRoundId(round)}
+                    round={round}
+                    onContinue={() => openEditView(round)}
+                    onShare={() => handleGenerateShareCode(getRoundId(round))}
+                    onDelete={() => handleDeleteRound(getRoundId(round))}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -834,16 +810,45 @@ function Scorecard() {
 
             {/* Scorecard Card */}
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">Scorecard</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Scorecard</h3>
+                {/* View mode toggle - only show when pars are locked and in edit mode */}
+                {parsLocked && view === 'edit' && (
+                  <div className="flex rounded-lg bg-gray-100 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setEntryMode('holes')}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                        entryMode === 'holes'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Hole View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEntryMode('table')}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                        entryMode === 'table'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Table View
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Par editing controls */}
               {!parsLocked && (
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg flex items-center justify-between">
-                  <p className="text-sm text-blue-800">Set the par for each hole, then lock it in.</p>
+                <div className="mb-6 p-4 bg-indigo-50 rounded-lg flex items-center justify-between">
+                  <p className="text-sm text-indigo-800">Set the par for each hole, then lock it in.</p>
                   <button
                     type="button"
                     onClick={() => setParsLocked(true)}
-                    className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                   >
                     Set Pars
                   </button>
@@ -861,7 +866,7 @@ function Scorecard() {
                   </button>
                 </div>
               )}
-              {parsLocked && !editingPars && view === 'edit' && isAdmin() && (
+              {parsLocked && !editingPars && view === 'edit' && isAdmin() && entryMode === 'table' && (
                 <div className="mb-6 flex justify-end">
                   <button
                     type="button"
@@ -873,9 +878,51 @@ function Scorecard() {
                 </div>
               )}
 
-              {renderNineHoles(0, 9, 'Front 9', 'OUT')}
-              {renderNineHoles(9, 18, 'Back 9', 'IN')}
-              {renderTotalsSummary()}
+              {/* Hole-by-hole view for mobile score entry */}
+              {parsLocked && view === 'edit' && entryMode === 'holes' && (
+                <div className="bg-gray-50 rounded-xl -mx-6 -mb-6 px-2 py-4">
+                  <HoleCard
+                    holeNumber={holes[currentHoleIndex].holeNumber}
+                    par={holes[currentHoleIndex].par}
+                    currentUserName={players[getCurrentUserPlayerIndex()]?.name}
+                    currentUserScore={
+                      players[getCurrentUserPlayerIndex()]?.scores[currentHoleIndex]
+                    }
+                    otherPlayers={players
+                      .map((p, i) => ({
+                        name: p.name,
+                        score: p.scores[currentHoleIndex],
+                        index: i,
+                      }))
+                      .filter((_, i) => i !== getCurrentUserPlayerIndex())}
+                    onScoreChange={(score) => {
+                      const playerIndex = getCurrentUserPlayerIndex();
+                      if (selectedRound) {
+                        handleScoreUpdate(playerIndex, currentHoleIndex, score);
+                      } else {
+                        updatePlayerScore(playerIndex, currentHoleIndex, score);
+                      }
+                    }}
+                    canEdit={canEditPlayer(getCurrentUserPlayerIndex())}
+                  />
+                  <HoleStepper
+                    currentHole={currentHoleIndex + 1}
+                    totalHoles={holes.length}
+                    onPrevious={goToPreviousHole}
+                    onNext={goToNextHole}
+                    onJumpToHole={jumpToHole}
+                  />
+                </div>
+              )}
+
+              {/* Table view - show during creation or when table mode selected */}
+              {(!parsLocked || view === 'create' || entryMode === 'table') && (
+                <>
+                  {renderNineHoles(0, 9, 'Front 9', 'OUT')}
+                  {renderNineHoles(9, 18, 'Back 9', 'IN')}
+                  {renderTotalsSummary()}
+                </>
+              )}
             </div>
 
             {/* Action Buttons - only show Save/Cancel for creator or new rounds */}
@@ -884,7 +931,7 @@ function Scorecard() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-8 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-lg hover:bg-blue-700 hover:shadow-xl disabled:bg-blue-400 disabled:shadow-none transition-all duration-200"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-8 py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 hover:shadow-xl disabled:bg-indigo-400 disabled:shadow-none transition-all duration-200"
                 >
                   {saving ? (
                     <>

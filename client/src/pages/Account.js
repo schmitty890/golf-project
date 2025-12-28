@@ -164,211 +164,286 @@ function Account() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Account Settings</h1>
+      <form onSubmit={handleProfileSubmit}>
+        <div className="space-y-12">
+          {/* Profile Section */}
+          <div className="border-b border-gray-900/10 pb-12">
+            <h2 className="text-base/7 font-semibold text-gray-900">Profile</h2>
+            <p className="mt-1 text-sm/6 text-gray-600">
+              Update your personal information and profile photo.
+            </p>
 
-      {/* Profile Picture Section */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Profile Picture</h2>
-        <div className="flex items-center gap-6">
-          {getAvatarUrl() ? (
-            <img
-              src={getAvatarUrl()}
-              alt="Profile"
-              className="h-20 w-20 rounded-full object-cover"
-            />
-          ) : (
-            <UserCircleIcon className="h-20 w-20 text-gray-300" />
-          )}
-          <div className="flex flex-col gap-2">
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-              <span>{avatarUploading ? 'Uploading...' : 'Upload New'}</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/gif"
-                onChange={handleAvatarUpload}
-                disabled={avatarUploading}
-                className="sr-only"
-              />
-            </label>
-            {user?.profilePicture && (
-              <button
-                type="button"
-                onClick={handleAvatarRemove}
-                disabled={avatarUploading}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-600 bg-white hover:bg-red-50"
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        </div>
-        {avatarMessage && (
-          <p className={`mt-3 text-sm ${avatarMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
-            {avatarMessage}
-          </p>
-        )}
-      </div>
+            <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+              {/* Profile Photo */}
+              <div className="col-span-full">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="photo" className="block text-sm/6 font-medium text-gray-900">
+                  Photo
+                </label>
+                <div className="mt-2 flex items-center gap-x-3">
+                  {getAvatarUrl() ? (
+                    <img
+                      src={getAvatarUrl()}
+                      alt="Profile"
+                      className="size-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <UserCircleIcon aria-hidden="true" className="size-12 text-gray-300" />
+                  )}
+                  <label
+                    htmlFor="avatar-upload"
+                    className="cursor-pointer rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                  >
+                    {avatarUploading ? 'Uploading...' : 'Change'}
+                    <input
+                      id="avatar-upload"
+                      name="avatar-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif"
+                      onChange={handleAvatarUpload}
+                      disabled={avatarUploading}
+                      className="sr-only"
+                    />
+                  </label>
+                  {user?.profilePicture && (
+                    <button
+                      type="button"
+                      onClick={handleAvatarRemove}
+                      disabled={avatarUploading}
+                      className="text-sm font-semibold text-red-600 hover:text-red-500"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {avatarMessage && (
+                  <p className={`mt-2 text-sm ${avatarMessage.includes('success') || avatarMessage === 'Avatar removed' ? 'text-green-600' : 'text-red-600'}`}>
+                    {avatarMessage}
+                  </p>
+                )}
+              </div>
 
-      {/* Personal Information Section */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h2>
-        <form onSubmit={handleProfileSubmit} className="space-y-4">
-          <div>
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-              First Name
-            </label>
-            <input
-              type="text"
-              id="firstName"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-              Last Name
-            </label>
-            <input
-              type="text"
-              id="lastName"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={user?.email || ''}
-              disabled
-              className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm sm:text-sm text-gray-500"
-            />
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              type="submit"
-              disabled={profileSaving}
-              className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              {profileSaving ? 'Saving...' : 'Save Changes'}
-            </button>
+              {/* First Name */}
+              <div className="sm:col-span-3">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="firstName" className="block text-sm/6 font-medium text-gray-900">
+                  First name
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    autoComplete="given-name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                  />
+                </div>
+              </div>
+
+              {/* Last Name */}
+              <div className="sm:col-span-3">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="lastName" className="block text-sm/6 font-medium text-gray-900">
+                  Last name
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    autoComplete="family-name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="sm:col-span-4">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="email" className="block text-sm/6 font-medium text-gray-900">
+                  Email address
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={user?.email || ''}
+                    disabled
+                    className="block w-full rounded-md bg-gray-50 px-3 py-1.5 text-base text-gray-500 outline outline-1 -outline-offset-1 outline-gray-300 sm:text-sm/6"
+                  />
+                </div>
+                <p className="mt-1 text-sm/6 text-gray-500">
+                  Email cannot be changed.
+                </p>
+              </div>
+            </div>
+
             {profileMessage && (
-              <p className={`text-sm ${profileMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`mt-4 text-sm ${profileMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
                 {profileMessage}
               </p>
             )}
           </div>
-        </form>
-      </div>
 
-      {/* Change Password Section */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Change Password</h2>
-        <form onSubmit={handlePasswordSubmit} className="space-y-4">
-          <div>
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
-              Current Password
-            </label>
-            <input
-              type="password"
-              id="currentPassword"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
-              New Password
-            </label>
-            <input
-              type="password"
-              id="newPassword"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={6}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-              Confirm New Password
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={6}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              type="submit"
-              disabled={passwordSaving}
-              className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              {passwordSaving ? 'Updating...' : 'Update Password'}
-            </button>
-            {passwordMessage && (
-              <p className={`text-sm ${passwordMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
-                {passwordMessage}
-              </p>
-            )}
-          </div>
-        </form>
-      </div>
+          {/* Change Password Section */}
+          <div className="border-b border-gray-900/10 pb-12">
+            <h2 className="text-base/7 font-semibold text-gray-900">Change Password</h2>
+            <p className="mt-1 text-sm/6 text-gray-600">
+              Update your password to keep your account secure.
+            </p>
 
-      {/* Danger Zone Section */}
-      <div className="bg-white shadow rounded-lg p-6 border border-red-200">
-        <h2 className="text-lg font-medium text-red-600 mb-4">Danger Zone</h2>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-medium text-gray-900">Sign Out</h3>
-              <p className="text-sm text-gray-500">Sign out of your account on this device.</p>
+            <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+              {/* Current Password */}
+              <div className="sm:col-span-4">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="currentPassword" className="block text-sm/6 font-medium text-gray-900">
+                  Current password
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="currentPassword"
+                    name="currentPassword"
+                    type="password"
+                    autoComplete="current-password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                  />
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div className="sm:col-span-4">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="newPassword" className="block text-sm/6 font-medium text-gray-900">
+                  New password
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="newPassword"
+                    name="newPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    minLength={6}
+                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                  />
+                </div>
+                <p className="mt-1 text-sm/6 text-gray-500">
+                  Must be at least 6 characters.
+                </p>
+              </div>
+
+              {/* Confirm Password */}
+              <div className="sm:col-span-4">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="confirmPassword" className="block text-sm/6 font-medium text-gray-900">
+                  Confirm new password
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    minLength={6}
+                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                  />
+                </div>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Sign Out
-            </button>
+
+            <div className="mt-6 flex items-center gap-x-4">
+              <button
+                type="button"
+                onClick={handlePasswordSubmit}
+                disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}
+                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {passwordSaving ? 'Updating...' : 'Update Password'}
+              </button>
+              {passwordMessage && (
+                <p className={`text-sm ${passwordMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+                  {passwordMessage}
+                </p>
+              )}
+            </div>
           </div>
-          <div className="border-t border-gray-200 pt-4">
+
+          {/* Sign Out Section */}
+          <div className="border-b border-gray-900/10 pb-12">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-medium text-gray-900">Delete Account</h3>
-                <p className="text-sm text-gray-500">Permanently delete your account and all data.</p>
+                <h2 className="text-base/7 font-semibold text-gray-900">Sign out</h2>
+                <p className="mt-1 text-sm/6 text-gray-600">Sign out of your account on this device.</p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowDeleteModal(true)}
-                className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-600 bg-white hover:bg-red-50"
+                onClick={handleLogout}
+                className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
               >
-                Delete Account
+                Sign Out
               </button>
             </div>
           </div>
+
+          {/* Danger Zone Section */}
+          <div className="pb-12">
+            <h2 className="text-base/7 font-semibold text-red-600">Danger Zone</h2>
+            <p className="mt-1 text-sm/6 text-gray-600">
+              Irreversible actions for your account.
+            </p>
+
+            <div className="mt-10">
+              {/* Delete Account */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm/6 font-medium text-gray-900">Delete account</h3>
+                  <p className="text-sm/6 text-gray-500">Permanently delete your account and all data.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+                >
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+
+        {/* Footer with Save Button */}
+        <div className="mt-6 flex items-center justify-end gap-x-6 border-t border-gray-900/10 pt-6">
+          <button
+            type="button"
+            onClick={() => {
+              setFirstName(user?.firstName || '');
+              setLastName(user?.lastName || '');
+              setProfileMessage('');
+            }}
+            className="text-sm/6 font-semibold text-gray-900"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={profileSaving}
+            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
+          >
+            {profileSaving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </form>
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
@@ -384,10 +459,10 @@ function Account() {
             />
             <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
               <div>
-                <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">
+                <h3 className="text-base/7 font-semibold text-gray-900 mb-4">
                   Delete Account
                 </h3>
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm/6 text-gray-600 mb-4">
                   This action cannot be undone. Please enter your password to confirm.
                 </p>
                 <input
@@ -395,7 +470,7 @@ function Account() {
                   value={deletePassword}
                   onChange={(e) => setDeletePassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                  className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-red-600 sm:text-sm/6"
                 />
                 {deleteError && (
                   <p className="mt-2 text-sm text-red-600">{deleteError}</p>
@@ -406,7 +481,7 @@ function Account() {
                   type="button"
                   onClick={handleDeleteAccount}
                   disabled={deleting || !deletePassword}
-                  className="inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:col-start-2 sm:text-sm disabled:opacity-50"
+                  className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 sm:col-start-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {deleting ? 'Deleting...' : 'Delete Account'}
                 </button>
@@ -417,7 +492,7 @@ function Account() {
                     setDeletePassword('');
                     setDeleteError('');
                   }}
-                  className="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm"
+                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
                 >
                   Cancel
                 </button>
