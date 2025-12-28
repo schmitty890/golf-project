@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Tailwind UI sidebar layout replacing traditional top navbar
+- New layout components for responsive sidebar navigation
+- Settings page placeholder
 - Golf scorecard feature for tracking rounds
 - Round model with course name, date, holes, players, and scores
 - REST API endpoints for rounds (POST, GET, PUT) with JWT authentication
