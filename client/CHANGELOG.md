@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Hole-by-hole card view for mobile score entry with large tap targets
+- ScoreInput component with +/- buttons for easy on-course score entry
+- HoleCard component for single hole display with score input and other players' scores
+- HoleStepper component with previous/next navigation and numbered hole grid (Front 9 / Back 9)
+- RoundCard component with enhanced round preview showing player scores and totals
+- View mode toggle (Hole View / Table View) when editing rounds
+- Score labels with color coding (Birdie, Par, Bogey, Double Bogey, etc.)
 - Collapsible desktop sidebar with icon-only collapsed state
 - Toggle button on sidebar edge to expand/collapse
 - Account settings page (`/account`) for managing user profile
@@ -78,6 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Player input fields styled as cards with numbered indicators
 - Buttons have improved visual hierarchy (primary, secondary, destructive)
 - Par input now uses tap buttons (3/4/5) instead of number inputs for better mobile/tablet usability
+- Rounds list redesigned as card grid with player score previews
+- Improved mobile UX with minimal scrolling for on-course score entry
 
 ### Removed
 - Settings navigation item from sidebar
