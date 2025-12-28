@@ -605,33 +605,35 @@ function Scorecard() {
         {/* List View */}
         {view === 'list' && (
           <div>
-            <div className="flex flex-wrap gap-4 mb-8">
-              <button
-                type="button"
-                onClick={() => setView('create')}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-lg hover:bg-green-700 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                New Round
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowJoinModal(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-lg hover:bg-blue-700 hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-                Join Round
-              </button>
+            {/* Header with title and action buttons */}
+            <div className="border-b border-gray-200 pb-5 mb-6">
+              <div className="-ml-4 -mt-2 flex flex-wrap items-center justify-between sm:flex-nowrap">
+                <div className="ml-4 mt-2">
+                  <h3 className="text-lg font-semibold text-gray-900">Your Rounds</h3>
+                </div>
+                <div className="ml-4 mt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowJoinModal(true)}
+                    className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                  >
+                    Join Round
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView('create')}
+                    className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  >
+                    New Round
+                  </button>
+                </div>
+              </div>
             </div>
 
             {rounds.length === 0 ? (
               /* Empty State */
-              <div className="text-center py-16 px-4">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-200 mb-6">
+              <div className="bg-white rounded-lg shadow p-12 text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-6">
                   <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 21h18M9 8h6m-6 4h6m-6 4h6M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" />
                   </svg>
@@ -643,7 +645,7 @@ function Scorecard() {
                 <button
                   type="button"
                   onClick={() => setView('create')}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-500 transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -652,85 +654,77 @@ function Scorecard() {
                 </button>
               </div>
             ) : (
-              /* Rounds Grid */
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {rounds.map((round) => (
-                  <div
-                    key={getRoundId(round)}
-                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden"
-                  >
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
+              /* Rounds List */
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <ul className="divide-y divide-gray-200">
+                  {rounds.map((round) => (
+                    <li key={getRoundId(round)} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        {/* Left side - Course name and players */}
+                        <div className="min-w-0 flex-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditView(round)}
+                            className="text-blue-600 hover:text-blue-800 font-medium text-sm truncate text-left"
+                          >
                             {round.courseName}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {new Date(round.date).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                          </p>
+                          </button>
+                          <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+                            <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            <span className="truncate">{round.players.map((p) => p.name).join(', ')}</span>
+                          </div>
                         </div>
-                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M9 8h6m-6 4h6m-6 4h6M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        <span>{round.players.map((p) => p.name).join(', ')}</span>
-                      </div>
-                      {round.shareCode && (
-                        <div className="mb-3 px-3 py-2 bg-purple-50 rounded-lg text-sm text-purple-700 font-mono">
-                          {'Code: '}
-                          {round.shareCode}
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditView(round)}
-                          className="flex-1 py-2.5 px-4 border-2 border-gray-200 text-gray-700 font-medium rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors"
-                        >
-                          Edit Scores
-                        </button>
-                        {/* eslint-disable-next-line no-underscore-dangle */}
-                        {(round.createdBy === user._id || round.createdBy === user.id) && (
-                          <>
+
+                        {/* Right side - Share code badge and action buttons */}
+                        <div className="flex items-center gap-3 ml-4">
+                          {round.shareCode && (
+                            <span className="inline-flex items-center rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700">
+                              {round.shareCode}
+                            </span>
+                          )}
+                          <div className="flex gap-2">
                             <button
                               type="button"
-                              onClick={() => handleGenerateShareCode(getRoundId(round))}
-                              className="py-2.5 px-3 border-2 border-purple-200 text-purple-600 font-medium rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors"
-                              title="Share Round"
-                              aria-label="Share Round"
+                              onClick={() => openEditView(round)}
+                              className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                              </svg>
+                              Edit
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteRound(getRoundId(round))}
-                              className="py-2.5 px-3 border-2 border-red-200 text-red-600 font-medium rounded-lg hover:border-red-500 hover:bg-red-50 transition-colors"
-                              title="Delete Round"
-                              aria-label="Delete Round"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </>
-                        )}
+                            {/* eslint-disable-next-line no-underscore-dangle */}
+                            {(round.createdBy === user._id || round.createdBy === user.id) && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleGenerateShareCode(getRoundId(round))}
+                                  className="rounded-md bg-white p-1.5 text-purple-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-purple-50"
+                                  title="Share Round"
+                                  aria-label="Share Round"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteRound(getRoundId(round))}
+                                  className="rounded-md bg-white p-1.5 text-red-600 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-red-50"
+                                  title="Delete Round"
+                                  aria-label="Delete Round"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
