@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Collapsible desktop sidebar with icon-only collapsed state
+- Toggle button on sidebar edge to expand/collapse
 - Account settings page (`/account`) for managing user profile
 - Profile picture upload and removal with avatar preview
 - Personal information form (first name, last name, email read-only)
@@ -22,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HeadlessUI Dialog for mobile sidebar with smooth slide-in animation
 - HeadlessUI Menu for profile dropdown
 - Top header with search bar, notifications button, and user profile dropdown
-- Navigation items: Dashboard, Rounds, Settings with active state highlighting
+- Navigation items: Dashboard, Rounds, Account with active state highlighting
 - User avatar showing email initial in profile dropdown
 - Scorecard page for tracking golf rounds
 - Shared scorecards feature with real-time updates
@@ -78,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Par input now uses tap buttons (3/4/5) instead of number inputs for better mobile/tablet usability
 
 ### Removed
+- Settings navigation item from sidebar
 - Navbar component (replaced by sidebar layout)
 - Footer component (not needed with new layout)
 
