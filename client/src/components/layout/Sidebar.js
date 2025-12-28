@@ -5,7 +5,6 @@ import {
   Cog6ToothIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
-import logo from '../../assets/images/bank-of-america-logo.png';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
@@ -19,7 +18,12 @@ function Sidebar() {
     <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
       {/* Logo */}
       <div className="flex h-16 shrink-0 items-center">
-        <img className="h-8 w-auto" src={logo} alt="Logo" />
+        <svg className="h-8 w-8 text-indigo-600" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L12 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M12 2L20 7L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.2" />
+          <circle cx="12" cy="22" r="2" fill="currentColor" />
+        </svg>
+        <span className="ml-2 text-lg font-semibold text-gray-900">Golf Tracker</span>
       </div>
 
       {/* Navigation */}
