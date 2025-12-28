@@ -62,7 +62,9 @@ function ScoreInput({
   };
 
   const handleIncrement = () => {
-    if (value < 15) {
+    // Max score is par + 3 (Triple Bogey)
+    const maxScore = par ? par + 3 : 15;
+    if (value < maxScore) {
       onChange(value + 1);
     }
   };
@@ -101,7 +103,7 @@ function ScoreInput({
         <button
           type="button"
           onClick={handleIncrement}
-          disabled={disabled || value >= 15}
+          disabled={disabled || (par && value >= par + 3)}
           className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200 active:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
           aria-label="Increase score"
         >
