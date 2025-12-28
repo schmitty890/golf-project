@@ -160,12 +160,7 @@ function Account() {
     }
   };
 
-  const getAvatarUrl = () => {
-    if (user?.profilePicture) {
-      return `${API_URL}${user.profilePicture}`;
-    }
-    return null;
-  };
+  const getAvatarUrl = () => user?.profilePicture || null;
 
   return (
     <div className="max-w-2xl mx-auto">
