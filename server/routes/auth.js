@@ -1,43 +1,22 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import sharp from 'sharp';
 import User from '../models/User.js';
 import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Get directory name for ES modules
-const currentFilename = fileURLToPath(import.meta.url);
-const currentDirname = path.dirname(currentFilename);
-
-// Configure multer for avatar uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(currentDirname, '../uploads/avatars');
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Use userId + timestamp + extension for unique filename
-    const ext = path.extname(file.originalname);
-    cb(null, `${req.userId}-${Date.now()}${ext}`);
-  },
-});
+// Configure multer for avatar uploads (memory storage for processing)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    if (extname && mimetype) {
+    if (mimetype) {
       cb(null, true);
     } else {
       cb(new Error('Only image files (jpg, png, gif) are allowed'));
@@ -349,16 +328,15 @@ router.post('/avatar', auth, upload.single('avatar'), async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Delete old avatar if exists
-    if (user.profilePicture) {
-      const oldPath = path.join(currentDirname, '..', user.profilePicture);
-      if (fs.existsSync(oldPath)) {
-        fs.unlinkSync(oldPath);
-      }
-    }
+    // Resize and compress image to 200x200 JPEG
+    const compressedBuffer = await sharp(req.file.buffer)
+      .resize(200, 200, { fit: 'cover' })
+      .jpeg({ quality: 80 })
+      .toBuffer();
 
-    // Save new avatar path
-    user.profilePicture = `/uploads/avatars/${req.file.filename}`;
+    // Convert to Base64 data URI and save to user
+    const base64 = compressedBuffer.toString('base64');
+    user.profilePicture = `data:image/jpeg;base64,${base64}`;
     await user.save();
 
     return res.json({
@@ -389,14 +367,6 @@ router.delete('/avatar', auth, async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Delete avatar file if exists
-    if (user.profilePicture) {
-      const filePath = path.join(currentDirname, '..', user.profilePicture);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
     }
 
     user.profilePicture = '';
@@ -518,14 +488,6 @@ router.delete('/account', auth, async (req, res) => {
     const isValid = await user.comparePassword(password);
     if (!isValid) {
       return res.status(400).json({ error: 'Password is incorrect' });
-    }
-
-    // Delete avatar file if exists
-    if (user.profilePicture) {
-      const filePath = path.join(currentDirname, '..', user.profilePicture);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
     }
 
     // Delete user

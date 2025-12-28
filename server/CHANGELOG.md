@@ -16,7 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PUT `/api/auth/password` - Change password (requires current password)
 - DELETE `/api/auth/account` - Delete user account (requires password confirmation)
 - Multer middleware for file uploads
-- Static file serving for uploaded avatars at `/uploads`
 - Swagger documentation for all new auth endpoints
 - Round model for golf scorecards with embedded players and scores
 - POST `/api/rounds` - Create new round (authenticated)
@@ -39,10 +38,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GET `/api/rounds/:id` now allows access if user is creator OR participant
 - User model now uses Mongoose `{ timestamps: true }` for automatic `createdAt` and `updatedAt` fields
 - Updated `.env.example` with documentation for dev vs production database names
+- Profile pictures now stored as Base64 data URIs in MongoDB instead of filesystem
+- Avatar upload endpoint now uses `sharp` to resize images to 200x200px and compress to JPEG
+- Removed static file serving for `/uploads` (no longer needed)
 
 ### Dependencies
 - Added `socket.io@^4`
 - Added `multer@^1` for file uploads
+- Added `sharp@^0.33` for image processing and compression
 
 ### Fixed
 - Fixed ESLint `consistent-return` errors in auth middleware and routes

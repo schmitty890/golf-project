@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed ESLint errors in server authentication routes and middleware
 - Separated development and production databases (golf-project-dev vs golf-project)
 - User model now has automatic `updatedAt` timestamp via Mongoose timestamps option
+- Profile pictures now stored as Base64 data URIs in MongoDB instead of filesystem
+- Images automatically resized to 200x200px and compressed to ~25KB for efficient storage
 
 ## [1.5.0] - 2025-11-25
 
