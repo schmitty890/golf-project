@@ -379,6 +379,23 @@ function Account() {
             </div>
           </div>
 
+          {/* Sign Out Section */}
+          <div className="border-b border-gray-900/10 pb-12">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base/7 font-semibold text-gray-900">Sign out</h2>
+                <p className="mt-1 text-sm/6 text-gray-600">Sign out of your account on this device.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+
           {/* Danger Zone Section */}
           <div className="pb-12">
             <h2 className="text-base/7 font-semibold text-red-600">Danger Zone</h2>
@@ -386,24 +403,9 @@ function Account() {
               Irreversible actions for your account.
             </p>
 
-            <div className="mt-10 space-y-6">
-              {/* Sign Out */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm/6 font-medium text-gray-900">Sign out</h3>
-                  <p className="text-sm/6 text-gray-500">Sign out of your account on this device.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                >
-                  Sign Out
-                </button>
-              </div>
-
+            <div className="mt-10">
               {/* Delete Account */}
-              <div className="flex items-center justify-between border-t border-gray-900/10 pt-6">
+              <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm/6 font-medium text-gray-900">Delete account</h3>
                   <p className="text-sm/6 text-gray-500">Permanently delete your account and all data.</p>
