@@ -20,7 +20,7 @@ function Scorecard() {
   const [selectedRound, setSelectedRound] = useState(null);
 
   const [courseName, setCourseName] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [players, setPlayers] = useState([{ name: '', scores: Array(18).fill(0) }]);
   const [holes, setHoles] = useState(
     Array.from({ length: 18 }, (_, i) => ({ holeNumber: i + 1, par: 4 })),
@@ -42,7 +42,7 @@ function Scorecard() {
 
   const resetForm = useCallback(() => {
     setCourseName('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(new Date().toLocaleDateString('en-CA'));
     setPlayers([{ name: '', scores: Array(18).fill(0) }]);
     setHoles(Array.from({ length: 18 }, (_, i) => ({ holeNumber: i + 1, par: 4 })));
     setSelectedRound(null);
