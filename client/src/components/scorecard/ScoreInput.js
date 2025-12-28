@@ -6,6 +6,8 @@ import { MinusIcon, PlusIcon } from '@heroicons/react/24/solid';
  */
 function getScoreLabel(score, par) {
   if (!score || !par) return null;
+  // Hole in one always takes priority
+  if (score === 1) return 'Hole in One!';
   const diff = score - par;
   switch (diff) {
     case -3: return 'Albatross';
@@ -15,7 +17,7 @@ function getScoreLabel(score, par) {
     case 1: return 'Bogey';
     case 2: return 'Double Bogey';
     case 3: return 'Triple Bogey';
-    default: return diff > 3 ? 'Triple Bogey+' : `${diff}`;
+    default: return diff < -3 ? `${diff}` : null;
   }
 }
 
@@ -108,7 +110,7 @@ function ScoreInput({
       </div>
 
       {/* Score label */}
-      {value && par && (
+      {value && par && getScoreLabel(value, par) && (
         <div className={`mt-2 text-sm font-medium ${getScoreColor(value, par)}`}>
           {diffDisplay}
           {' '}
