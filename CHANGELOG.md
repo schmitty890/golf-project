@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Account settings page for user profile management
+- Profile picture upload and removal functionality
+- First name and last name profile fields
+- Change password functionality (requires current password)
+- Account deletion with password confirmation
+- Account link in header profile dropdown
 - Tailwind UI sidebar layout replacing traditional top navbar
 - New layout components for responsive sidebar navigation
 - Settings page placeholder

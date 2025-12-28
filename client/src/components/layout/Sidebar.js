@@ -3,12 +3,14 @@ import {
   HomeIcon,
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
+  UserCircleIcon,
 } from '@heroicons/react/24/outline';
 import logo from '../../assets/images/bank-of-america-logo.png';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Rounds', href: '/scorecard', icon: ClipboardDocumentListIcon },
+  { name: 'Account', href: '/account', icon: UserCircleIcon },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ];
 

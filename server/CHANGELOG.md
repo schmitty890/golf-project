@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- User profile fields: firstName, lastName, profilePicture
+- GET `/api/auth/me` - Get current user profile (authenticated)
+- PUT `/api/auth/profile` - Update user profile (firstName, lastName)
+- POST `/api/auth/avatar` - Upload profile picture (multipart/form-data)
+- DELETE `/api/auth/avatar` - Remove profile picture
+- PUT `/api/auth/password` - Change password (requires current password)
+- DELETE `/api/auth/account` - Delete user account (requires password confirmation)
+- Multer middleware for file uploads
+- Static file serving for uploaded avatars at `/uploads`
+- Swagger documentation for all new auth endpoints
 - Round model for golf scorecards with embedded players and scores
 - POST `/api/rounds` - Create new round (authenticated)
 - GET `/api/rounds` - Get user's rounds (authenticated)
@@ -32,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Dependencies
 - Added `socket.io@^4`
+- Added `multer@^1` for file uploads
 
 ### Fixed
 - Fixed ESLint `consistent-return` errors in auth middleware and routes

@@ -15,6 +15,20 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters long'],
   },
+  firstName: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  lastName: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  profilePicture: {
+    type: String,
+    default: '',
+  },
 }, { timestamps: true });
 
 // Hash password before saving

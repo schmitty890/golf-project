@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Account settings page (`/account`) for managing user profile
+- Profile picture upload and removal with avatar preview
+- Personal information form (first name, last name, email read-only)
+- Change password form with current password verification
+- Account deletion with password confirmation modal
+- Account link in sidebar navigation
+- Account link in header profile dropdown menu
+- `refreshUser` method in AuthContext for fetching updated user data
 - Tailwind UI sidebar layout with fixed desktop sidebar and slide-in mobile sidebar
 - New layout components: SidebarLayout, Sidebar, MobileSidebar, TopHeader, ProfileDropdown
 - Settings page placeholder
