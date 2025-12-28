@@ -14,7 +14,8 @@ function getScoreLabel(score, par) {
     case 0: return 'Par';
     case 1: return 'Bogey';
     case 2: return 'Double Bogey';
-    default: return diff > 0 ? `+${diff}` : `${diff}`;
+    case 3: return 'Triple Bogey';
+    default: return diff > 3 ? 'Triple Bogey+' : `${diff}`;
   }
 }
 
