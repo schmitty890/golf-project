@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { MinusIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { MinusIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
 /**
  * Get the score label based on score vs par
@@ -80,6 +80,10 @@ function ScoreInput({
     }
   };
 
+  const handleClear = () => {
+    onChange(0); // Reset to 0 (no score)
+  };
+
   const diff = value && par ? value - par : null;
   const getDiffDisplay = () => {
     if (diff === null) return '';
@@ -122,16 +126,30 @@ function ScoreInput({
         </button>
       </div>
 
-      {/* Score label */}
-      {par && (hasScore ? getScoreLabel(value, par) : true) && (
-        <div className={`mt-2 text-sm font-medium ${hasScore ? getScoreColor(value, par) : 'text-gray-600'}`}>
-          {hasScore ? diffDisplay : 'E'}
-          {' '}
-          (
-          {hasScore ? getScoreLabel(value, par) : 'Par'}
-          )
-        </div>
-      )}
+      {/* Score label and clear button */}
+      <div className="mt-2 flex items-center gap-3">
+        {par && (hasScore ? getScoreLabel(value, par) : true) && (
+          <div className={`text-sm font-medium ${hasScore ? getScoreColor(value, par) : 'text-gray-600'}`}>
+            {hasScore ? diffDisplay : 'E'}
+            {' '}
+            (
+            {hasScore ? getScoreLabel(value, par) : 'Par'}
+            )
+          </div>
+        )}
+        {/* Clear button - only show when score is entered */}
+        {hasScore && !disabled && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700"
+            aria-label="Clear score"
+          >
+            <XMarkIcon className="h-3 w-3" />
+            Clear
+          </button>
+        )}
+      </div>
     </div>
   );
 }
