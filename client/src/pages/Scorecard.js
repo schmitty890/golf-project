@@ -406,23 +406,6 @@ function Scorecard() {
 
   const getRoundId = (round) => round._id; // eslint-disable-line no-underscore-dangle
 
-  // Hole navigation helpers
-  const goToNextHole = () => {
-    if (currentHoleIndex < holes.length - 1) {
-      setCurrentHoleIndex(currentHoleIndex + 1);
-    }
-  };
-
-  const goToPreviousHole = () => {
-    if (currentHoleIndex > 0) {
-      setCurrentHoleIndex(currentHoleIndex - 1);
-    }
-  };
-
-  const jumpToHole = (holeNumber) => {
-    setCurrentHoleIndex(holeNumber - 1);
-  };
-
   // Get current user's player index
   const getCurrentUserPlayerIndex = useCallback(() => {
     if (!user) return 0;
@@ -433,6 +416,43 @@ function Scorecard() {
     // If user hasn't claimed a slot, default to first player (for round creator)
     return index >= 0 ? index : 0;
   }, [user, players]);
+
+  // Auto-save current hole's score if not entered (defaults to par)
+  const autoSaveCurrentHoleIfNeeded = useCallback(() => {
+    const playerIndex = getCurrentUserPlayerIndex();
+    const currentScore = players[playerIndex]?.scores[currentHoleIndex];
+    const currentPar = holes[currentHoleIndex]?.par;
+
+    // If score is 0 or not set, save the par value
+    if (!currentScore && currentPar && canEditPlayer(playerIndex)) {
+      if (selectedRound) {
+        handleScoreUpdate(playerIndex, currentHoleIndex, currentPar);
+      } else {
+        updatePlayerScore(playerIndex, currentHoleIndex, currentPar);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentHoleIndex, players, holes, selectedRound, getCurrentUserPlayerIndex, canEditPlayer]);
+
+  // Hole navigation helpers
+  const goToNextHole = useCallback(() => {
+    if (currentHoleIndex < holes.length - 1) {
+      autoSaveCurrentHoleIfNeeded();
+      setCurrentHoleIndex(currentHoleIndex + 1);
+    }
+  }, [currentHoleIndex, holes.length, autoSaveCurrentHoleIfNeeded]);
+
+  const goToPreviousHole = useCallback(() => {
+    if (currentHoleIndex > 0) {
+      autoSaveCurrentHoleIfNeeded();
+      setCurrentHoleIndex(currentHoleIndex - 1);
+    }
+  }, [currentHoleIndex, autoSaveCurrentHoleIfNeeded]);
+
+  const jumpToHole = useCallback((holeNumber) => {
+    autoSaveCurrentHoleIfNeeded();
+    setCurrentHoleIndex(holeNumber - 1);
+  }, [autoSaveCurrentHoleIfNeeded]);
 
   // Show loading state while auth is being checked
   if (authLoading) {
