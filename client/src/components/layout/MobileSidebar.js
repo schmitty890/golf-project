@@ -33,8 +33,8 @@ function MobileSidebar({ open, onClose }) {
             </div>
           </TransitionChild>
 
-          {/* Reuse Sidebar content */}
-          <Sidebar />
+          {/* Reuse Sidebar content - always expanded on mobile */}
+          <Sidebar collapsed={false} />
         </DialogPanel>
       </div>
     </Dialog>
