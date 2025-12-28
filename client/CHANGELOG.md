@@ -55,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Scorecard redesigned with modern Tailwind CSS styling
 - Score inputs now have 44px touch targets for mobile accessibility
 - Form inputs have improved spacing and visual hierarchy
-- Rounds list now displays as responsive card grid (1-3 columns)
+- Rounds list changed from card grid to clean list layout with dividers
 - Player input fields styled as cards with numbered indicators
 - Buttons have improved visual hierarchy (primary, secondary, destructive)
 - Par input now uses tap buttons (3/4/5) instead of number inputs for better mobile/tablet usability
