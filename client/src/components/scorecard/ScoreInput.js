@@ -55,8 +55,15 @@ function ScoreInput({
   onChange,
   disabled,
 }) {
+  // If no score entered yet, first tap sets to par (or par-1/par+1)
+  const hasScore = value && value > 0;
+
   const handleDecrement = () => {
-    if (value > 1) {
+    if (!hasScore) {
+      // First interaction: adjust from par to birdie (par - 1)
+      const startValue = par || 4;
+      onChange(Math.max(1, startValue - 1));
+    } else if (value > 1) {
       onChange(value - 1);
     }
   };
@@ -64,7 +71,11 @@ function ScoreInput({
   const handleIncrement = () => {
     // Max score is par + 3 (Triple Bogey)
     const maxScore = par ? par + 3 : 15;
-    if (value < maxScore) {
+    if (!hasScore) {
+      // First interaction: adjust from par to bogey (par + 1)
+      const startValue = par || 4;
+      onChange(Math.min(maxScore, startValue + 1));
+    } else if (value < maxScore) {
       onChange(value + 1);
     }
   };
@@ -85,7 +96,7 @@ function ScoreInput({
         <button
           type="button"
           onClick={handleDecrement}
-          disabled={disabled || value <= 1}
+          disabled={disabled || (hasScore && value <= 1)}
           className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200 active:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
           aria-label="Decrease score"
         >
@@ -93,9 +104,9 @@ function ScoreInput({
         </button>
 
         {/* Score display */}
-        <div className={`flex h-20 w-24 items-center justify-center rounded-xl ${getScoreBgColor(value, par)}`}>
-          <span className={`text-5xl font-bold ${value ? getScoreColor(value, par) : 'text-gray-300'}`}>
-            {value || '-'}
+        <div className={`flex h-20 w-24 items-center justify-center rounded-xl ${getScoreBgColor(hasScore ? value : par, par)}`}>
+          <span className={`text-5xl font-bold ${hasScore ? getScoreColor(value, par) : 'text-gray-600'}`}>
+            {hasScore ? value : (par || '-')}
           </span>
         </div>
 
@@ -103,7 +114,7 @@ function ScoreInput({
         <button
           type="button"
           onClick={handleIncrement}
-          disabled={disabled || (par && value >= par + 3)}
+          disabled={disabled || (hasScore && par && value >= par + 3)}
           className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200 active:bg-gray-300 disabled:opacity-40 disabled:cursor-not-allowed"
           aria-label="Increase score"
         >
@@ -112,12 +123,12 @@ function ScoreInput({
       </div>
 
       {/* Score label */}
-      {value && par && getScoreLabel(value, par) && (
-        <div className={`mt-2 text-sm font-medium ${getScoreColor(value, par)}`}>
-          {diffDisplay}
+      {par && (hasScore ? getScoreLabel(value, par) : true) && (
+        <div className={`mt-2 text-sm font-medium ${hasScore ? getScoreColor(value, par) : 'text-gray-600'}`}>
+          {hasScore ? diffDisplay : 'E'}
           {' '}
           (
-          {getScoreLabel(value, par)}
+          {hasScore ? getScoreLabel(value, par) : 'Par'}
           )
         </div>
       )}
