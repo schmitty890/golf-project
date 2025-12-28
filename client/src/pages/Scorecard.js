@@ -418,19 +418,30 @@ function Scorecard() {
   const calculateTotal = (scores) => scores.reduce((sum, s) => sum + s, 0);
   const calculateTotalPar = () => holes.reduce((sum, h) => sum + h.par, 0);
 
+  // Calculate par for only holes that have been played (score > 0)
+  const calculatePlayedPar = (scores) => scores.reduce((sum, score, index) => {
+    if (score > 0) {
+      return sum + holes[index].par;
+    }
+    return sum;
+  }, 0);
+
   const calculateFront9 = (scores) => scores.slice(0, 9).reduce((sum, s) => sum + s, 0);
   const calculateBack9 = (scores) => scores.slice(9, 18).reduce((sum, s) => sum + s, 0);
   const calculateFront9Par = () => holes.slice(0, 9).reduce((sum, h) => sum + h.par, 0);
   const calculateBack9Par = () => holes.slice(9, 18).reduce((sum, h) => sum + h.par, 0);
 
-  const formatScoreDiff = (total) => {
-    const diff = total - calculateTotalPar();
+  const formatScoreDiff = (scores) => {
+    const total = calculateTotal(scores);
+    const playedPar = calculatePlayedPar(scores);
+    if (total === 0 || playedPar === 0) return '-'; // No holes played yet
+    const diff = total - playedPar;
     if (diff === 0) return 'E';
     return diff > 0 ? `+${diff}` : diff.toString();
   };
 
   const getDiffColor = (diff) => {
-    if (diff === 'E') return 'text-gray-300';
+    if (diff === '-' || diff === 'E') return 'text-gray-300';
     if (diff.startsWith('+')) return 'text-red-400';
     return 'text-green-400';
   };
@@ -656,7 +667,7 @@ function Scorecard() {
       <div className="space-y-3">
         {players.map((player, index) => {
           const total = calculateTotal(player.scores);
-          const diff = formatScoreDiff(total);
+          const diff = formatScoreDiff(player.scores);
           const diffColor = getDiffColor(diff);
           return (
             <div
