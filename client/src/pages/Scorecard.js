@@ -378,6 +378,37 @@ function Scorecard() {
     setPlayers(updated);
   };
 
+  // Clear all scores for a specific player
+  const clearAllPlayerScores = async (playerIndex) => {
+    const updated = [...players];
+    updated[playerIndex].scores = Array(18).fill(0);
+    setPlayers(updated);
+
+    // If editing an existing round, sync each hole to server
+    if (selectedRound) {
+      try {
+        // Clear all 18 holes for this player
+        await Promise.all(
+          Array.from({ length: 18 }, (_, holeIndex) => fetch(
+            // eslint-disable-next-line no-underscore-dangle
+            `${process.env.REACT_APP_API_URL}/api/rounds/${selectedRound._id}/score`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ playerIndex, holeIndex, score: 0 }),
+            },
+          )),
+        );
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to clear scores:', err);
+      }
+    }
+  };
+
   const updateHolePar = (index, par) => {
     const updated = [...holes];
     updated[index].par = parseInt(par, 10) || 4;
@@ -556,8 +587,18 @@ function Scorecard() {
                       key={`player-${playerIndex}-${label}`}
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
-                      <td className="sticky left-0 bg-white z-10 px-3 py-3 text-sm font-medium text-gray-900 truncate max-w-[100px]">
-                        {player.name || `Player ${playerIndex + 1}`}
+                      <td className="sticky left-0 bg-white z-10 px-3 py-2 text-sm font-medium text-gray-900 max-w-[120px]">
+                        <div className="truncate">{player.name || `Player ${playerIndex + 1}`}</div>
+                        {/* Clear All button - only show for admin in edit mode on Front 9 */}
+                        {startHole === 0 && isAdmin() && view === 'edit' && (
+                          <button
+                            type="button"
+                            onClick={() => clearAllPlayerScores(playerIndex)}
+                            className="mt-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            Clear All
+                          </button>
+                        )}
                       </td>
                       {playerScores.map((score, holeIndex) => {
                         const actualHoleIndex = startHole + holeIndex;
