@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Scorecard from './pages/Scorecard';
 import Settings from './pages/Settings';
+import Account from './pages/Account';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
                   <Route path="/" element={<Scorecard />} />
                   <Route path="/scorecard" element={<Scorecard />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/account" element={<Account />} />
                 </Routes>
               </SidebarLayout>
             )}

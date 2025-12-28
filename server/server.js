@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import { createServer } from 'http';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import stringsRouter from './routes/strings.js';
@@ -10,6 +12,10 @@ import { swaggerUi, specs } from './swagger.js';
 import { initSocket } from './socket.js';
 
 dotenv.config();
+
+// Get directory name for ES modules
+const currentFilename = fileURLToPath(import.meta.url);
+const currentDirname = path.dirname(currentFilename);
 
 const app = express();
 const httpServer = createServer(app);
@@ -21,6 +27,9 @@ initSocket(httpServer);
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(currentDirname, 'uploads')));
 
 // MongoDB Connection
 mongoose

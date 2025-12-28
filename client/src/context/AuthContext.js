@@ -1,7 +1,10 @@
 import {
-  createContext, useState, useEffect, useMemo,
+  createContext, useState, useEffect, useMemo, useCallback,
 } from 'react';
 import PropTypes from 'prop-types';
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 export const AuthContext = createContext();
 
@@ -36,13 +39,31 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
   };
 
+  const refreshUser = useCallback(async () => {
+    const storedToken = localStorage.getItem('token');
+    if (!storedToken) return;
+
+    try {
+      const response = await axios.get(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${storedToken}` },
+      });
+      const userData = response.data;
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to refresh user:', error);
+    }
+  }, []);
+
   const value = useMemo(() => ({
     user,
     token,
     login,
     logout,
     loading,
-  }), [user, token, loading]);
+    refreshUser,
+  }), [user, token, loading, refreshUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
