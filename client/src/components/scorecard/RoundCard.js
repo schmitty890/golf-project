@@ -46,9 +46,13 @@ function getDifferential(total, totalPar) {
 
 /**
  * Format date for display
+ * Parses YYYY-MM-DD as local date to avoid timezone issues
  */
 function formatDate(dateString) {
-  const date = new Date(dateString);
+  // Parse the date string manually to avoid UTC interpretation
+  // "2025-12-28" should display as Dec 28, not Dec 27
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day); // month is 0-indexed
   return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
