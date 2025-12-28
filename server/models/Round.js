@@ -25,6 +25,11 @@ const playerSchema = new mongoose.Schema({
     type: [Number],
     default: [],
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
 }, { _id: false });
 
 const roundSchema = new mongoose.Schema({
@@ -59,6 +64,12 @@ const roundSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+  },
+  shareCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    default: null,
   },
 }, { timestamps: true });
 

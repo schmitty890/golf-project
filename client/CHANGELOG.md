@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Scorecard page for tracking golf rounds
+- Shared scorecards feature with real-time updates
+- "Join Round" button to join rounds using a 6-character share code
+- "Share" button on round cards to generate and display share code
+- WebSocket integration for live score synchronization
+- Permission-based score editing (admin can edit all, participants can edit their own)
+- Share Modal displaying the share code for a round
+- Join Modal for entering share code and selecting player slot
 - Create new round form with course name, date, and player names
 - Scorecard table with editable par and score inputs for 18 holes
 - "Set Pars" button to lock par values after configuration (admin sets pars once, then they become read-only)
@@ -41,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Player input fields styled as cards with numbered indicators
 - Buttons have improved visual hierarchy (primary, secondary, destructive)
 - Par input now uses tap buttons (3/4/5) instead of number inputs for better mobile/tablet usability
+
+### Dependencies
+- Added `socket.io-client@^4`
 
 ## [1.3.0] - 2025-11-24
 

@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - REST API endpoints for rounds (POST, GET, PUT) with JWT authentication
 - Scorecard page with create/edit functionality
 - Score tracking table with 18 holes, par configuration, and auto-calculated totals
+- Shared scorecards with real-time updates via WebSockets
+- Share code system for inviting players to join rounds
+- Permission-based editing (admin can edit all, participants can edit their own scores)
+- Socket.io integration for live score synchronization across devices
 
 ### Changed
 - Client now uses environment variable for API URL to support production deployment

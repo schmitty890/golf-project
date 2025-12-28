@@ -14,10 +14,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GET `/api/rounds/:id` - Get single round (authenticated)
 - PUT `/api/rounds/:id` - Update round scores (authenticated)
 - Swagger documentation for rounds endpoints
+- Shared scorecards with real-time updates via WebSockets
+- POST `/api/rounds/:id/share` - Generate share code for a round (admin only)
+- POST `/api/rounds/join` - Join a round using share code
+- PUT `/api/rounds/:id/score` - Update individual player score with permission checks
+- DELETE `/api/rounds/:id/players/:playerIndex` - Remove player from round (admin only)
+- Socket.io server for real-time score synchronization
+- `shareCode` field on Round model for sharing rounds
+- `userId` field on player schema for linking players to users
+- `generateCode.js` utility for creating 6-character alphanumeric share codes
 
 ### Changed
+- GET `/api/rounds` now includes rounds where user is a participant (not just creator)
+- GET `/api/rounds/:id` now allows access if user is creator OR participant
 - User model now uses Mongoose `{ timestamps: true }` for automatic `createdAt` and `updatedAt` fields
 - Updated `.env.example` with documentation for dev vs production database names
+
+### Dependencies
+- Added `socket.io@^4`
 
 ### Fixed
 - Fixed ESLint `consistent-return` errors in auth middleware and routes

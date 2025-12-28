@@ -1,16 +1,22 @@
 import dotenv from 'dotenv';
 import express from 'express';
+import { createServer } from 'http';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import stringsRouter from './routes/strings.js';
 import authRouter from './routes/auth.js';
 import roundsRouter from './routes/rounds.js';
 import { swaggerUi, specs } from './swagger.js';
+import { initSocket } from './socket.js';
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 5001;
+
+// Initialize Socket.io
+initSocket(httpServer);
 
 // Middleware
 app.use(cors());
@@ -31,6 +37,6 @@ app.use('/api/strings', stringsRouter);
 app.use('/api/rounds', roundsRouter);
 
 // Start server
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
