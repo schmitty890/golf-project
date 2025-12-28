@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Socket.io integration for live score synchronization across devices
 
 ### Changed
+- Restyled Account page with modern Tailwind UI form patterns and indigo color scheme
 - Client now uses environment variable for API URL to support production deployment
 - Fixed ESLint errors in server authentication routes and middleware
 - Separated development and production databases (golf-project-dev vs golf-project)

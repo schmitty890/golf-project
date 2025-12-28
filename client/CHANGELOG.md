@@ -54,6 +54,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Netlify 404 errors on direct URL access by adding `_redirects` file for SPA routing
 
 ### Changed
+- Restyled Login page with Tailwind UI form patterns (indigo colors, outline inputs, visible labels)
+- Restyled Register page with Tailwind UI form patterns (indigo colors, outline inputs, visible labels)
+- Restyled Account page with Tailwind UI form patterns
+- Updated form inputs to use outline-based styling with indigo focus states
+- Applied responsive grid layout with first/last name side-by-side on larger screens
+- Changed color scheme from blue to indigo throughout Account page
+- Unified section layout with border-separated sections instead of card-based design
+- Added Cancel/Save buttons in footer for profile changes
 - Replaced top Navbar with sidebar navigation layout
 - Login and Register pages remain standalone without sidebar
 - Removed Footer component (no longer needed with sidebar layout)
