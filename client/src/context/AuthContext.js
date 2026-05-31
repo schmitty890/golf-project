@@ -25,6 +25,27 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  // If any authenticated API call is rejected (expired/invalid token), clear the stale
+  // session and send the user to login instead of surfacing a raw 401 error.
+  useEffect(() => {
+    const interceptorId = axios.interceptors.response.use(
+      (res) => res,
+      (error) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+          setToken(null);
+          if (window.location.pathname !== '/login') {
+            window.location.assign('/login');
+          }
+        }
+        return Promise.reject(error);
+      },
+    );
+    return () => axios.interceptors.response.eject(interceptorId);
+  }, []);
+
   const login = (userData, authToken) => {
     setUser(userData);
     setToken(authToken);
