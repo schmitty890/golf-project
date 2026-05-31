@@ -1,6 +1,7 @@
 import { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import Logo from '../components/Logo';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -11,9 +12,9 @@ function Login() {
   const { login, token, loading: authLoading } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // Redirect to home if already authenticated
+  // Redirect to orders if already authenticated
   useEffect(() => {
-    if (!authLoading && token) navigate('/');
+    if (!authLoading && token) navigate('/my-orders');
   }, [token, authLoading, navigate]);
 
   const handleSubmit = async (e) => {
@@ -37,7 +38,7 @@ function Login() {
       }
 
       login(data.user, data.token);
-      navigate('/');
+      navigate('/my-orders');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -45,20 +46,20 @@ function Login() {
     }
   };
 
-  // Show loading state while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <p className="text-walnut-400">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-cream py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
-        <div className="mb-10">
-          <h2 className="text-center text-2xl/9 font-bold tracking-tight text-gray-900">
+        <div className="mb-10 flex flex-col items-center">
+          <Link to="/" aria-label="VOLW Firewood home"><Logo size="md" /></Link>
+          <h2 className="mt-8 text-center text-2xl/9 font-bold tracking-tight text-walnut">
             Sign in to your account
           </h2>
         </div>
@@ -71,7 +72,7 @@ function Login() {
 
           <div>
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label htmlFor="email-address" className="block text-sm/6 font-medium text-gray-900">
+            <label htmlFor="email-address" className="block text-sm/6 font-medium text-walnut">
               Email address
             </label>
             <div className="mt-2">
@@ -81,7 +82,7 @@ function Login() {
                 type="email"
                 autoComplete="email"
                 required
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-walnut outline outline-1 -outline-offset-1 outline-cream-300 placeholder:text-walnut-200 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-ember sm:text-sm/6"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -91,7 +92,7 @@ function Login() {
 
           <div>
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label htmlFor="password" className="block text-sm/6 font-medium text-gray-900">
+            <label htmlFor="password" className="block text-sm/6 font-medium text-walnut">
               Password
             </label>
             <div className="mt-2">
@@ -101,7 +102,7 @@ function Login() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-walnut outline outline-1 -outline-offset-1 outline-cream-300 placeholder:text-walnut-200 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-ember sm:text-sm/6"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -112,16 +113,16 @@ function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
+              className="w-full rounded-md bg-ember px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-ember-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember disabled:opacity-50"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
 
-          <p className="text-center text-sm/6 text-gray-500">
+          <p className="text-center text-sm/6 text-walnut-400">
             Don&apos;t have an account?
             {' '}
-            <Link to="/register" className="font-semibold text-indigo-600 hover:text-indigo-500">
+            <Link to="/register" className="font-semibold text-ember hover:text-ember-600">
               Sign up
             </Link>
           </p>

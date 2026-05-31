@@ -1,30 +1,31 @@
+import { useContext } from 'react';
 import PropTypes from 'prop-types';
 import { NavLink } from 'react-router-dom';
 import {
-  HomeIcon,
   ClipboardDocumentListIcon,
   UserCircleIcon,
+  InboxStackIcon,
 } from '@heroicons/react/24/outline';
-
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon },
-  { name: 'Rounds', href: '/scorecard', icon: ClipboardDocumentListIcon },
-  { name: 'Account', href: '/account', icon: UserCircleIcon },
-];
+import Logo from '../Logo';
+import { AuthContext } from '../../context/AuthContext';
 
 function Sidebar({ collapsed = false }) {
+  const { user } = useContext(AuthContext);
+
+  const navigation = [
+    { name: 'My Orders', href: '/my-orders', icon: ClipboardDocumentListIcon },
+    { name: 'Account', href: '/account', icon: UserCircleIcon },
+  ];
+
+  if (user?.role === 'admin') {
+    navigation.push({ name: 'Orders (Admin)', href: '/admin/orders', icon: InboxStackIcon });
+  }
+
   return (
-    <div className={`flex grow flex-col gap-y-5 overflow-y-auto overflow-x-hidden border-r border-gray-200 bg-white pb-4 transition-[padding] duration-300 ease-in-out ${collapsed ? 'px-3' : 'px-6'}`}>
+    <div className={`flex grow flex-col gap-y-5 overflow-y-auto overflow-x-hidden border-r border-cream-300 bg-cream pb-4 transition-[padding] duration-300 ease-in-out ${collapsed ? 'px-3' : 'px-6'}`}>
       {/* Logo */}
-      <div className={`flex h-16 shrink-0 items-center transition-all duration-300 ease-in-out ${collapsed ? 'justify-center' : ''}`}>
-        <svg className="h-8 w-8 shrink-0 text-indigo-600" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L12 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          <path d="M12 2L20 7L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.2" />
-          <circle cx="12" cy="22" r="2" fill="currentColor" />
-        </svg>
-        <span className={`ml-2 text-lg font-semibold text-gray-900 whitespace-nowrap transition-all duration-300 ease-in-out ${collapsed ? 'opacity-0 w-0 ml-0' : 'opacity-100'}`}>
-          Golf Tracker
-        </span>
+      <div className="flex shrink-0 items-center justify-center py-4 transition-all duration-300 ease-in-out">
+        <Logo size={collapsed ? 'sm' : 'xl'} />
       </div>
 
       {/* Navigation */}
@@ -36,18 +37,17 @@ function Sidebar({ collapsed = false }) {
                 <li key={item.name}>
                   <NavLink
                     to={item.href}
-                    end={item.href === '/'}
                     title={collapsed ? item.name : undefined}
                     className={({ isActive }) => `group flex rounded-md p-2 text-sm font-semibold leading-6 transition-all duration-300 ease-in-out ${
                       collapsed ? 'justify-center' : 'gap-x-3'
                     } ${
                       isActive
-                        ? 'bg-gray-50 text-indigo-600'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+                        ? 'bg-cream-300 text-ember'
+                        : 'text-walnut hover:bg-cream-300 hover:text-ember'
                     }`}
                   >
                     <item.icon
-                      className="h-6 w-6 shrink-0 text-gray-400 group-hover:text-indigo-600 transition-colors duration-200"
+                      className="h-6 w-6 shrink-0 text-walnut-300 group-hover:text-ember transition-colors duration-200"
                       aria-hidden="true"
                     />
                     <span className={`whitespace-nowrap transition-all duration-300 ease-in-out ${collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>

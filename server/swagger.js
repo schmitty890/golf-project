@@ -5,9 +5,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Strings API',
-      version: '1.1.0',
-      description: 'A simple API for managing strings with user authentication',
+      title: 'VOLW Firewood API',
+      version: '1.0.0',
+      description: 'API for VOLW Firewood — accounts, orders, and admin management',
     },
     servers: [
       {
@@ -21,8 +21,8 @@ const options = {
         description: 'User authentication endpoints',
       },
       {
-        name: 'Strings',
-        description: 'String management endpoints',
+        name: 'Orders',
+        description: 'Firewood order endpoints',
       },
     ],
   },
