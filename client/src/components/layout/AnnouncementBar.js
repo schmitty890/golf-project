@@ -1,27 +1,14 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { XMarkIcon } from '@heroicons/react/20/solid';
 import business from '../../data/business';
 
-const DISMISS_KEY = 'volw-offer-dismissed';
-
-// Slim launch-offer bar above the header. Dismissible; the choice persists in localStorage.
+// Permanent launch-offer bar above the header (not dismissable).
 function AnnouncementBar() {
   const offer = business.launchOffer;
-  const [dismissed, setDismissed] = useState(
-    () => typeof window !== 'undefined' && localStorage.getItem(DISMISS_KEY) === 'true',
-  );
-
-  if (!offer || dismissed) return null;
-
-  const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, 'true');
-    setDismissed(true);
-  };
+  if (!offer) return null;
 
   return (
-    <div className="relative bg-ember text-white">
-      <div className="mx-auto flex max-w-7xl items-center justify-center gap-x-3 px-10 py-2 text-center text-sm font-medium sm:px-6 lg:px-8">
+    <div className="bg-ember text-white">
+      <div className="mx-auto flex max-w-7xl items-center justify-center gap-x-3 px-4 py-2 text-center text-sm font-medium sm:px-6 lg:px-8">
         <p>
           {offer.text}
           {offer.cta && offer.href && (
@@ -33,14 +20,6 @@ function AnnouncementBar() {
           )}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label="Dismiss announcement"
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-white/80 hover:text-white"
-      >
-        <XMarkIcon className="h-5 w-5" aria-hidden="true" />
-      </button>
     </div>
   );
 }

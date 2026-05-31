@@ -2,8 +2,12 @@
 import { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { ClockIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
-import { describeOrder, statusClasses } from '../utils/orderDisplay';
+import {
+  describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
+  statusTimeline, statusEventLabel,
+} from '../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -62,13 +66,32 @@ function MyOrders() {
                 <p className="mt-1 text-sm text-walnut-400">
                   {new Date(order.createdAt).toLocaleDateString()}
                   {' · '}
-                  {order.deliveryAddress?.street}
+                  {fulfillmentLabel(order)}
+                  {order.fulfillment !== 'pickup' && order.deliveryAddress?.street
+                    ? ` · ${order.deliveryAddress.street}`
+                    : ''}
                 </p>
               </div>
               <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClasses[order.status] || ''}`}>
                 {order.status}
               </span>
             </div>
+            {formatSchedule(order.schedule) && (
+              <p className="mt-3 flex items-center gap-2 rounded-md bg-cream-300/50 px-3 py-2 text-sm font-semibold text-walnut">
+                <ClockIcon className="h-5 w-5 shrink-0 text-ember" aria-hidden="true" />
+                {order.fulfillment === 'pickup' ? 'Ready for pickup:' : 'Delivery:'}
+                {' '}
+                {formatSchedule(order.schedule)}
+              </p>
+            )}
+            <ul className="mt-3 space-y-1 border-t border-cream-300 pt-3">
+              {statusTimeline(order).map((e) => (
+                <li key={`${e.status}-${e.at}`} className="flex justify-between gap-3 text-xs text-walnut-400">
+                  <span className="font-semibold text-walnut">{statusEventLabel(e.status)}</span>
+                  <span>{e.at ? new Date(e.at).toLocaleString() : ''}</span>
+                </li>
+              ))}
+            </ul>
           </li>
         ))}
       </ul>

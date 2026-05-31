@@ -72,7 +72,7 @@ router.post('/', optionalAuth, async (req, res) => {
   try {
     const {
       orderType, items, packName, bundleCount,
-      subscriptionPlan, season, contact, deliveryAddress,
+      subscriptionPlan, season, contact, deliveryAddress, fulfillment,
     } = req.body;
 
     if (!['bundle', 'pack', 'subscription'].includes(orderType)) {
@@ -81,20 +81,23 @@ router.post('/', optionalAuth, async (req, res) => {
     if (!contact?.name || !contact?.phone) {
       return res.status(400).json({ error: 'Contact name and phone are required' });
     }
-    if (!deliveryAddress?.street) {
+    // Delivery orders need an address; pickup orders don't.
+    if (fulfillment !== 'pickup' && !deliveryAddress?.street) {
       return res.status(400).json({ error: 'Delivery street address is required' });
     }
 
     const order = new Order({
       orderType,
+      fulfillment: fulfillment === 'pickup' ? 'pickup' : 'delivery',
       items: orderType === 'bundle' ? (items || []) : [],
       packName: orderType === 'pack' ? (packName || '') : '',
       bundleCount: orderType === 'pack' ? (bundleCount || 0) : 0,
       subscriptionPlan: orderType === 'subscription' ? (subscriptionPlan || '') : '',
       season: orderType === 'subscription' ? (season || '') : '',
       contact,
-      deliveryAddress,
+      deliveryAddress: deliveryAddress || {},
       user: req.userId || null,
+      statusHistory: [{ status: 'pending', at: new Date() }],
     });
     await order.save();
 
@@ -233,14 +236,24 @@ router.get('/:id', auth, async (req, res) => {
  */
 router.patch('/:id', auth, requireAdmin, async (req, res) => {
   try {
-    const { status, adminNotes } = req.body;
+    const { status, adminNotes, schedule } = req.body;
     const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    if (status !== undefined) order.status = status;
+    if (status !== undefined && status !== order.status) {
+      order.statusHistory.push({ status, at: new Date() });
+      order.status = status;
+    }
     if (adminNotes !== undefined) order.adminNotes = adminNotes;
+    if (schedule !== undefined) {
+      order.schedule = {
+        date: schedule.date || '',
+        from: schedule.from || '',
+        to: schedule.to || '',
+      };
+    }
     await order.save();
 
     return res.json(order);
