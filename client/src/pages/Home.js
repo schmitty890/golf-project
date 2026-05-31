@@ -10,6 +10,7 @@ import {
 import business from '../data/business';
 import { bundles, getActivePacks, subscriptions } from '../data/pricing';
 import testimonials from '../data/testimonials';
+import faqs from '../data/faqs';
 
 function Hero() {
   return (
@@ -49,13 +50,19 @@ function About() {
   return (
     <section id="about" className="bg-cream py-16 sm:py-20">
       <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
-        <h2 className="text-3xl font-extrabold tracking-tight text-walnut">About VOLW</h2>
+        <h2 className="text-3xl font-extrabold tracking-tight text-walnut">About VOLW Firewood</h2>
         <p className="mt-6 text-lg text-walnut-400">
-          VOLW Firewood is a local delivery service providing clean, consistent
-          firewood to residents of
+          VOLW Firewood is run by a fellow resident of
           {' '}
           {business.serviceArea}
-          .
+          {' '}
+          — a neighbor supplying neighbors. We personally gather and hand-split the
+          wood, then deliver clean, ready-to-burn campfire bundles right to your door.
+        </p>
+        <p className="mt-4 text-lg text-walnut-400">
+          We&apos;re built for last-minute backyard fires — small bundles delivered
+          fast, not cords or bulk loads. Order from us and you&apos;re supporting
+          someone right here in the neighborhood.
         </p>
       </div>
     </section>
@@ -67,6 +74,9 @@ function Pricing() {
     <section id="pricing" className="bg-cream-300/40 py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <h2 className="text-center text-3xl font-extrabold tracking-tight text-walnut">Pricing</h2>
+        <p className="mx-auto mt-3 max-w-xl text-center text-sm text-walnut-300">
+          Bundles only — no cords or bulk loads. Perfect for a last-minute backyard fire.
+        </p>
         <div className="mx-auto mt-12 grid max-w-3xl grid-cols-1 gap-8 sm:grid-cols-2">
           {bundles.map((bundle) => (
             <div
@@ -284,6 +294,31 @@ function Testimonials() {
   );
 }
 
+function FAQ() {
+  if (!faqs || faqs.length === 0) return null;
+
+  return (
+    <section id="faq" className="bg-cream py-16 sm:py-20">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <h2 className="text-center text-3xl font-extrabold tracking-tight text-walnut">
+          Frequently asked
+        </h2>
+        <div className="mt-10 divide-y divide-cream-300 border-y border-cream-300">
+          {faqs.map((item) => (
+            <details key={item.q} className="group py-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-walnut [&::-webkit-details-marker]:hidden">
+                {item.q}
+                <span className="ml-2 shrink-0 text-2xl font-normal leading-none text-ember transition-transform duration-200 group-open:rotate-45">+</span>
+              </summary>
+              <p className="mt-3 text-sm text-walnut-400">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Home() {
   return (
     <>
@@ -296,6 +331,7 @@ function Home() {
       <HowItWorks />
       <WhyVolw />
       <Testimonials />
+      <FAQ />
       <ServiceArea />
       {/* Contact lives in the footer (#contact) */}
     </>

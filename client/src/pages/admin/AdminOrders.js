@@ -5,7 +5,10 @@ import {
 import axios from 'axios';
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
-import { describeOrder, statusClasses, STATUS_OPTIONS } from '../../utils/orderDisplay';
+import {
+  describeOrder, statusClasses, STATUS_OPTIONS, fulfillmentLabel, formatSchedule,
+  statusTimeline, statusEventLabel,
+} from '../../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -16,6 +19,7 @@ function AdminOrders() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [scheduleState, setScheduleState] = useState({});
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -48,6 +52,27 @@ function AdminOrders() {
       setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, status } : o)));
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update order');
+    }
+  };
+
+  const updateScheduleField = (id, field, value) => {
+    setOrders((prev) => prev.map((o) => (
+      o._id === id ? { ...o, schedule: { ...o.schedule, [field]: value } } : o
+    )));
+  };
+
+  const setSchedState = (id, val) => setScheduleState((prev) => ({ ...prev, [id]: val }));
+
+  const saveSchedule = async (id) => {
+    const order = orders.find((o) => o._id === id);
+    setSchedState(id, 'saving');
+    try {
+      await axios.patch(`${API_URL}/api/orders/${id}`, { schedule: order.schedule || {} }, authHeaders);
+      setSchedState(id, 'saved');
+      setTimeout(() => setSchedState(id, undefined), 2000);
+    } catch (err) {
+      setSchedState(id, 'error');
+      setTimeout(() => setSchedState(id, undefined), 3000);
     }
   };
 
@@ -110,7 +135,12 @@ function AdminOrders() {
           <li key={order._id} className="rounded-lg border border-cream-300 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="font-semibold text-walnut">{describeOrder(order)}</p>
+                <p className="font-semibold text-walnut">
+                  {describeOrder(order)}
+                  <span className="ml-2 rounded-full bg-cream-300 px-2 py-0.5 text-xs font-semibold text-walnut">
+                    {fulfillmentLabel(order)}
+                  </span>
+                </p>
                 <p className="mt-1 text-sm text-walnut-400">
                   {new Date(order.createdAt).toLocaleString()}
                 </p>
@@ -123,9 +153,15 @@ function AdminOrders() {
                   {order.contact?.email ? ` · ${order.contact.email}` : ''}
                 </p>
                 <p className="text-sm text-walnut-400">
-                  {order.deliveryAddress?.street}
-                  {order.deliveryAddress?.unit ? `, ${order.deliveryAddress.unit}` : ''}
-                  {order.deliveryAddress?.notes ? ` — ${order.deliveryAddress.notes}` : ''}
+                  {order.fulfillment === 'pickup' ? (
+                    'Pickup — coordinate spot & time'
+                  ) : (
+                    <>
+                      {order.deliveryAddress?.street}
+                      {order.deliveryAddress?.unit ? `, ${order.deliveryAddress.unit}` : ''}
+                      {order.deliveryAddress?.notes ? ` — ${order.deliveryAddress.notes}` : ''}
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -153,6 +189,85 @@ function AdminOrders() {
                 </button>
               </div>
             </div>
+
+            {/* Schedule editor */}
+            <div className="mt-4 border-t border-cream-300 pt-3">
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label htmlFor={`date-${order._id}`} className="block text-xs font-semibold text-walnut">Date</label>
+                  <input
+                    id={`date-${order._id}`}
+                    type="date"
+                    value={order.schedule?.date || ''}
+                    onChange={(e) => updateScheduleField(order._id, 'date', e.target.value)}
+                    className="mt-1 rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`from-${order._id}`} className="block text-xs font-semibold text-walnut">From</label>
+                  <input
+                    id={`from-${order._id}`}
+                    type="time"
+                    value={order.schedule?.from || ''}
+                    onChange={(e) => updateScheduleField(order._id, 'from', e.target.value)}
+                    className="mt-1 rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`to-${order._id}`} className="block text-xs font-semibold text-walnut">To</label>
+                  <input
+                    id={`to-${order._id}`}
+                    type="time"
+                    value={order.schedule?.to || ''}
+                    onChange={(e) => updateScheduleField(order._id, 'to', e.target.value)}
+                    className="mt-1 rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
+                  />
+                </div>
+                {(() => {
+                  const st = scheduleState[order._id] || 'idle';
+                  const colorMap = {
+                    idle: 'bg-ember hover:bg-ember-600',
+                    saving: 'bg-ember hover:bg-ember-600',
+                    saved: 'bg-green-600 hover:bg-green-600',
+                    error: 'bg-red-600 hover:bg-red-600',
+                  };
+                  const labelMap = {
+                    idle: 'Save schedule',
+                    saving: 'Saving…',
+                    saved: 'Saved ✓',
+                    error: 'Error — try again',
+                  };
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => saveSchedule(order._id)}
+                      disabled={st === 'saving'}
+                      className={`rounded-md px-3 py-1.5 text-sm font-semibold text-white transition-colors disabled:opacity-60 ${colorMap[st]}`}
+                    >
+                      {labelMap[st]}
+                    </button>
+                  );
+                })()}
+                {formatSchedule(order.schedule) && (
+                  <span className="text-sm text-walnut-400">
+                    {fulfillmentLabel(order)}
+                    :
+                    {' '}
+                    {formatSchedule(order.schedule)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Status timeline */}
+            <ul className="mt-3 space-y-1 border-t border-cream-300 pt-3">
+              {statusTimeline(order).map((e) => (
+                <li key={`${e.status}-${e.at}`} className="flex justify-between gap-3 text-xs text-walnut-400">
+                  <span className="font-semibold text-walnut">{statusEventLabel(e.status)}</span>
+                  <span>{e.at ? new Date(e.at).toLocaleString() : ''}</span>
+                </li>
+              ))}
+            </ul>
           </li>
         ))}
       </ul>

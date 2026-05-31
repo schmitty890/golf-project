@@ -28,13 +28,19 @@ const orderSchema = new mongoose.Schema({
     enum: ['fall', 'winter', ''],
     default: '',
   },
+  // How the customer receives the order. Pickup orders don't need a delivery address.
+  fulfillment: {
+    type: String,
+    enum: ['pickup', 'delivery'],
+    default: 'delivery',
+  },
   contact: {
     name: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
     email: { type: String, trim: true, lowercase: true, default: '' },
   },
   deliveryAddress: {
-    street: { type: String, required: true, trim: true },
+    street: { type: String, trim: true, default: '' },
     unit: { type: String, trim: true, default: '' },
     notes: { type: String, trim: true, default: '' },
   },
@@ -42,6 +48,21 @@ const orderSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'confirmed', 'delivered', 'cancelled'],
     default: 'pending',
+  },
+  // Timestamped record of each status change (for the customer timeline + admin tracking).
+  statusHistory: {
+    type: [{
+      status: { type: String },
+      at: { type: Date },
+    }],
+    default: [],
+  },
+  // Admin-set pickup/delivery window, shown to logged-in customers. Stored as plain strings
+  // (date 'YYYY-MM-DD', from/to 'HH:MM') to avoid timezone conversion issues.
+  schedule: {
+    date: { type: String, default: '' },
+    from: { type: String, default: '' },
+    to: { type: String, default: '' },
   },
   user: {
     type: mongoose.Schema.Types.ObjectId,

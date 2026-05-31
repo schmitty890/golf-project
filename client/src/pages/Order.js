@@ -35,6 +35,8 @@ function Order() {
 
   const selectedBundle = bundles.find((b) => b.id === bundleId);
   const minQty = selectedBundle?.minQty || 1;
+  // Pickup only applies to the pickup bundle; packs/subscriptions are always delivery.
+  const isPickup = orderType === 'bundle' && selectedBundle?.fulfillment === 'pickup';
 
   // "Seasonal Pack" is only offered when at least one pack is in season today.
   const orderTypeOptions = [
@@ -60,7 +62,13 @@ function Order() {
   }, [minQty]);
 
   const buildPayload = () => {
-    const base = { orderType, contact, deliveryAddress: address };
+    const fulfillment = isPickup ? 'pickup' : 'delivery';
+    const base = {
+      orderType,
+      fulfillment,
+      contact,
+      deliveryAddress: isPickup ? {} : address,
+    };
     if (orderType === 'bundle') {
       const bundle = bundles.find((b) => b.id === bundleId);
       return {
@@ -112,8 +120,10 @@ function Order() {
         <CheckCircleIcon className="mx-auto h-16 w-16 text-ember" aria-hidden="true" />
         <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-walnut">Order received!</h1>
         <p className="mt-4 text-walnut-400">
-          Thanks for your order. We&apos;ll reach out to confirm details and arrange delivery.
-          For anything urgent, email us at
+          Thanks for your order. We&apos;ll reach out to confirm details and arrange
+          {' '}
+          {isPickup ? 'a pickup time' : 'delivery'}
+          . For anything urgent, email us at
           {' '}
           <a href={`mailto:${business.email}`} className="font-semibold text-ember">{business.email}</a>
           .
@@ -242,22 +252,35 @@ function Order() {
           </div>
         )}
 
-        {/* Delivery address */}
-        <fieldset className="space-y-4">
-          <legend className="text-base font-bold text-walnut">Delivery address</legend>
-          <div>
-            <label htmlFor="street" className={labelClass}>Street address</label>
-            <input id="street" type="text" required value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} className={`mt-2 ${inputClass}`} />
+        {/* Pickup info or delivery address */}
+        {isPickup ? (
+          <div className="rounded-md bg-cream-300/50 p-4">
+            <p className="text-base font-bold text-walnut">Pickup order</p>
+            <p className="mt-1 text-sm text-walnut-400">
+              No delivery address needed — we&apos;ll text you a pickup spot and time in
+              {' '}
+              {business.serviceArea}
+              {' '}
+              after you order.
+            </p>
           </div>
-          <div>
-            <label htmlFor="unit" className={labelClass}>Unit / apt (optional)</label>
-            <input id="unit" type="text" value={address.unit} onChange={(e) => setAddress({ ...address, unit: e.target.value })} className={`mt-2 ${inputClass}`} />
-          </div>
-          <div>
-            <label htmlFor="notes" className={labelClass}>Delivery notes (optional)</label>
-            <textarea id="notes" rows={2} value={address.notes} onChange={(e) => setAddress({ ...address, notes: e.target.value })} className={`mt-2 ${inputClass}`} />
-          </div>
-        </fieldset>
+        ) : (
+          <fieldset className="space-y-4">
+            <legend className="text-base font-bold text-walnut">Delivery address</legend>
+            <div>
+              <label htmlFor="street" className={labelClass}>Street address</label>
+              <input id="street" type="text" required value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} className={`mt-2 ${inputClass}`} />
+            </div>
+            <div>
+              <label htmlFor="unit" className={labelClass}>Unit / apt (optional)</label>
+              <input id="unit" type="text" value={address.unit} onChange={(e) => setAddress({ ...address, unit: e.target.value })} className={`mt-2 ${inputClass}`} />
+            </div>
+            <div>
+              <label htmlFor="notes" className={labelClass}>Delivery notes (optional)</label>
+              <textarea id="notes" rows={2} value={address.notes} onChange={(e) => setAddress({ ...address, notes: e.target.value })} className={`mt-2 ${inputClass}`} />
+            </div>
+          </fieldset>
+        )}
 
         {/* Contact */}
         <fieldset className="space-y-4">

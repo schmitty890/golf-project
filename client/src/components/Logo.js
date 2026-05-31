@@ -9,7 +9,7 @@ function Logo({ size = 'md', className = '' }) {
     sm: 'h-14 w-14',
     md: 'h-24 w-24',
     lg: 'h-44 w-44',
-    xl: 'h-36 w-36',
+    xl: 'h-32 w-32',
   }[size];
 
   return (
