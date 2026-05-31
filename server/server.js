@@ -3,20 +3,15 @@ import express from 'express';
 import { createServer } from 'http';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import stringsRouter from './routes/strings.js';
 import authRouter from './routes/auth.js';
-import roundsRouter from './routes/rounds.js';
+import ordersRouter from './routes/orders.js';
 import { swaggerUi, specs } from './swagger.js';
-import { initSocket } from './socket.js';
 
 dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 5001;
-
-// Initialize Socket.io
-initSocket(httpServer);
 
 // Middleware
 app.use(cors());
@@ -33,8 +28,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // API Routes
 app.use('/api/auth', authRouter);
-app.use('/api/strings', stringsRouter);
-app.use('/api/rounds', roundsRouter);
+app.use('/api/orders', ordersRouter);
 
 // Start server
 httpServer.listen(PORT, () => {

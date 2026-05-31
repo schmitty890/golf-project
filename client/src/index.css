@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Offset anchor-link jumps so section headings clear the sticky header (~170px).
+   Honored by both native #fragment navigation and scrollIntoView. */
+html {
+  scroll-padding-top: 180px;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

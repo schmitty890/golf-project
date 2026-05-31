@@ -1,34 +1,55 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import PublicLayout from './components/layout/PublicLayout';
 import SidebarLayout from './components/layout/SidebarLayout';
+import RequireAuth from './components/RequireAuth';
+import ScrollToTop from './components/ScrollToTop';
+import Home from './pages/Home';
+import Order from './pages/Order';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Scorecard from './pages/Scorecard';
-import Settings from './pages/Settings';
+import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
+import AdminOrders from './pages/admin/AdminOrders';
 
 function App() {
   return (
     <Router>
       <AuthProvider>
+        <ScrollToTop />
         <Routes>
-          {/* Auth routes - standalone, no sidebar */}
+          {/* Public marketing site */}
+          <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
+          <Route path="/order" element={<PublicLayout><Order /></PublicLayout>} />
+
+          {/* Auth - standalone */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Protected routes - with sidebar layout */}
+          {/* Authenticated app - sidebar layout */}
           <Route
-            path="/*"
+            path="/my-orders"
             element={(
-              <SidebarLayout>
-                <Routes>
-                  <Route path="/" element={<Scorecard />} />
-                  <Route path="/scorecard" element={<Scorecard />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/account" element={<Account />} />
-                </Routes>
-              </SidebarLayout>
+              <RequireAuth>
+                <SidebarLayout><MyOrders /></SidebarLayout>
+              </RequireAuth>
+            )}
+          />
+          <Route
+            path="/account"
+            element={(
+              <RequireAuth>
+                <SidebarLayout><Account /></SidebarLayout>
+              </RequireAuth>
+            )}
+          />
+          <Route
+            path="/admin/orders"
+            element={(
+              <RequireAuth adminOnly>
+                <SidebarLayout><AdminOrders /></SidebarLayout>
+              </RequireAuth>
             )}
           />
         </Routes>

@@ -123,6 +123,7 @@ router.post('/register', async (req, res) => {
         // eslint-disable-next-line no-underscore-dangle
         id: user._id,
         email: user.email,
+        role: user.role,
       },
     });
   } catch (error) {
@@ -196,6 +197,7 @@ router.post('/login', async (req, res) => {
         // eslint-disable-next-line no-underscore-dangle
         id: user._id,
         email: user.email,
+        role: user.role,
       },
     });
   } catch (error) {
@@ -234,6 +236,7 @@ router.get('/me', auth, async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       profilePicture: user.profilePicture,
+      role: user.role,
       createdAt: user.createdAt,
     });
   } catch (error) {
@@ -286,6 +289,7 @@ router.put('/profile', auth, async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       profilePicture: user.profilePicture,
+      role: user.role,
     });
   } catch (error) {
     console.error('Update profile error:', error);
