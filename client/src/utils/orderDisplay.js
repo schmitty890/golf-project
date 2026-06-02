@@ -23,6 +23,16 @@ export function fulfillmentLabel(order) {
   return order.fulfillment === 'pickup' ? 'Pickup' : 'Delivery';
 }
 
+const DAY_LABELS = {
+  sunday: 'Sunday',
+  monday: 'Monday',
+  tuesday: 'Tuesday',
+  wednesday: 'Wednesday',
+  thursday: 'Thursday',
+  friday: 'Friday',
+  saturday: 'Saturday',
+};
+
 // 'YYYY-MM-DD' -> 'Sat, Jun 6' (parsed from parts to stay in local time, no UTC shift).
 function formatScheduleDate(d) {
   if (!d) return '';
@@ -41,6 +51,26 @@ function formatTime(t) {
   const period = h >= 12 ? 'PM' : 'AM';
   const hr = h % 12 === 0 ? 12 : h % 12;
   return `${hr}:${String(m || 0).padStart(2, '0')} ${period}`;
+}
+
+// Customer's chosen date + time window, e.g. "Sat, Jun 6 · 5:00 PM – 6:00 PM".
+// Falls back to the legacy preferred day(s) for older orders without a date.
+export function formatPreferredSchedule(order) {
+  const t = order.preferredTime;
+  const window = t && (t.from || t.to)
+    ? [formatTime(t.from), formatTime(t.to)].filter(Boolean).join(' – ')
+    : '';
+
+  if (order.preferredDate) {
+    const datePart = formatScheduleDate(order.preferredDate);
+    return [datePart, window].filter(Boolean).join(' · ');
+  }
+
+  // Legacy orders: preferred day(s) of week.
+  const days = (order.preferredDays || []).map((d) => DAY_LABELS[d] || d);
+  if (days.length === 0) return '';
+  const dayStr = order.orderType === 'subscription' ? `Every ${days[0]}` : days.join(', ');
+  return window ? `${dayStr} · ${window}` : dayStr;
 }
 
 // Combine a {date, from, to} schedule into a readable string, e.g.

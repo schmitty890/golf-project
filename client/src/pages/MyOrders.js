@@ -6,7 +6,7 @@ import { ClockIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import {
   describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
-  statusTimeline, statusEventLabel,
+  statusTimeline, statusEventLabel, formatPreferredSchedule,
 } from '../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -71,6 +71,13 @@ function MyOrders() {
                     ? ` · ${order.deliveryAddress.street}`
                     : ''}
                 </p>
+                {formatPreferredSchedule(order) && (
+                  <p className="mt-1 text-sm text-walnut-400">
+                    Preferred:
+                    {' '}
+                    {formatPreferredSchedule(order)}
+                  </p>
+                )}
               </div>
               <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClasses[order.status] || ''}`}>
                 {order.status}

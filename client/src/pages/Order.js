@@ -6,14 +6,16 @@ import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { AuthContext } from '../context/AuthContext';
 import business from '../data/business';
 import {
-  bundles, getActivePacks, subscriptions, seasons,
+  bundles, getActivePacks, subscriptions, seasons, TIME_WINDOWS,
 } from '../data/pricing';
+import MonthCalendar from '../components/MonthCalendar';
+import { todayStr, formatDayLabel } from '../utils/dates';
 
 const activePacks = getActivePacks();
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-const inputClass = 'block w-full rounded-md bg-white px-3 py-2 text-base text-walnut outline outline-1 -outline-offset-1 outline-cream-300 placeholder:text-walnut-200 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-ember sm:text-sm';
+const inputClass = 'block w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-base text-walnut placeholder:text-walnut-200 transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30';
 const labelClass = 'block text-sm font-semibold text-walnut';
 
 function Order() {
@@ -25,6 +27,11 @@ function Order() {
   const [packId, setPackId] = useState(activePacks[0]?.id || '');
   const [subscriptionPlan, setSubscriptionPlan] = useState(subscriptions[0].plan);
   const [season, setSeason] = useState(seasons[0].id);
+  const [preferredDate, setPreferredDate] = useState('');
+  const [windowFrom, setWindowFrom] = useState('');
+  // Admin date overrides: { 'YYYY-MM-DD': ['HH:MM', ...] }. Absent date = fully open;
+  // [] = closed; subset = only those windows.
+  const [dateOverrides, setDateOverrides] = useState({});
 
   const [contact, setContact] = useState({ name: '', phone: '', email: '' });
   const [address, setAddress] = useState({ street: '', unit: '', notes: '' });
@@ -61,6 +68,44 @@ function Order() {
     setQuantity((q) => (Number(q) < minQty ? minQty : q));
   }, [minQty]);
 
+  // Load admin date availability (public endpoint — guests order too).
+  useEffect(() => {
+    axios.get(`${API_URL}/api/settings/availability`)
+      .then((res) => setDateOverrides(res.data.dateOverrides || {}))
+      .catch(() => setDateOverrides({})); // fall back to "all open" on error
+  }, []);
+
+  const today = todayStr();
+  const allFroms = TIME_WINDOWS.map((w) => w.from);
+  // Open window `from` times for a date (all windows unless overridden).
+  const windowsForDate = (date) => {
+    const ov = dateOverrides[date];
+    return Array.isArray(ov) ? ov : allFroms;
+  };
+  // A date is selectable if it's today-or-later and has at least one open window.
+  const dateIsOpen = (date) => date >= today && windowsForDate(date).length > 0;
+
+  const selectedWindow = TIME_WINDOWS.find((w) => w.from === windowFrom);
+  const availableFroms = new Set(preferredDate ? windowsForDate(preferredDate) : []);
+
+  // Day styling/selectability for the calendar.
+  const getDayState = (date) => {
+    if (date < today) return { disabled: true, tone: 'open' };
+    const ov = dateOverrides[date];
+    const closed = Array.isArray(ov) && ov.length === 0;
+    return {
+      disabled: closed,
+      tone: closed ? 'closed' : 'open',
+      selected: date === preferredDate,
+    };
+  };
+
+  // Drop a chosen window once it's no longer available for the selected date.
+  useEffect(() => {
+    if (windowFrom && !availableFroms.has(windowFrom)) setWindowFrom('');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowFrom, preferredDate, dateOverrides]);
+
   const buildPayload = () => {
     const fulfillment = isPickup ? 'pickup' : 'delivery';
     const base = {
@@ -68,6 +113,10 @@ function Order() {
       fulfillment,
       contact,
       deliveryAddress: isPickup ? {} : address,
+      preferredDate,
+      preferredTime: selectedWindow
+        ? { from: selectedWindow.from, to: selectedWindow.to }
+        : { from: '', to: '' },
     };
     if (orderType === 'bundle') {
       const bundle = bundles.find((b) => b.id === bundleId);
@@ -98,6 +147,16 @@ function Order() {
 
     if (orderType === 'bundle' && Number(quantity) < minQty) {
       setError(`The ${selectedBundle.name} has a ${minQty}-bundle minimum.`);
+      return;
+    }
+
+    if (!preferredDate || !dateIsOpen(preferredDate)) {
+      setError('Please choose an available date.');
+      return;
+    }
+
+    if (!windowFrom) {
+      setError('Please choose a pickup/delivery time window.');
       return;
     }
 
@@ -176,7 +235,7 @@ function Order() {
                 key={opt.id}
                 type="button"
                 onClick={() => setOrderType(opt.id)}
-                className={`rounded-md border px-3 py-2 text-sm font-semibold transition-colors ${
+                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
                   orderType === opt.id
                     ? 'border-ember bg-ember text-white'
                     : 'border-cream-300 bg-white text-walnut hover:border-ember'
@@ -252,6 +311,55 @@ function Order() {
           </div>
         )}
 
+        {/* Preferred date */}
+        <div>
+          <span className={labelClass}>
+            {orderType === 'subscription' ? 'First delivery date' : 'Pickup / delivery date'}
+          </span>
+          <div className="mt-2">
+            <MonthCalendar getDayState={getDayState} onSelectDate={setPreferredDate} />
+          </div>
+          <p className="mt-1 text-xs text-walnut-300">
+            {preferredDate
+              ? `Selected: ${formatDayLabel(preferredDate)}. Greyed dates are unavailable.`
+              : 'Pick a date, then choose a time window below. Greyed dates are unavailable.'}
+          </p>
+        </div>
+
+        {/* Pickup / delivery time window */}
+        <div>
+          <span className={labelClass}>Pickup / delivery window</span>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {TIME_WINDOWS.map((w) => {
+              const active = windowFrom === w.from;
+              const open = availableFroms.has(w.from);
+              return (
+                <button
+                  type="button"
+                  key={w.from}
+                  onClick={() => setWindowFrom(w.from)}
+                  disabled={!open}
+                  className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                    // eslint-disable-next-line no-nested-ternary
+                    !open
+                      ? 'cursor-not-allowed border-cream-300 bg-cream-100 text-walnut-200'
+                      : active
+                        ? 'border-ember bg-ember text-white'
+                        : 'border-cream-300 bg-white text-walnut hover:border-ember'
+                  }`}
+                >
+                  {w.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-xs text-walnut-300">
+            {!preferredDate
+              ? 'Choose a date above to see available times.'
+              : 'We’ll have it out for this window — come by anytime within it.'}
+          </p>
+        </div>
+
         {/* Pickup info or delivery address */}
         {isPickup ? (
           <div className="rounded-md bg-cream-300/50 p-4">
@@ -304,7 +412,7 @@ function Order() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-ember px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-ember-600 disabled:opacity-50"
+          className="w-full rounded-xl bg-ember px-4 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-ember-600 disabled:opacity-50"
         >
           {submitting ? 'Submitting…' : 'Submit Order'}
         </button>

@@ -12,6 +12,7 @@ import Register from './pages/Register';
 import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminAvailability from './pages/admin/AdminAvailability';
 
 function App() {
   return (
@@ -49,6 +50,14 @@ function App() {
             element={(
               <RequireAuth adminOnly>
                 <SidebarLayout><AdminOrders /></SidebarLayout>
+              </RequireAuth>
+            )}
+          />
+          <Route
+            path="/admin/availability"
+            element={(
+              <RequireAuth adminOnly>
+                <SidebarLayout><AdminAvailability /></SidebarLayout>
               </RequireAuth>
             )}
           />
