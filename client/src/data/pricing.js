@@ -117,3 +117,19 @@ export const WEEKDAYS = [
   { id: 'friday', label: 'Friday', short: 'Fri' },
   { id: 'saturday', label: 'Saturday', short: 'Sat' },
 ];
+
+// Preset 1-hour pickup/delivery windows. Customers pick one; we set the wood out for that
+// window and bring it back to storage afterward. Stored on the order as from/to 'HH:MM'
+// (`from` doubles as the unique id). Edit this list to control which slots are offered.
+export const TIME_WINDOWS = [
+  { label: '10–11 AM', from: '10:00', to: '11:00' },
+  { label: '11 AM–12 PM', from: '11:00', to: '12:00' },
+  { label: '12–1 PM', from: '12:00', to: '13:00' },
+  { label: '1–2 PM', from: '13:00', to: '14:00' },
+  { label: '2–3 PM', from: '14:00', to: '15:00' },
+  { label: '3–4 PM', from: '15:00', to: '16:00' },
+  { label: '4–5 PM', from: '16:00', to: '17:00' },
+  { label: '5–6 PM', from: '17:00', to: '18:00' },
+  { label: '6–7 PM', from: '18:00', to: '19:00' },
+  { label: '7–8 PM', from: '19:00', to: '20:00' },
+];

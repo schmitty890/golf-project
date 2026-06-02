@@ -5,6 +5,7 @@ import {
   ClipboardDocumentListIcon,
   UserCircleIcon,
   InboxStackIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import Logo from '../Logo';
 import { AuthContext } from '../../context/AuthContext';
@@ -19,6 +20,7 @@ function Sidebar({ collapsed = false }) {
 
   if (user?.role === 'admin') {
     navigation.push({ name: 'Orders (Admin)', href: '/admin/orders', icon: InboxStackIcon });
+    navigation.push({ name: 'Availability', href: '/admin/availability', icon: CalendarDaysIcon });
   }
 
   return (

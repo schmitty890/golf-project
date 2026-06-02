@@ -2,10 +2,21 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
+import Settings from '../models/Settings.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 
 const router = express.Router();
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Today's date as a local 'YYYY-MM-DD' string (avoids UTC shift from toISOString).
+const todayStr = () => {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+};
 
 // Soft auth: if a valid Bearer token is present, attach req.userId; otherwise continue
 // as a guest. Used by the public order-create route.
@@ -72,7 +83,7 @@ router.post('/', optionalAuth, async (req, res) => {
   try {
     const {
       orderType, items, packName, bundleCount,
-      subscriptionPlan, season, contact, deliveryAddress, fulfillment, preferredDays,
+      subscriptionPlan, season, contact, deliveryAddress, fulfillment, preferredDate, preferredTime,
     } = req.body;
 
     if (!['bundle', 'pack', 'subscription'].includes(orderType)) {
@@ -86,6 +97,24 @@ router.post('/', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'Delivery street address is required' });
     }
 
+    // Validate the requested date + time window against admin availability.
+    const from = preferredTime?.from || '';
+    if (!DATE_RE.test(preferredDate || '')) {
+      return res.status(400).json({ error: 'Please choose a valid date' });
+    }
+    if (preferredDate < todayStr()) {
+      return res.status(400).json({ error: 'That date is in the past' });
+    }
+    if (!from) {
+      return res.status(400).json({ error: 'Please choose a time window' });
+    }
+    const settings = await Settings.findOne({ key: 'availability' });
+    const override = settings?.dateOverrides?.[preferredDate];
+    // override undefined => fully open; otherwise it must list the chosen window.
+    if (override !== undefined && (!Array.isArray(override) || !override.includes(from))) {
+      return res.status(400).json({ error: 'Sorry, that date and time is no longer available' });
+    }
+
     const order = new Order({
       orderType,
       fulfillment: fulfillment === 'pickup' ? 'pickup' : 'delivery',
@@ -96,7 +125,10 @@ router.post('/', optionalAuth, async (req, res) => {
       season: orderType === 'subscription' ? (season || '') : '',
       contact,
       deliveryAddress: deliveryAddress || {},
-      preferredDays: Array.isArray(preferredDays) ? preferredDays : [],
+      preferredDate,
+      preferredTime: preferredTime && typeof preferredTime === 'object'
+        ? { from: preferredTime.from || '', to: preferredTime.to || '' }
+        : { from: '', to: '' },
       user: req.userId || null,
       statusHistory: [{ status: 'pending', at: new Date() }],
     });
