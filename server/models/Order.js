@@ -28,6 +28,9 @@ const orderSchema = new mongoose.Schema({
     enum: ['fall', 'winter', ''],
     default: '',
   },
+  // Customer's preferred day(s) of week (no time) — one-off orders may list several;
+  // subscriptions hold the single recurring day.
+  preferredDays: { type: [String], default: [] },
   // How the customer receives the order. Pickup orders don't need a delivery address.
   fulfillment: {
     type: String,

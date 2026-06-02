@@ -72,7 +72,7 @@ router.post('/', optionalAuth, async (req, res) => {
   try {
     const {
       orderType, items, packName, bundleCount,
-      subscriptionPlan, season, contact, deliveryAddress, fulfillment,
+      subscriptionPlan, season, contact, deliveryAddress, fulfillment, preferredDays,
     } = req.body;
 
     if (!['bundle', 'pack', 'subscription'].includes(orderType)) {
@@ -96,6 +96,7 @@ router.post('/', optionalAuth, async (req, res) => {
       season: orderType === 'subscription' ? (season || '') : '',
       contact,
       deliveryAddress: deliveryAddress || {},
+      preferredDays: Array.isArray(preferredDays) ? preferredDays : [],
       user: req.userId || null,
       statusHistory: [{ status: 'pending', at: new Date() }],
     });

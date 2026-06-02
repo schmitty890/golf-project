@@ -6,14 +6,14 @@ import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { AuthContext } from '../context/AuthContext';
 import business from '../data/business';
 import {
-  bundles, getActivePacks, subscriptions, seasons,
+  bundles, getActivePacks, subscriptions, seasons, WEEKDAYS,
 } from '../data/pricing';
 
 const activePacks = getActivePacks();
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-const inputClass = 'block w-full rounded-md bg-white px-3 py-2 text-base text-walnut outline outline-1 -outline-offset-1 outline-cream-300 placeholder:text-walnut-200 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-ember sm:text-sm';
+const inputClass = 'block w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-base text-walnut placeholder:text-walnut-200 transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30';
 const labelClass = 'block text-sm font-semibold text-walnut';
 
 function Order() {
@@ -25,6 +25,8 @@ function Order() {
   const [packId, setPackId] = useState(activePacks[0]?.id || '');
   const [subscriptionPlan, setSubscriptionPlan] = useState(subscriptions[0].plan);
   const [season, setSeason] = useState(seasons[0].id);
+  const [preferredDays, setPreferredDays] = useState([]);
+  const [subscriptionDay, setSubscriptionDay] = useState('saturday');
 
   const [contact, setContact] = useState({ name: '', phone: '', email: '' });
   const [address, setAddress] = useState({ street: '', unit: '', notes: '' });
@@ -61,6 +63,13 @@ function Order() {
     setQuantity((q) => (Number(q) < minQty ? minQty : q));
   }, [minQty]);
 
+  const togglePreferredDay = (id) => setPreferredDays((prev) => (
+    prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
+  ));
+
+  // One-off orders carry the chosen day(s); a subscription carries its single recurring day.
+  const chosenDays = orderType === 'subscription' ? [subscriptionDay].filter(Boolean) : preferredDays;
+
   const buildPayload = () => {
     const fulfillment = isPickup ? 'pickup' : 'delivery';
     const base = {
@@ -68,6 +77,7 @@ function Order() {
       fulfillment,
       contact,
       deliveryAddress: isPickup ? {} : address,
+      preferredDays: chosenDays,
     };
     if (orderType === 'bundle') {
       const bundle = bundles.find((b) => b.id === bundleId);
@@ -98,6 +108,11 @@ function Order() {
 
     if (orderType === 'bundle' && Number(quantity) < minQty) {
       setError(`The ${selectedBundle.name} has a ${minQty}-bundle minimum.`);
+      return;
+    }
+
+    if (chosenDays.length === 0) {
+      setError('Please choose at least one preferred day.');
       return;
     }
 
@@ -176,7 +191,7 @@ function Order() {
                 key={opt.id}
                 type="button"
                 onClick={() => setOrderType(opt.id)}
-                className={`rounded-md border px-3 py-2 text-sm font-semibold transition-colors ${
+                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
                   orderType === opt.id
                     ? 'border-ember bg-ember text-white'
                     : 'border-cream-300 bg-white text-walnut hover:border-ember'
@@ -252,6 +267,52 @@ function Order() {
           </div>
         )}
 
+        {/* Preferred day(s) */}
+        {orderType === 'subscription' ? (
+          <div>
+            <label htmlFor="subday" className={labelClass}>Delivery day</label>
+            <select
+              id="subday"
+              value={subscriptionDay}
+              onChange={(e) => setSubscriptionDay(e.target.value)}
+              className={`mt-2 ${inputClass}`}
+            >
+              {WEEKDAYS.map((d) => (
+                <option key={d.id} value={d.id}>{`Every ${d.label}`}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-walnut-300">
+              We come sometime that day — no set time.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <span className={labelClass}>Preferred day(s)</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {WEEKDAYS.map((d) => {
+                const active = preferredDays.includes(d.id);
+                return (
+                  <button
+                    type="button"
+                    key={d.id}
+                    onClick={() => togglePreferredDay(d.id)}
+                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                      active
+                        ? 'border-ember bg-ember text-white'
+                        : 'border-cream-300 bg-white text-walnut hover:border-ember'
+                    }`}
+                  >
+                    {d.short}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-xs text-walnut-300">
+              Pick any that work — we come sometime that day, no set time.
+            </p>
+          </div>
+        )}
+
         {/* Pickup info or delivery address */}
         {isPickup ? (
           <div className="rounded-md bg-cream-300/50 p-4">
@@ -304,7 +365,7 @@ function Order() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-ember px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-ember-600 disabled:opacity-50"
+          className="w-full rounded-xl bg-ember px-4 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-ember-600 disabled:opacity-50"
         >
           {submitting ? 'Submitting…' : 'Submit Order'}
         </button>

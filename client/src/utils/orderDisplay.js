@@ -23,6 +23,24 @@ export function fulfillmentLabel(order) {
   return order.fulfillment === 'pickup' ? 'Pickup' : 'Delivery';
 }
 
+const DAY_LABELS = {
+  sunday: 'Sunday',
+  monday: 'Monday',
+  tuesday: 'Tuesday',
+  wednesday: 'Wednesday',
+  thursday: 'Thursday',
+  friday: 'Friday',
+  saturday: 'Saturday',
+};
+
+// Customer's preferred day(s): "Every Saturday" for subscriptions, else "Saturday, Sunday".
+export function formatPreferredDays(order) {
+  const days = (order.preferredDays || []).map((d) => DAY_LABELS[d] || d);
+  if (days.length === 0) return '';
+  if (order.orderType === 'subscription') return `Every ${days[0]}`;
+  return days.join(', ');
+}
+
 // 'YYYY-MM-DD' -> 'Sat, Jun 6' (parsed from parts to stay in local time, no UTC shift).
 function formatScheduleDate(d) {
   if (!d) return '';

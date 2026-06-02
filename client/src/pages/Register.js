@@ -82,7 +82,7 @@ function Register() {
                 type="email"
                 autoComplete="email"
                 required
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-walnut outline outline-1 -outline-offset-1 outline-cream-300 placeholder:text-walnut-200 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-ember sm:text-sm/6"
+                className="block w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-base text-walnut placeholder:text-walnut-200 transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -103,7 +103,7 @@ function Register() {
                 autoComplete="new-password"
                 required
                 minLength={6}
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-walnut outline outline-1 -outline-offset-1 outline-cream-300 placeholder:text-walnut-200 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-ember sm:text-sm/6"
+                className="block w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-base text-walnut placeholder:text-walnut-200 transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30"
                 placeholder="Minimum 6 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -115,7 +115,7 @@ function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-md bg-ember px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-ember-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember disabled:opacity-50"
+              className="w-full rounded-xl bg-ember px-3 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-ember-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ember disabled:opacity-50"
             >
               {loading ? 'Creating account...' : 'Sign up'}
             </button>

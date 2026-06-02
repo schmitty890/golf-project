@@ -105,3 +105,15 @@ export const seasons = [
   { id: 'fall', name: 'Fall' },
   { id: 'winter', name: 'Winter' },
 ];
+
+// Preferred pickup/delivery days. Customers choose a DAY only (no time) — we fulfill sometime
+// that day when available.
+export const WEEKDAYS = [
+  { id: 'sunday', label: 'Sunday', short: 'Sun' },
+  { id: 'monday', label: 'Monday', short: 'Mon' },
+  { id: 'tuesday', label: 'Tuesday', short: 'Tue' },
+  { id: 'wednesday', label: 'Wednesday', short: 'Wed' },
+  { id: 'thursday', label: 'Thursday', short: 'Thu' },
+  { id: 'friday', label: 'Friday', short: 'Fri' },
+  { id: 'saturday', label: 'Saturday', short: 'Sat' },
+];
