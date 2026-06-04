@@ -44,6 +44,14 @@ export function formatDayLabel(s) {
   });
 }
 
+// 'Today' / 'Tomorrow' / 'Sat, Jun 6' relative to the local current date.
+export function relativeDayLabel(s) {
+  const today = todayStr();
+  if (s === today) return 'Today';
+  if (s === addDays(today, 1)) return 'Tomorrow';
+  return formatDayLabel(s);
+}
+
 // 'June 2026'
 export function formatMonthLabel(year, monthIndex) {
   return new Date(year, monthIndex, 1).toLocaleDateString(undefined, {

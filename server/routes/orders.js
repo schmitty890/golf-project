@@ -18,6 +18,15 @@ const todayStr = () => {
   return `${d.getFullYear()}-${mm}-${dd}`;
 };
 
+// Add N days to a 'YYYY-MM-DD' string, returning a 'YYYY-MM-DD' string (local time).
+const addDaysStr = (s, n) => {
+  const [y, m, day] = s.split('-').map(Number);
+  const d = new Date(y, m - 1, day + n);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+};
+
 // Soft auth: if a valid Bearer token is present, attach req.userId; otherwise continue
 // as a guest. Used by the public order-create route.
 const optionalAuth = (req, res, next) => {
@@ -83,7 +92,8 @@ router.post('/', optionalAuth, async (req, res) => {
   try {
     const {
       orderType, items, packName, bundleCount,
-      subscriptionPlan, season, contact, deliveryAddress, fulfillment, preferredDate, preferredTime,
+      subscriptionPlan, season, contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
+      rush,
     } = req.body;
 
     if (!['bundle', 'pack', 'subscription'].includes(orderType)) {
@@ -97,22 +107,40 @@ router.post('/', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'Delivery street address is required' });
     }
 
-    // Validate the requested date + time window against admin availability.
-    const from = preferredTime?.from || '';
+    // Validate the requested date + time windows against admin availability.
+    const windows = Array.isArray(preferredTimes)
+      ? preferredTimes.filter((w) => w && w.from)
+      : [];
     if (!DATE_RE.test(preferredDate || '')) {
       return res.status(400).json({ error: 'Please choose a valid date' });
     }
     if (preferredDate < todayStr()) {
       return res.status(400).json({ error: 'That date is in the past' });
     }
-    if (!from) {
-      return res.status(400).json({ error: 'Please choose a time window' });
+    if (windows.length === 0) {
+      return res.status(400).json({ error: 'Please choose at least one time window' });
     }
     const settings = await Settings.findOne({ key: 'availability' });
     const override = settings?.dateOverrides?.[preferredDate];
-    // override undefined => fully open; otherwise it must list the chosen window.
-    if (override !== undefined && (!Array.isArray(override) || !override.includes(from))) {
+    // override undefined => fully open; otherwise every chosen window must be listed.
+    if (override !== undefined
+      && (!Array.isArray(override) || !windows.every((w) => override.includes(w.from)))) {
       return res.status(400).json({ error: 'Sorry, that date and time is no longer available' });
+    }
+
+    // Enforce advance notice. Dates inside the lead window are only allowed as rush orders.
+    const leadDays = settings?.leadDays ?? 1;
+    const rushEnabled = settings?.rushEnabled ?? true;
+    const rushPercent = settings?.rushPercent ?? 25;
+    const earliest = addDaysStr(todayStr(), leadDays);
+    const wantsRush = Boolean(rush) && rushEnabled;
+    let isRush = false;
+    if (preferredDate < earliest) {
+      if (!wantsRush) {
+        const notice = leadDays === 1 ? 'next-day notice' : `${leadDays} days' notice`;
+        return res.status(400).json({ error: `Orders need at least ${notice}. Choose a later date or request a rush order.` });
+      }
+      isRush = true;
     }
 
     const order = new Order({
@@ -126,9 +154,9 @@ router.post('/', optionalAuth, async (req, res) => {
       contact,
       deliveryAddress: deliveryAddress || {},
       preferredDate,
-      preferredTime: preferredTime && typeof preferredTime === 'object'
-        ? { from: preferredTime.from || '', to: preferredTime.to || '' }
-        : { from: '', to: '' },
+      preferredTimes: windows.map((w) => ({ from: w.from || '', to: w.to || '' })),
+      rush: isRush,
+      rushPercent: isRush ? rushPercent : 0,
       user: req.userId || null,
       statusHistory: [{ status: 'pending', at: new Date() }],
     });

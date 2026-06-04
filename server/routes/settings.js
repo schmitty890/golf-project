@@ -7,6 +7,7 @@ const router = express.Router();
 
 const KEY = 'availability';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DEFAULTS = { leadDays: 1, rushEnabled: true, rushPercent: 25 };
 
 /**
  * @swagger
@@ -21,7 +22,12 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 router.get('/availability', async (req, res) => {
   try {
     const doc = await Settings.findOne({ key: KEY });
-    return res.json({ dateOverrides: doc ? doc.dateOverrides : {} });
+    return res.json({
+      dateOverrides: doc ? doc.dateOverrides : {},
+      leadDays: doc?.leadDays ?? DEFAULTS.leadDays,
+      rushEnabled: doc?.rushEnabled ?? DEFAULTS.rushEnabled,
+      rushPercent: doc?.rushPercent ?? DEFAULTS.rushPercent,
+    });
   } catch (error) {
     console.error('Get availability error:', error);
     return res.status(500).json({ error: 'Failed to load availability' });
@@ -36,23 +42,40 @@ router.get('/availability', async (req, res) => {
  */
 router.put('/availability', auth, requireAdmin, async (req, res) => {
   try {
-    const input = req.body?.dateOverrides;
-    // Sanitize: keep only valid date keys mapping to arrays of 'HH:MM' strings.
-    const dateOverrides = {};
-    if (input && typeof input === 'object') {
-      Object.entries(input).forEach(([date, windows]) => {
+    // Only set the fields present in the body, so saving the calendar (dateOverrides)
+    // and the scheduling rules (lead/rush) don't clobber each other.
+    const update = { key: KEY };
+
+    if (req.body?.dateOverrides && typeof req.body.dateOverrides === 'object') {
+      const dateOverrides = {};
+      Object.entries(req.body.dateOverrides).forEach(([date, windows]) => {
         if (DATE_RE.test(date) && Array.isArray(windows)) {
           dateOverrides[date] = windows.filter((t) => typeof t === 'string');
         }
       });
+      update.dateOverrides = dateOverrides;
+    }
+    if (req.body?.leadDays !== undefined) {
+      update.leadDays = Math.max(0, Math.floor(Number(req.body.leadDays) || 0));
+    }
+    if (req.body?.rushEnabled !== undefined) {
+      update.rushEnabled = Boolean(req.body.rushEnabled);
+    }
+    if (req.body?.rushPercent !== undefined) {
+      update.rushPercent = Math.max(0, Number(req.body.rushPercent) || 0);
     }
 
     const doc = await Settings.findOneAndUpdate(
       { key: KEY },
-      { key: KEY, dateOverrides },
+      update,
       { new: true, upsert: true, setDefaultsOnInsert: true },
     );
-    return res.json({ dateOverrides: doc.dateOverrides });
+    return res.json({
+      dateOverrides: doc.dateOverrides,
+      leadDays: doc.leadDays,
+      rushEnabled: doc.rushEnabled,
+      rushPercent: doc.rushPercent,
+    });
   } catch (error) {
     console.error('Update availability error:', error);
     return res.status(500).json({ error: 'Failed to save availability' });

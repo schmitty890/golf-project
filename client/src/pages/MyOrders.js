@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { ClockIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
+import FeedbackModal from '../components/FeedbackModal';
 import {
   describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
@@ -16,6 +17,7 @@ function MyOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -37,13 +39,24 @@ function MyOrders() {
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-walnut">My Orders</h1>
-        <Link
-          to="/order"
-          className="rounded-md bg-ember px-4 py-2 text-sm font-semibold text-white hover:bg-ember-600"
-        >
-          New Order
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setFeedbackOpen(true)}
+            className="rounded-md border border-ember px-4 py-2 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
+          >
+            Leave feedback
+          </button>
+          <Link
+            to="/order"
+            className="rounded-md bg-ember px-4 py-2 text-sm font-semibold text-white hover:bg-ember-600"
+          >
+            New Order
+          </Link>
+        </div>
       </div>
+
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       {loading && <p className="mt-8 text-walnut-400">Loading…</p>}
       {error && <p className="mt-8 text-red-600">{error}</p>}
@@ -62,7 +75,14 @@ function MyOrders() {
           <li key={order._id} className="rounded-lg border border-cream-300 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-semibold text-walnut">{describeOrder(order)}</p>
+                <p className="font-semibold text-walnut">
+                  {describeOrder(order)}
+                  {order.rush && (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                      Rush
+                    </span>
+                  )}
+                </p>
                 <p className="mt-1 text-sm text-walnut-400">
                   {new Date(order.createdAt).toLocaleDateString()}
                   {' · '}

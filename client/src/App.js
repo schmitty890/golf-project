@@ -12,7 +12,9 @@ import Register from './pages/Register';
 import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminSchedule from './pages/admin/AdminSchedule';
 import AdminAvailability from './pages/admin/AdminAvailability';
+import AdminFeedback from './pages/admin/AdminFeedback';
 
 function App() {
   return (
@@ -46,6 +48,14 @@ function App() {
             )}
           />
           <Route
+            path="/admin/schedule"
+            element={(
+              <RequireAuth adminOnly>
+                <SidebarLayout><AdminSchedule /></SidebarLayout>
+              </RequireAuth>
+            )}
+          />
+          <Route
             path="/admin/orders"
             element={(
               <RequireAuth adminOnly>
@@ -58,6 +68,14 @@ function App() {
             element={(
               <RequireAuth adminOnly>
                 <SidebarLayout><AdminAvailability /></SidebarLayout>
+              </RequireAuth>
+            )}
+          />
+          <Route
+            path="/admin/feedback"
+            element={(
+              <RequireAuth adminOnly>
+                <SidebarLayout><AdminFeedback /></SidebarLayout>
               </RequireAuth>
             )}
           />

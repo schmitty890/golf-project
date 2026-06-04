@@ -3,13 +3,15 @@ import { useState, useContext, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
+import { TruckIcon, BuildingStorefrontIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import business from '../data/business';
 import {
   bundles, getActivePacks, subscriptions, seasons, TIME_WINDOWS,
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
-import { todayStr, formatDayLabel } from '../utils/dates';
+import neighborhoods from '../data/neighborhoods';
+import { todayStr, formatDayLabel, addDays } from '../utils/dates';
 
 const activePacks = getActivePacks();
 
@@ -17,6 +19,9 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 const inputClass = 'block w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-base text-walnut placeholder:text-walnut-200 transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30';
 const labelClass = 'block text-sm font-semibold text-walnut';
+
+// Common bundle counts offered as quick-pick buttons (filtered to the bundle's minimum).
+const QUANTITY_PRESETS = [1, 2, 3, 4, 5, 6];
 
 function Order() {
   const { user, token } = useContext(AuthContext);
@@ -28,13 +33,21 @@ function Order() {
   const [subscriptionPlan, setSubscriptionPlan] = useState(subscriptions[0].plan);
   const [season, setSeason] = useState(seasons[0].id);
   const [preferredDate, setPreferredDate] = useState('');
-  const [windowFrom, setWindowFrom] = useState('');
+  const [windowFroms, setWindowFroms] = useState([]);
   // Admin date overrides: { 'YYYY-MM-DD': ['HH:MM', ...] }. Absent date = fully open;
   // [] = closed; subset = only those windows.
   const [dateOverrides, setDateOverrides] = useState({});
+  // Scheduling rules from admin settings.
+  const [leadDays, setLeadDays] = useState(1);
+  const [rushEnabled, setRushEnabled] = useState(true);
+  const [rushPercent, setRushPercent] = useState(25);
+  // Customer opted into a rush ("in a pinch") order to unlock within-lead dates.
+  const [rushRequested, setRushRequested] = useState(false);
 
   const [contact, setContact] = useState({ name: '', phone: '', email: '' });
-  const [address, setAddress] = useState({ street: '', unit: '', notes: '' });
+  const [address, setAddress] = useState({
+    street: '', unit: '', neighborhood: '', notes: '',
+  });
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -68,43 +81,105 @@ function Order() {
     setQuantity((q) => (Number(q) < minQty ? minQty : q));
   }, [minQty]);
 
-  // Load admin date availability (public endpoint — guests order too).
+  // Load admin date availability + scheduling rules (public endpoint — guests order too).
   useEffect(() => {
     axios.get(`${API_URL}/api/settings/availability`)
-      .then((res) => setDateOverrides(res.data.dateOverrides || {}))
+      .then((res) => {
+        setDateOverrides(res.data.dateOverrides || {});
+        if (res.data.leadDays !== undefined) setLeadDays(res.data.leadDays);
+        if (res.data.rushEnabled !== undefined) setRushEnabled(res.data.rushEnabled);
+        if (res.data.rushPercent !== undefined) setRushPercent(res.data.rushPercent);
+      })
       .catch(() => setDateOverrides({})); // fall back to "all open" on error
   }, []);
 
   const today = todayStr();
+  // Earliest non-rush date given the required advance notice.
+  const earliest = addDays(today, leadDays);
   const allFroms = TIME_WINDOWS.map((w) => w.from);
   // Open window `from` times for a date (all windows unless overridden).
   const windowsForDate = (date) => {
     const ov = dateOverrides[date];
     return Array.isArray(ov) ? ov : allFroms;
   };
-  // A date is selectable if it's today-or-later and has at least one open window.
-  const dateIsOpen = (date) => date >= today && windowsForDate(date).length > 0;
+  // Whether a date falls inside the advance-notice (rush-only) window.
+  const isRushDate = (date) => date >= today && date < earliest;
+  // A date is selectable if not closed, has a window, and is either past the lead
+  // window or unlocked via a rush request.
+  const dateIsOpen = (date) => date >= today
+    && windowsForDate(date).length > 0
+    && (date >= earliest || (rushEnabled && rushRequested));
+  // This order is a rush if the chosen date is inside the lead window.
+  const isRush = Boolean(preferredDate) && isRushDate(preferredDate);
 
-  const selectedWindow = TIME_WINDOWS.find((w) => w.from === windowFrom);
   const availableFroms = new Set(preferredDate ? windowsForDate(preferredDate) : []);
+  // The selected windows as {from,to} objects, in the canonical TIME_WINDOWS order.
+  const selectedWindows = TIME_WINDOWS.filter((w) => windowFroms.includes(w.from));
+
+  const toggleWindow = (from) => setWindowFroms((prev) => (
+    prev.includes(from) ? prev.filter((f) => f !== from) : [...prev, from]
+  ));
 
   // Day styling/selectability for the calendar.
   const getDayState = (date) => {
     if (date < today) return { disabled: true, tone: 'open' };
     const ov = dateOverrides[date];
     const closed = Array.isArray(ov) && ov.length === 0;
+    const rushWindow = isRushDate(date);
+    // Within the lead window: only selectable when a rush is requested.
+    const disabled = closed || (rushWindow && !(rushEnabled && rushRequested));
     return {
-      disabled: closed,
-      tone: closed ? 'closed' : 'open',
+      disabled,
+      // eslint-disable-next-line no-nested-ternary
+      tone: closed ? 'closed' : (rushWindow ? 'rush' : 'open'),
       selected: date === preferredDate,
     };
   };
 
-  // Drop a chosen window once it's no longer available for the selected date.
+  // Drop any chosen windows no longer available for the selected date.
   useEffect(() => {
-    if (windowFrom && !availableFroms.has(windowFrom)) setWindowFrom('');
+    setWindowFroms((prev) => {
+      const next = prev.filter((f) => availableFroms.has(f));
+      return next.length === prev.length ? prev : next;
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowFrom, preferredDate, dateOverrides]);
+  }, [preferredDate, dateOverrides]);
+
+  // If the rush request is turned off while an in-window date is selected, clear it.
+  useEffect(() => {
+    if (!rushRequested && preferredDate && isRushDate(preferredDate)) setPreferredDate('');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rushRequested, preferredDate, earliest]);
+
+  // Live price estimate for the current selection (no payment is taken at order time).
+  // For one-time orders, a rush request adds a `rushPercent` surcharge to the total.
+  const estimate = (() => {
+    const withRush = (subtotal, line) => {
+      const surcharge = isRush ? Math.round(subtotal * (rushPercent / 100)) : 0;
+      return {
+        line,
+        amount: `$${subtotal + surcharge}`,
+        recurring: false,
+        rushLine: surcharge ? `Rush +${rushPercent}%: $${surcharge}` : '',
+      };
+    };
+    if (orderType === 'bundle') {
+      const qty = Number(quantity) || 0;
+      const subtotal = qty * (selectedBundle?.unitPrice || 0);
+      return withRush(subtotal, `${qty} × ${selectedBundle?.name} ($${selectedBundle?.unitPrice} each)`);
+    }
+    if (orderType === 'pack') {
+      const pack = activePacks.find((p) => p.id === packId);
+      return pack && withRush(pack.unitPrice, `${pack.name} — ${pack.bundleCount} bundles`);
+    }
+    const sub = subscriptions.find((s) => s.plan === subscriptionPlan);
+    return sub && {
+      line: `${sub.name} subscription — ${sub.cadence}`,
+      amount: sub.price,
+      recurring: true,
+      rushLine: '',
+    };
+  })();
 
   const buildPayload = () => {
     const fulfillment = isPickup ? 'pickup' : 'delivery';
@@ -114,9 +189,8 @@ function Order() {
       contact,
       deliveryAddress: isPickup ? {} : address,
       preferredDate,
-      preferredTime: selectedWindow
-        ? { from: selectedWindow.from, to: selectedWindow.to }
-        : { from: '', to: '' },
+      preferredTimes: selectedWindows.map((w) => ({ from: w.from, to: w.to })),
+      rush: isRush,
     };
     if (orderType === 'bundle') {
       const bundle = bundles.find((b) => b.id === bundleId);
@@ -155,8 +229,8 @@ function Order() {
       return;
     }
 
-    if (!windowFrom) {
-      setError('Please choose a pickup/delivery time window.');
+    if (windowFroms.length === 0) {
+      setError('Please choose at least one pickup/delivery time window.');
       return;
     }
 
@@ -249,25 +323,65 @@ function Order() {
 
         {/* Conditional fields */}
         {orderType === 'bundle' && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="sm:col-span-2">
-              <label htmlFor="bundle" className={labelClass}>Bundle</label>
-              <select id="bundle" value={bundleId} onChange={(e) => setBundleId(e.target.value)} className={`mt-2 ${inputClass}`}>
-                {bundles.map((b) => (
-                  <option key={b.id} value={b.id}>{`${b.name} — ${b.price}`}</option>
-                ))}
-              </select>
+          <div className="space-y-4">
+            <div>
+              <span className={labelClass}>Pickup or delivery?</span>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                {bundles.map((b) => {
+                  const Icon = b.fulfillment === 'pickup' ? BuildingStorefrontIcon : TruckIcon;
+                  const selected = bundleId === b.id;
+                  return (
+                    <button
+                      type="button"
+                      key={b.id}
+                      onClick={() => setBundleId(b.id)}
+                      className={`flex flex-col items-start gap-1.5 rounded-xl border p-4 text-left transition-colors ${
+                        selected
+                          ? 'border-ember bg-cream-100 ring-2 ring-ember/30'
+                          : 'border-cream-300 bg-white hover:border-ember'
+                      }`}
+                    >
+                      <Icon className="h-6 w-6 text-ember" aria-hidden="true" />
+                      <span className="text-sm font-bold text-walnut">{b.name}</span>
+                      <span className="text-lg font-extrabold text-ember">
+                        {b.price}
+                        <span className="text-xs font-semibold text-walnut-300"> / bundle</span>
+                      </span>
+                      <span className="text-xs text-walnut-400">{b.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div>
-              <label htmlFor="quantity" className={labelClass}>Quantity</label>
-              <input
-                id="quantity"
-                type="number"
-                min={minQty}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className={`mt-2 ${inputClass}`}
-              />
+              <span className={labelClass}>How many bundles?</span>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {QUANTITY_PRESETS.filter((n) => n >= minQty).map((n) => (
+                  <button
+                    type="button"
+                    key={n}
+                    onClick={() => setQuantity(n)}
+                    className={`h-11 w-11 rounded-xl border text-sm font-semibold transition-colors ${
+                      Number(quantity) === n
+                        ? 'border-ember bg-ember text-white'
+                        : 'border-cream-300 bg-white text-walnut hover:border-ember'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <div className="flex items-center gap-2 pl-1">
+                  <label htmlFor="quantity" className="text-sm font-semibold text-walnut-300">Other</label>
+                  <input
+                    id="quantity"
+                    type="number"
+                    min={minQty}
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    className="h-11 w-20 rounded-xl border border-cream-300 bg-white px-3 text-base text-walnut transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30"
+                  />
+                </div>
+              </div>
               {minQty > 1 && (
                 <p className="mt-1 text-xs text-walnut-300">
                   {`${minQty}-bundle minimum for delivery.`}
@@ -316,28 +430,48 @@ function Order() {
           <span className={labelClass}>
             {orderType === 'subscription' ? 'First delivery date' : 'Pickup / delivery date'}
           </span>
+
+          {rushEnabled && leadDays > 0 && (
+            <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-xl border border-cream-300 bg-cream-100 p-3">
+              <input
+                type="checkbox"
+                checked={rushRequested}
+                onChange={(e) => setRushRequested(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+              />
+              <span className="text-sm text-walnut">
+                <span className="font-semibold">In a pinch? Request a rush order.</span>
+                {' '}
+                Unlocks sooner dates for a
+                {' '}
+                {rushPercent}
+                % rush charge — subject to our availability; we&apos;ll confirm we can make it.
+              </span>
+            </label>
+          )}
+
           <div className="mt-2">
             <MonthCalendar getDayState={getDayState} onSelectDate={setPreferredDate} />
           </div>
           <p className="mt-1 text-xs text-walnut-300">
             {preferredDate
-              ? `Selected: ${formatDayLabel(preferredDate)}. Greyed dates are unavailable.`
+              ? `Selected: ${formatDayLabel(preferredDate)}${isRush ? ' · rush order' : ''}. Greyed dates are unavailable.`
               : 'Pick a date, then choose a time window below. Greyed dates are unavailable.'}
           </p>
         </div>
 
-        {/* Pickup / delivery time window */}
+        {/* Pickup / delivery windows (multi-select) */}
         <div>
-          <span className={labelClass}>Pickup / delivery window</span>
+          <span className={labelClass}>Pickup / delivery windows</span>
           <div className="mt-2 flex flex-wrap gap-2">
             {TIME_WINDOWS.map((w) => {
-              const active = windowFrom === w.from;
+              const active = windowFroms.includes(w.from);
               const open = availableFroms.has(w.from);
               return (
                 <button
                   type="button"
                   key={w.from}
-                  onClick={() => setWindowFrom(w.from)}
+                  onClick={() => toggleWindow(w.from)}
                   disabled={!open}
                   className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
                     // eslint-disable-next-line no-nested-ternary
@@ -356,7 +490,7 @@ function Order() {
           <p className="mt-1 text-xs text-walnut-300">
             {!preferredDate
               ? 'Choose a date above to see available times.'
-              : 'We’ll have it out for this window — come by anytime within it.'}
+              : 'Pick one or more times that work — we’ll fulfill within one of them.'}
           </p>
         </div>
 
@@ -384,6 +518,15 @@ function Order() {
               <input id="unit" type="text" value={address.unit} onChange={(e) => setAddress({ ...address, unit: e.target.value })} className={`mt-2 ${inputClass}`} />
             </div>
             <div>
+              <label htmlFor="neighborhood" className={labelClass}>Neighborhood (optional)</label>
+              <select id="neighborhood" value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} className={`mt-2 ${inputClass}`}>
+                <option value="">Select…</option>
+                {neighborhoods.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label htmlFor="notes" className={labelClass}>Delivery notes (optional)</label>
               <textarea id="notes" rows={2} value={address.notes} onChange={(e) => setAddress({ ...address, notes: e.target.value })} className={`mt-2 ${inputClass}`} />
             </div>
@@ -408,6 +551,25 @@ function Order() {
             </div>
           </div>
         </fieldset>
+
+        {/* Live price estimate */}
+        {estimate && (
+          <div className="rounded-xl border border-cream-300 bg-cream-100 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm font-semibold text-walnut">
+                {estimate.recurring ? 'Estimated price' : 'Estimated total'}
+              </span>
+              <span className="text-2xl font-extrabold text-ember">{estimate.amount}</span>
+            </div>
+            <p className="mt-1 text-sm text-walnut-400">{estimate.line}</p>
+            {estimate.rushLine && (
+              <p className="mt-1 text-sm font-semibold text-amber-700">{estimate.rushLine}</p>
+            )}
+            <p className="mt-2 text-xs text-walnut-300">
+              Estimate only — no payment now. We&apos;ll confirm the final total with you.
+            </p>
+          </div>
+        )}
 
         <button
           type="submit"
