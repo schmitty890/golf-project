@@ -26,11 +26,19 @@ function AdminAvailability() {
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
 
+  // Scheduling rules (advance notice + rush). Edited locally, saved on demand.
+  const [leadDays, setLeadDays] = useState(1);
+  const [rushEnabled, setRushEnabled] = useState(true);
+  const [rushPercent, setRushPercent] = useState(25);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await axios.get(`${API_URL}/api/settings/availability`);
       setOverrides(res.data.dateOverrides || {});
+      if (res.data.leadDays !== undefined) setLeadDays(res.data.leadDays);
+      if (res.data.rushEnabled !== undefined) setRushEnabled(res.data.rushEnabled);
+      if (res.data.rushPercent !== undefined) setRushPercent(res.data.rushPercent);
       setError('');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load availability');
@@ -50,6 +58,22 @@ function AdminAvailability() {
       await axios.put(
         `${API_URL}/api/settings/availability`,
         { dateOverrides: next },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setError('');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to save — please try again');
+    }
+  };
+
+  // Save the scheduling rules (separate from the calendar's dateOverrides save).
+  const saveRules = async () => {
+    try {
+      await axios.put(
+        `${API_URL}/api/settings/availability`,
+        { leadDays: Number(leadDays) || 0, rushEnabled, rushPercent: Number(rushPercent) || 0 },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setError('');
@@ -130,6 +154,54 @@ function AdminAvailability() {
       </div>
 
       {error && <p className="mt-4 rounded-md bg-red-50 px-4 py-2 text-sm text-red-800">{error}</p>}
+
+      {!loading && (
+        <div className="mt-6 rounded-xl border border-cream-300 bg-white p-5">
+          <h2 className="text-base font-bold text-walnut">Scheduling rules</h2>
+          <div className="mt-3 flex flex-wrap items-end gap-5">
+            <div>
+              <label htmlFor="lead-days" className="block text-xs font-semibold text-walnut">Minimum notice (days)</label>
+              <input
+                id="lead-days"
+                type="number"
+                min={0}
+                value={leadDays}
+                onChange={(e) => setLeadDays(e.target.value)}
+                className="mt-1 w-24 rounded-lg border border-cream-300 px-3 py-2 text-sm text-walnut"
+              />
+              <p className="mt-1 text-xs text-walnut-300">0 = same-day OK · 1 = next-day</p>
+            </div>
+            <label className="flex items-center gap-2 pb-2 text-sm font-semibold text-walnut">
+              <input
+                type="checkbox"
+                checked={rushEnabled}
+                onChange={(e) => setRushEnabled(e.target.checked)}
+                className="h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+              />
+              Offer rush orders
+            </label>
+            <div>
+              <label htmlFor="rush-percent" className="block text-xs font-semibold text-walnut">Rush surcharge (%)</label>
+              <input
+                id="rush-percent"
+                type="number"
+                min={0}
+                value={rushPercent}
+                disabled={!rushEnabled}
+                onChange={(e) => setRushPercent(e.target.value)}
+                className="mt-1 w-24 rounded-lg border border-cream-300 px-3 py-2 text-sm text-walnut disabled:opacity-50"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={saveRules}
+              className="rounded-lg bg-ember px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600"
+            >
+              Save rules
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p className="mt-8 text-walnut-400">Loading…</p>

@@ -5,6 +5,7 @@ import {
 import axios from 'axios';
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
+import { TIME_WINDOWS } from '../../data/pricing';
 import {
   describeOrder, statusClasses, STATUS_OPTIONS, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
@@ -76,6 +77,17 @@ function AdminOrders() {
     }
   };
 
+  // One-click confirm: turn a customer's preferred window into the official schedule.
+  const confirmWindow = async (order, w) => {
+    try {
+      const schedule = { date: order.preferredDate, from: w.from, to: w.to };
+      const res = await axios.patch(`${API_URL}/api/orders/${order._id}`, { schedule, status: 'confirmed' }, authHeaders);
+      setOrders((prev) => prev.map((o) => (o._id === order._id ? { ...o, ...res.data } : o)));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to confirm window');
+    }
+  };
+
   const deleteOrder = async (id) => {
     // eslint-disable-next-line no-alert
     if (!window.confirm('Delete this order? This cannot be undone.')) return;
@@ -140,6 +152,11 @@ function AdminOrders() {
                   <span className="ml-2 rounded-full bg-cream-300 px-2 py-0.5 text-xs font-semibold text-walnut">
                     {fulfillmentLabel(order)}
                   </span>
+                  {order.rush && (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                      {`RUSH +${order.rushPercent || 0}%`}
+                    </span>
+                  )}
                 </p>
                 <p className="mt-1 text-sm text-walnut-400">
                   {new Date(order.createdAt).toLocaleString()}
@@ -159,6 +176,7 @@ function AdminOrders() {
                     <>
                       {order.deliveryAddress?.street}
                       {order.deliveryAddress?.unit ? `, ${order.deliveryAddress.unit}` : ''}
+                      {order.deliveryAddress?.neighborhood ? ` · ${order.deliveryAddress.neighborhood}` : ''}
                       {order.deliveryAddress?.notes ? ` — ${order.deliveryAddress.notes}` : ''}
                     </>
                   )}
@@ -199,6 +217,24 @@ function AdminOrders() {
 
             {/* Schedule editor */}
             <div className="mt-4 border-t border-cream-300 pt-3">
+              {(order.preferredTimes || []).length > 0 && (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-walnut-300">Confirm window:</span>
+                  {order.preferredTimes.map((w) => {
+                    const win = TIME_WINDOWS.find((x) => x.from === w.from && x.to === w.to);
+                    return (
+                      <button
+                        type="button"
+                        key={w.from}
+                        onClick={() => confirmWindow(order, w)}
+                        className="rounded-lg border border-ember bg-white px-3 py-1 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
+                      >
+                        {win ? win.label : `${w.from}–${w.to}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <div className="flex flex-wrap items-end gap-3">
                 <div>
                   <label htmlFor={`date-${order._id}`} className="block text-xs font-semibold text-walnut">Date</label>

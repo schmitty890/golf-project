@@ -6,6 +6,7 @@ import cors from 'cors';
 import authRouter from './routes/auth.js';
 import ordersRouter from './routes/orders.js';
 import settingsRouter from './routes/settings.js';
+import feedbackRouter from './routes/feedback.js';
 import { swaggerUi, specs } from './swagger.js';
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 app.use('/api/auth', authRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/feedback', feedbackRouter);
 
 // Start server
 httpServer.listen(PORT, () => {

@@ -9,6 +9,7 @@ const TONE_CLASSES = {
   open: 'bg-white text-walnut hover:border-ember',
   closed: 'border-red-300 bg-red-50 text-red-400 line-through',
   partial: 'border-amber-300 bg-amber-50 text-amber-700',
+  rush: 'border-amber-300 bg-amber-50 text-amber-700 hover:border-amber-500',
 };
 
 // Reusable month grid. The parent owns availability logic via getDayState(dateStr) ->

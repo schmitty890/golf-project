@@ -32,11 +32,23 @@ const orderSchema = new mongoose.Schema({
   preferredDays: { type: [String], default: [] },
   // Customer-chosen calendar date ('YYYY-MM-DD', local time, no timezone shift).
   preferredDate: { type: String, default: '' },
-  // Customer-chosen pickup/delivery time window. Stored as 'HH:MM' strings to match `schedule`.
+  // Legacy single pickup/delivery window (older orders). New orders use preferredTimes.
   preferredTime: {
     from: { type: String, default: '' },
     to: { type: String, default: '' },
   },
+  // Customer-chosen pickup/delivery windows (one or more). 'HH:MM' strings to match `schedule`.
+  preferredTimes: {
+    type: [{
+      from: { type: String, default: '' },
+      to: { type: String, default: '' },
+    }],
+    default: [],
+  },
+  // Rush ("in a pinch") order placed inside the normal advance-notice window.
+  rush: { type: Boolean, default: false },
+  // Snapshot of the rush surcharge % applied at order time (0 when not a rush order).
+  rushPercent: { type: Number, default: 0 },
   // How the customer receives the order. Pickup orders don't need a delivery address.
   fulfillment: {
     type: String,
@@ -51,6 +63,7 @@ const orderSchema = new mongoose.Schema({
   deliveryAddress: {
     street: { type: String, trim: true, default: '' },
     unit: { type: String, trim: true, default: '' },
+    neighborhood: { type: String, trim: true, default: '' },
     notes: { type: String, trim: true, default: '' },
   },
   status: {

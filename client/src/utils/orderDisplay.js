@@ -53,13 +53,20 @@ function formatTime(t) {
   return `${hr}:${String(m || 0).padStart(2, '0')} ${period}`;
 }
 
-// Customer's chosen date + time window, e.g. "Sat, Jun 6 · 5:00 PM – 6:00 PM".
-// Falls back to the legacy preferred day(s) for older orders without a date.
+// Format one {from,to} window as "5:00 PM – 6:00 PM".
+function formatWindow(w) {
+  if (!w) return '';
+  return [formatTime(w.from), formatTime(w.to)].filter(Boolean).join(' – ');
+}
+
+// Customer's chosen date + time window(s), e.g. "Sat, Jun 6 · 5:00 PM – 6:00 PM, 6:00 PM – 7:00 PM"
+// Falls back to the legacy single window, then to legacy preferred day(s).
 export function formatPreferredSchedule(order) {
-  const t = order.preferredTime;
-  const window = t && (t.from || t.to)
-    ? [formatTime(t.from), formatTime(t.to)].filter(Boolean).join(' – ')
-    : '';
+  // New orders: one or more windows; older orders: a single preferredTime.
+  const windowList = (order.preferredTimes && order.preferredTimes.length)
+    ? order.preferredTimes
+    : [order.preferredTime].filter((t) => t && (t.from || t.to));
+  const window = windowList.map(formatWindow).filter(Boolean).join(', ');
 
   if (order.preferredDate) {
     const datePart = formatScheduleDate(order.preferredDate);
@@ -85,6 +92,25 @@ export function formatSchedule(schedule) {
   else if (from) timePart = `after ${from}`;
   else if (to) timePart = `by ${to}`;
   return [datePart, timePart].filter(Boolean).join(' · ');
+}
+
+// Whether the owner has confirmed a specific window for this order.
+export function isConfirmedWindow(order) {
+  return !!(order.schedule?.date && order.schedule?.from);
+}
+
+// The date the order actually happens on: the confirmed schedule date, else the
+// customer's chosen date. '' if neither (legacy).
+export function effectiveDate(order) {
+  return order.schedule?.date || order.preferredDate || '';
+}
+
+// Start time ('HH:MM') used to sort within a day: confirmed window, else the
+// earliest customer-preferred window. '' if none.
+export function effectiveStart(order) {
+  if (order.schedule?.from) return order.schedule.from;
+  const froms = (order.preferredTimes || []).map((w) => w.from).filter(Boolean);
+  return froms.length ? froms.slice().sort()[0] : '';
 }
 
 export function statusEventLabel(status) {

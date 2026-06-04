@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import {
   TruckIcon,
   SparklesIcon,
@@ -11,6 +13,10 @@ import business from '../data/business';
 import { bundles, getActivePacks, subscriptions } from '../data/pricing';
 import testimonials from '../data/testimonials';
 import faqs from '../data/faqs';
+import ReviewsCarousel from '../components/ReviewsCarousel';
+import FeedbackModal from '../components/FeedbackModal';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 function Hero() {
   return (
@@ -263,8 +269,28 @@ function Gallery() {
   );
 }
 
+// Fallback content (hardcoded samples) when no approved reviews exist yet.
+const fallbackItems = (testimonials || []).map((t) => ({
+  name: t.name, text: t.quote, detail: t.detail, rating: null,
+}));
+
 function Testimonials() {
-  if (!testimonials || testimonials.length === 0) return null;
+  const [reviews, setReviews] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${API_URL}/api/feedback/approved`)
+      .then((res) => setReviews(res.data || []))
+      .catch(() => setReviews([]));
+  }, []);
+
+  const items = reviews.length > 0
+    ? reviews.map((r) => ({
+      name: r.name, text: r.comment, detail: r.location, rating: r.rating,
+    }))
+    : fallbackItems;
+
+  if (items.length === 0) return null;
 
   return (
     <section id="testimonials" className="bg-cream-300/40 py-16 sm:py-20">
@@ -272,24 +298,21 @@ function Testimonials() {
         <h2 className="text-center text-3xl font-extrabold tracking-tight text-walnut">
           What neighbors say
         </h2>
-        <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
-          {testimonials.map((t) => (
-            <figure
-              key={`${t.name}-${t.quote.slice(0, 16)}`}
-              className="rounded-2xl border border-cream-300 bg-cream p-8 shadow-sm"
-            >
-              <span className="text-4xl font-extrabold leading-none text-ember" aria-hidden="true">“</span>
-              <blockquote className="mt-2 text-sm text-walnut-400">{t.quote}</blockquote>
-              <figcaption className="mt-4 text-sm font-bold text-walnut">
-                {t.name}
-                {t.detail && (
-                  <span className="block font-normal text-walnut-300">{t.detail}</span>
-                )}
-              </figcaption>
-            </figure>
-          ))}
+
+        <ReviewsCarousel items={items} />
+
+        <div className="mt-10 text-center">
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="rounded-xl border border-ember bg-white px-6 py-2.5 text-sm font-semibold text-ember transition-colors hover:bg-ember hover:text-white"
+          >
+            Leave feedback
+          </button>
         </div>
       </div>
+
+      <FeedbackModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </section>
   );
 }
