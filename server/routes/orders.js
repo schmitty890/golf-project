@@ -5,6 +5,10 @@ import User from '../models/User.js';
 import Settings from '../models/Settings.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
+import { sendMail } from '../utils/mailer.js';
+import {
+  customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
+} from '../utils/orderEmails.js';
 
 const router = express.Router();
 
@@ -162,6 +166,25 @@ router.post('/', optionalAuth, async (req, res) => {
     });
     await order.save();
 
+    // Fire-and-forget notifications — never block or fail the order on email issues.
+    (async () => {
+      try {
+        let customerEmail = order.contact?.email || '';
+        if (!customerEmail && req.userId) {
+          const u = await User.findById(req.userId).select('email');
+          customerEmail = u?.email || '';
+        }
+        if (customerEmail) {
+          await sendMail({ to: customerEmail, ...customerConfirmationEmail(order) });
+        }
+        if (process.env.OWNER_EMAIL) {
+          await sendMail({ to: process.env.OWNER_EMAIL, ...ownerAlertEmail(order) });
+        }
+      } catch (mailErr) {
+        console.error('Order notification error:', mailErr.message);
+      }
+    })();
+
     return res.status(201).json(order);
   } catch (error) {
     console.error('Create order error:', error);
@@ -303,6 +326,7 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    const prevStatus = order.status;
     if (status !== undefined && status !== order.status) {
       order.statusHistory.push({ status, at: new Date() });
       order.status = status;
@@ -316,6 +340,15 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       };
     }
     await order.save();
+
+    // Notify the customer on key transitions (fire-and-forget).
+    const customerEmail = order.contact?.email || '';
+    if (customerEmail && order.status !== prevStatus) {
+      let email = null;
+      if (order.status === 'confirmed' && order.schedule?.from) email = windowConfirmedEmail(order);
+      else if (order.status === 'delivered') email = deliveredEmail(order);
+      if (email) sendMail({ to: customerEmail, ...email });
+    }
 
     return res.json(order);
   } catch (error) {
