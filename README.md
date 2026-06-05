@@ -1,304 +1,133 @@
-# MERN Stack Application with Authentication
+# VOLW Firewood
 
-A full-stack application built with the MERN stack (MongoDB, Express, React, Node.js) featuring user authentication and data management.
+**Online firewood ordering for The Vineyards on Lake Wylie.** Customers order bundles for
+pickup or delivery and **schedule a specific hour window**; the owner gets a simple day-of
+list of what to set out or deliver and when — so wood never sits at the curb all day.
 
-## Project Structure
+It's three things in one app:
 
-```
-mern-starter/
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Navbar.js
-│   │   │   ├── Footer.js
-│   │   │   └── StringForm.js
-│   │   ├── context/
-│   │   │   └── AuthContext.js
-│   │   ├── pages/
-│   │   │   ├── Login.js
-│   │   │   └── Register.js
-│   │   ├── App.js
-│   │   └── index.js
-│   └── package.json
-├── server/                 # Express backend
-│   ├── models/
-│   │   ├── String.js      # MongoDB schema
-│   │   └── User.js        # User model
-│   ├── routes/
-│   │   ├── strings.js     # API routes
-│   │   └── auth.js        # Auth routes
-│   ├── middleware/
-│   │   └── auth.js        # JWT middleware
-│   ├── .env               # Environment variables
-│   ├── .gitignore
-│   ├── server.js          # Express server
-│   └── package.json
-└── README.md
-```
+- a **marketing homepage** (what you sell, pricing, reviews, FAQ),
+- a **customer ordering + scheduling** flow, and
+- an **admin console** for running the business.
 
-## Features
+---
 
-- User authentication with JWT tokens
-- User registration and login
-- Password hashing with bcrypt
-- Protected routes with authentication middleware
-- Save string values to MongoDB Atlas
-- Retrieve all saved strings
-- Responsive navbar with mobile support
-- Real-time form validation
-- Success/error message display
-- Hot reload for development (frontend and backend)
-- ES6 module syntax
-- API documentation with Swagger
-- ESLint code quality checks
+## Customer features
 
-## Tech Stack
+**Homepage**
+- Hero, value props ("Clean · Convenient · Local"), how-it-works, pricing, and an optional photo gallery.
+- **"What neighbors say"** reviews carousel (shows real approved reviews; falls back to sample quotes until you approve some).
+- FAQ section and a launch/promo announcement bar.
 
-### Frontend
-- **React** - UI library
-- **React Router** - Client-side routing
-- **Axios** - HTTP client for API requests
-- **Tailwind CSS** - Utility-first CSS framework
-- **Context API** - State management for authentication
+**Accounts**
+- Register / log in (JWT). **Guests can order without an account.**
+- Account settings: name, profile photo (upload/remove), change password, delete account.
+- Expired/invalid sessions redirect to login automatically.
 
-### Backend
-- **Node.js** - Runtime environment
-- **Express** - Web framework
-- **MongoDB Atlas** - Cloud database
-- **Mongoose** - MongoDB object modeling
-- **JWT** - JSON Web Tokens for authentication
-- **bcryptjs** - Password hashing
-- **Swagger** - API documentation
-- **dotenv** - Environment variable management
-- **CORS** - Cross-origin resource sharing
+**Ordering** (`/order`)
+- Choose **Pickup** or **Delivery** bundle (cards with icons), a **Seasonal Pack** (only shown when in season), or a **Subscription**.
+- **Quantity** quick-pick buttons (1–6) plus a custom amount; delivery has a 2-bundle minimum.
+- **Live price estimate** updates as you choose.
+- Optional **neighborhood** dropdown for deliveries.
 
-### Development Tools
-- **Nodemon** - Auto-restart server on changes
-- **Create React App** - React development environment
-- **ESLint** - Code linting and quality checks
-- **Jest** - Testing framework
+**Scheduling** (the heart of it)
+- Pick a date on a **calendar**, then select **one or more 1-hour windows** that work.
+- **Minimum advance notice** (next-day by default) — today/within-notice dates are blocked.
+- **"In a pinch?" rush option** unlocks sooner dates (down to same-day) for a percentage surcharge — *subject to the owner's availability/confirmation*.
+- Dates the owner has marked closed (out of town) or limited are greyed out.
 
-## Prerequisites
+**Tracking & feedback**
+- **My Orders** (`/my-orders`): order history with a status timeline and the scheduled window.
+- **Leave feedback**: a 1–5 star review modal from the homepage and My Orders. Reviews are held for approval before appearing publicly.
 
-- Node.js (v20.x or higher)
-- npm or yarn
-- MongoDB Atlas account
+---
 
-## Installation
+## Admin features
 
-### 1. Clone the repository
+Admin pages appear in the sidebar for any user whose account `role` is `admin`.
+
+- **Schedule** (`/admin/schedule`) — the day-of **run-sheet**. Upcoming orders grouped by date and sorted by hour window, labeled **Curb pickup** vs **Deliver**, with quantity, address/neighborhood, and tap-to-call phone. **Confirm a customer's window with one click**, then **Mark done** when it's picked up/delivered.
+- **Orders** (`/admin/orders`) — full list with status/type filters, one-click window confirm, a manual schedule editor, admin notes, and delete.
+- **Availability** (`/admin/availability`) — a calendar to **close specific dates or a vacation range** or limit which windows are open per date, plus **Scheduling rules**: minimum-notice days, whether rush is offered, and the rush surcharge %.
+- **Feedback** (`/admin/feedback`) — moderate reviews: **approve / reject / edit / delete**, and see who submitted each (account email or "Guest").
+
+---
+
+## How the order flow works, end to end
+
+1. A customer places an order and schedules a date + hour window(s) (or requests a rush).
+2. The order shows up under **Orders** and **Schedule** as `pending`.
+3. The owner opens **Schedule**, taps to **confirm one window** (status → `confirmed`).
+4. The owner sets the wood out / delivers during that window and taps **Mark done** (status → `delivered`), which clears it off the run-sheet.
+5. Separately, customer reviews stay hidden until approved under **Feedback**; approved ones appear in the homepage carousel.
+
+---
+
+## Where to change common things
+
+| Edit this file | To change |
+| --- | --- |
+| `client/src/data/business.js` | Business name, contact email, service area, promo/announcement bar, gallery photos, social links |
+| `client/src/data/pricing.js` | Bundle prices, seasonal packs + their in-season date windows, subscription plans, weekdays, and `TIME_WINDOWS` (the 1-hour slots offered) |
+| `client/src/data/neighborhoods.js` | The neighborhood dropdown list — **currently placeholders; replace with the real Vineyards sub-neighborhoods** |
+| `client/src/data/testimonials.js` | Fallback homepage quotes shown until real reviews are approved |
+| `client/src/data/faqs.js` | Homepage FAQ entries |
+| `client/public/photos/` + `business.galleryPhotos` | Real photos: drop image files in the folder and list them in `galleryPhotos` |
+
+**Pricing today:** Pickup Bundle $7 · Delivered Bundle $12 (2-bundle min) · Fall Firepit Pack $33 (3) · Winter Warmth Pack $50 (5) · Holiday Hosting Pack $54 (6) · Monthly $22/mo · Bi-Weekly $40/mo · Seasonal from $108.
+
+**Lead time & rush** are managed in **Admin → Availability** (not in code): default is next-day notice with rush enabled at 25%.
+
+**Making someone an admin:** set their `role` to `admin` on their User record in MongoDB.
+
+---
+
+## Tech stack
+
+- **Client:** React, React Router, Tailwind CSS, axios.
+- **Server:** Express, Mongoose, JWT auth, bcrypt password hashing.
+- **Database:** MongoDB Atlas.
+- **API docs:** Swagger UI at `/api-docs`.
+
+## Run locally
+
 ```bash
-git clone https://github.com/schmitty890/mern-starter.git
-cd mern-starter
-```
+# 1. Install everything (root, server, client)
+npm run install-all
 
-### 2. Install backend dependencies
-```bash
-cd server
-npm install
-```
+# 2. Configure the server environment — create server/.env:
+#    MONGODB_URI=your_mongodb_atlas_connection_string
+#    JWT_SECRET=your_secure_random_string
+#    PORT=5001
+#    (optional) client: set REACT_APP_API_URL if the API isn't on http://localhost:5001
 
-### 3. Install frontend dependencies
-```bash
-cd ../client
-npm install
-```
-
-### 4. Configure environment variables
-
-Create a `.env` file in the `server` folder:
-
-```env
-MONGODB_URI=your_mongodb_atlas_connection_string
-JWT_SECRET=your_jwt_secret_key
-PORT=5001
-```
-
-Replace `your_mongodb_atlas_connection_string` with your actual MongoDB Atlas connection string and `your_jwt_secret_key` with a secure random string.
-
-## Running the Application
-
-### Start the backend server
-```bash
-cd server
+# 3. Start the server (nodemon) and client (CRA) together
 npm run dev
 ```
-Server will run on `http://localhost:5001`
 
-### Start the frontend (in a new terminal)
-```bash
-cd client
-npm start
+The client runs on `http://localhost:3000` and the API on `http://localhost:5001`.
+
+**Useful scripts** (run inside `client/` or `server/`): `npm run lint`, `npm run lint:fix`, `npm run build` (client), `npm test` (server).
+
+## Project structure
+
 ```
-Frontend will run on `http://localhost:3000`
-
-## API Documentation
-
-Visit `http://localhost:5001/api-docs` when the server is running to view the complete Swagger API documentation.
-
-## API Endpoints
-
-### Authentication
-
-#### POST /api/auth/register
-Register a new user account.
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
+client/                      # React app
+  public/photos/             # Drop gallery images here
+  src/
+    components/              # StarRating, FeedbackModal, ReviewsCarousel, MonthCalendar, layout/…
+    data/                    # business, pricing, neighborhoods, testimonials, faqs
+    pages/                   # Home, Order, MyOrders, Account, Login, Register
+    pages/admin/             # AdminSchedule, AdminOrders, AdminAvailability, AdminFeedback
+    utils/                   # orderDisplay, dates
+    context/AuthContext.js
+server/                      # Express API
+  models/                    # User, Order, Settings, Feedback
+  routes/                    # auth, orders, settings, feedback
+  middleware/                # auth (JWT), requireAdmin
+  server.js
 ```
 
-**Response (201):**
-```json
-{
-  "token": "jwt_token_here",
-  "user": {
-    "id": "user_id",
-    "email": "user@example.com"
-  }
-}
-```
+---
 
-#### POST /api/auth/login
-Login with existing credentials.
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-**Response (200):**
-```json
-{
-  "token": "jwt_token_here",
-  "user": {
-    "id": "user_id",
-    "email": "user@example.com"
-  }
-}
-```
-
-### Strings
-
-#### POST /api/strings
-Save a new string to the database.
-
-**Request Body:**
-```json
-{
-  "value": "your string here"
-}
-```
-
-**Response (201):**
-```json
-{
-  "message": "String saved successfully",
-  "data": {
-    "_id": "...",
-    "value": "your string here",
-    "createdAt": "2025-11-23T..."
-  }
-}
-```
-
-### GET /api/strings
-Retrieve all saved strings, sorted by creation date (newest first).
-
-**Response (200):**
-```json
-[
-  {
-    "_id": "...",
-    "value": "string 1",
-    "createdAt": "2025-11-23T..."
-  },
-  {
-    "_id": "...",
-    "value": "string 2",
-    "createdAt": "2025-11-23T..."
-  }
-]
-```
-
-## Development Scripts
-
-### Backend (server/)
-- `npm start` - Start server with nodemon
-- `npm run dev` - Start server in development mode
-- `npm test` - Run tests
-- `npm run test:coverage` - Run tests with coverage report
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Fix ESLint errors
-
-### Frontend (client/)
-- `npm start` - Start React development server
-- `npm run build` - Build for production
-- `npm test` - Run tests
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Fix ESLint errors
-
-## MongoDB Schema
-
-**User Model:**
-```javascript
-{
-  email: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  password: {
-    type: String,
-    required: true,
-    minlength: 6
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-}
-```
-
-**String Model:**
-```javascript
-{
-  value: {
-    type: String,
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-}
-```
-
-## Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `MONGODB_URI` | MongoDB Atlas connection string | `mongodb+srv://user:pass@cluster.mongodb.net/dbname` |
-| `JWT_SECRET` | Secret key for JWT token generation | `your-secure-random-string` |
-| `PORT` | Server port number | `5001` |
-
-## Notes
-
-- Port 5000 is often used by macOS AirPlay Receiver, so we use port 5001
-- The `.env` file is git-ignored to protect sensitive credentials
-- CORS is configured to allow requests from `http://localhost:3000`
-- Both frontend and backend support hot reload during development
-
-## License
-
-ISC
-
-## Author
-
-Jason Schmitt
+> Note: `CHANGELOG.md` predates the firewood rebuild and is out of date — ignore it (or ask for a cleanup).
