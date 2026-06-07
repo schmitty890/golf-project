@@ -64,6 +64,11 @@ function Order() {
   const [rushRequested, setRushRequested] = useState(false);
   const [pickupInstructions, setPickupInstructions] = useState('');
   const [venmoHandle, setVenmoHandle] = useState('');
+  // Promo / referral code.
+  const [codeInput, setCodeInput] = useState('');
+  const [appliedCode, setAppliedCode] = useState('');
+  const [discountInfo, setDiscountInfo] = useState(null); // { discount, label }
+  const [codeError, setCodeError] = useState('');
 
   const [contact, setContact] = useState({ name: '', phone: '', email: '' });
   const [address, setAddress] = useState(reorder?.deliveryAddress ? {
@@ -211,6 +216,54 @@ function Order() {
     };
   })();
 
+  // Numeric subtotal for one-time orders (promo discounts don't apply to subscriptions).
+  const subtotalNum = estimate && !estimate.recurring
+    ? Number(String(estimate.amount).replace(/[^0-9.]/g, '')) || 0
+    : 0;
+  const discount = (!estimate?.recurring && discountInfo?.discount) || 0;
+  const finalTotalNum = Math.max(0, subtotalNum - discount);
+
+  const applyCode = async () => {
+    setCodeError('');
+    const c = codeInput.trim();
+    if (!c) return;
+    try {
+      const res = await axios.post(`${API_URL}/api/promos/validate`, { code: c, subtotal: subtotalNum });
+      if (res.data.valid) {
+        setAppliedCode(res.data.code);
+        setDiscountInfo({ discount: res.data.discount, label: res.data.label });
+      } else {
+        setAppliedCode('');
+        setDiscountInfo(null);
+        setCodeError(res.data.message || 'That code isn’t valid.');
+      }
+    } catch {
+      setCodeError('Could not check that code. Try again.');
+    }
+  };
+
+  const removeCode = () => {
+    setAppliedCode('');
+    setDiscountInfo(null);
+    setCodeInput('');
+    setCodeError('');
+  };
+
+  // Keep the discount in sync if the subtotal changes after a code was applied.
+  useEffect(() => {
+    if (!appliedCode || estimate?.recurring) return undefined;
+    let cancelled = false;
+    axios.post(`${API_URL}/api/promos/validate`, { code: appliedCode, subtotal: subtotalNum })
+      .then((res) => {
+        if (!cancelled && res.data.valid) {
+          setDiscountInfo({ discount: res.data.discount, label: res.data.label });
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotalNum, appliedCode]);
+
   const buildPayload = () => {
     const fulfillment = isPickup ? 'pickup' : 'delivery';
     const base = {
@@ -221,6 +274,8 @@ function Order() {
       preferredDate,
       preferredTimes: selectedWindows.map((w) => ({ from: w.from, to: w.to })),
       rush: isRush,
+      code: appliedCode,
+      subtotal: subtotalNum,
     };
     if (orderType === 'bundle') {
       const bundle = bundles.find((b) => b.id === bundleId);
@@ -279,7 +334,7 @@ function Order() {
 
   if (submitted) {
     const handle = (venmoHandle || '').replace(/^@/, '');
-    const amountNum = estimate && !estimate.recurring ? String(estimate.amount).replace(/[^0-9.]/g, '') : '';
+    const amountNum = estimate && !estimate.recurring ? String(finalTotalNum) : '';
     const venmoNote = `${business.name} firewood order`;
     const venmoUrl = handle
       ? `https://venmo.com/${handle}?txn=pay${amountNum ? `&amount=${amountNum}` : ''}&note=${encodeURIComponent(venmoNote)}`
@@ -292,7 +347,8 @@ function Order() {
       ['How', isPickup ? 'Curb pickup' : 'Delivery'],
       ...(!isPickup ? [['Address', addressLine]] : []),
       ...(isRush ? [['Rush', `Yes (+${rushPercent}%)`]] : []),
-      [estimate?.recurring ? 'Price' : 'Estimated total', estimate?.amount],
+      ...(discount > 0 ? [['Promo', `${appliedCode} (−$${discount})`]] : []),
+      [estimate?.recurring ? 'Price' : 'Estimated total', estimate?.recurring ? estimate?.amount : `$${finalTotalNum}`],
     ].filter(([, v]) => v);
 
     return (
@@ -632,6 +688,34 @@ function Order() {
           </div>
         </fieldset>
 
+        {/* Promo / referral code */}
+        <div>
+          <label htmlFor="promo" className={labelClass}>Promo or referral code (optional)</label>
+          <div className="mt-2 flex gap-2">
+            <input
+              id="promo"
+              type="text"
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value)}
+              placeholder="Enter code"
+              className={inputClass}
+            />
+            {appliedCode ? (
+              <button type="button" onClick={removeCode} className="shrink-0 rounded-xl border border-cream-300 px-4 py-3 text-sm font-semibold text-walnut hover:border-ember">
+                Remove
+              </button>
+            ) : (
+              <button type="button" onClick={applyCode} className="shrink-0 rounded-xl bg-walnut px-5 py-3 text-sm font-semibold text-white hover:bg-walnut-400">
+                Apply
+              </button>
+            )}
+          </div>
+          {codeError && <p className="mt-1 text-xs text-red-600">{codeError}</p>}
+          {appliedCode && discountInfo && (
+            <p className="mt-1 text-xs font-semibold text-green-700">{`Applied ${appliedCode} — ${discountInfo.label}.`}</p>
+          )}
+        </div>
+
         {/* Live price estimate */}
         {estimate && (
           <div className="rounded-xl border border-cream-300 bg-cream-100 p-4">
@@ -639,11 +723,16 @@ function Order() {
               <span className="text-sm font-semibold text-walnut">
                 {estimate.recurring ? 'Estimated price' : 'Estimated total'}
               </span>
-              <span className="text-2xl font-extrabold text-ember">{estimate.amount}</span>
+              <span className="text-2xl font-extrabold text-ember">
+                {estimate.recurring ? estimate.amount : `$${finalTotalNum}`}
+              </span>
             </div>
             <p className="mt-1 text-sm text-walnut-400">{estimate.line}</p>
             {estimate.rushLine && (
               <p className="mt-1 text-sm font-semibold text-amber-700">{estimate.rushLine}</p>
+            )}
+            {discount > 0 && (
+              <p className="mt-1 text-sm font-semibold text-green-700">{`Promo ${appliedCode}: −$${discount}`}</p>
             )}
             <p className="mt-2 text-xs text-walnut-300">
               Estimate only — no payment now. We&apos;ll confirm the final total with you.

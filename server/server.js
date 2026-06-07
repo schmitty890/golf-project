@@ -7,6 +7,7 @@ import authRouter from './routes/auth.js';
 import ordersRouter from './routes/orders.js';
 import settingsRouter from './routes/settings.js';
 import feedbackRouter from './routes/feedback.js';
+import promosRouter from './routes/promos.js';
 import { startReminderJob } from './jobs/reminders.js';
 import { swaggerUi, specs } from './swagger.js';
 
@@ -37,6 +38,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/feedback', feedbackRouter);
+app.use('/api/promos', promosRouter);
 
 // Start server
 httpServer.listen(PORT, () => {

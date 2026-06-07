@@ -157,6 +157,11 @@ function AdminOrders() {
                       {`RUSH +${order.rushPercent || 0}%`}
                     </span>
                   )}
+                  {order.promoCode && (
+                    <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800">
+                      {`${order.promoCode} −$${order.discount || 0}`}
+                    </span>
+                  )}
                 </p>
                 <p className="mt-1 text-sm text-walnut-400">
                   {new Date(order.createdAt).toLocaleString()}

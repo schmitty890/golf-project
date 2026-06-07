@@ -10,6 +10,7 @@ import {
   customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
   orderCancelledOwnerEmail, orderRescheduledOwnerEmail,
 } from '../utils/orderEmails.js';
+import { lookupPromo, computeDiscount } from './promos.js';
 
 const router = express.Router();
 
@@ -128,7 +129,7 @@ router.post('/', optionalAuth, async (req, res) => {
     const {
       orderType, items, packName, bundleCount,
       subscriptionPlan, season, contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
-      rush,
+      rush, code, subtotal,
     } = req.body;
 
     if (!['bundle', 'pack', 'subscription'].includes(orderType)) {
@@ -150,6 +151,17 @@ router.post('/', optionalAuth, async (req, res) => {
     }
     const { windows, isRush, rushPercent } = sched;
 
+    // Apply a promo code if one was entered (re-validated server-side; owner honors final total).
+    let promoCode = '';
+    let discount = 0;
+    const promo = await lookupPromo(code);
+    if (promo) {
+      discount = computeDiscount(promo, subtotal);
+      promoCode = promo.code;
+      promo.uses += 1;
+      await promo.save();
+    }
+
     const order = new Order({
       orderType,
       fulfillment: fulfillment === 'pickup' ? 'pickup' : 'delivery',
@@ -164,6 +176,8 @@ router.post('/', optionalAuth, async (req, res) => {
       preferredTimes: windows.map((w) => ({ from: w.from || '', to: w.to || '' })),
       rush: isRush,
       rushPercent: isRush ? rushPercent : 0,
+      promoCode,
+      discount,
       user: req.userId || null,
       statusHistory: [{ status: 'pending', at: new Date() }],
     });
