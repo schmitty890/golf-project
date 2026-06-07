@@ -21,6 +21,8 @@ function AdminPromos() {
   const [error, setError] = useState('');
   const [form, setForm] = useState(blankForm);
   const [saving, setSaving] = useState(false);
+  const [referral, setReferral] = useState({ enabled: true, type: 'amount', value: 5 });
+  const [refSaved, setRefSaved] = useState(false);
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -41,7 +43,26 @@ function AdminPromos() {
 
   useEffect(() => {
     fetchCodes();
+    axios.get(`${API_URL}/api/settings/availability`)
+      .then((res) => { if (res.data.referralDiscount) setReferral(res.data.referralDiscount); })
+      .catch(() => {});
   }, [fetchCodes]);
+
+  const saveReferral = async () => {
+    try {
+      await axios.put(`${API_URL}/api/settings/availability`, {
+        referralDiscount: {
+          enabled: referral.enabled,
+          type: referral.type,
+          value: Number(referral.value) || 0,
+        },
+      }, authHeaders);
+      setRefSaved(true);
+      setTimeout(() => setRefSaved(false), 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to save referral discount');
+    }
+  };
 
   const create = async (e) => {
     e.preventDefault();
@@ -94,6 +115,45 @@ function AdminPromos() {
       </p>
 
       {error && <p className="mt-4 rounded-md bg-red-50 px-4 py-2 text-sm text-red-800">{error}</p>}
+
+      {/* Referral discount config */}
+      <div className="mt-6 rounded-xl border border-cream-300 bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-walnut">Neighbor referral discount</h2>
+          {refSaved && <span className="text-sm font-semibold text-green-700">Saved ✓</span>}
+        </div>
+        <p className="mt-1 text-xs text-walnut-400">
+          What a referred neighbor gets off their first order. (You reward the referrer manually —
+          orders show who referred them.)
+        </p>
+        <div className="mt-3 flex flex-wrap items-end gap-4">
+          <label className="flex items-center gap-2 pb-2 text-sm font-semibold text-walnut">
+            <input
+              type="checkbox"
+              checked={referral.enabled}
+              onChange={(e) => setReferral({ ...referral, enabled: e.target.checked })}
+              className="h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+            />
+            Offer referrals
+          </label>
+          <div>
+            <label htmlFor="r-type" className="block text-xs font-semibold text-walnut">Type</label>
+            <select id="r-type" value={referral.type} onChange={(e) => setReferral({ ...referral, type: e.target.value })} className={`mt-1 ${inputClass}`}>
+              <option value="amount">$ off</option>
+              <option value="percent">% off</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="r-value" className="block text-xs font-semibold text-walnut">
+              {referral.type === 'percent' ? 'Percent' : 'Amount ($)'}
+            </label>
+            <input id="r-value" type="number" min={0} value={referral.value} onChange={(e) => setReferral({ ...referral, value: e.target.value })} className={`mt-1 w-24 ${inputClass}`} />
+          </div>
+          <button type="button" onClick={saveReferral} className="rounded-lg bg-ember px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600">
+            Save
+          </button>
+        </div>
+      </div>
 
       {/* Create form */}
       <form onSubmit={create} className="mt-6 rounded-xl border border-cream-300 bg-white p-5">

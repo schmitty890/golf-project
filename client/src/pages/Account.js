@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { UserCircleIcon } from '@heroicons/react/24/solid';
 import { AuthContext } from '../context/AuthContext';
+import ReferralShare from '../components/ReferralShare';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -164,6 +165,7 @@ function Account() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      <ReferralShare className="mb-8" />
       <form onSubmit={handleProfileSubmit}>
         <div className="space-y-12">
           {/* Profile Section */}

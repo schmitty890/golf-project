@@ -10,7 +10,9 @@ import {
   customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
   orderCancelledOwnerEmail, orderRescheduledOwnerEmail,
 } from '../utils/orderEmails.js';
-import { lookupPromo, computeDiscount } from './promos.js';
+import {
+  lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
+} from './promos.js';
 
 const router = express.Router();
 
@@ -151,15 +153,24 @@ router.post('/', optionalAuth, async (req, res) => {
     }
     const { windows, isRush, rushPercent } = sched;
 
-    // Apply a promo code if one was entered (re-validated server-side; owner honors final total).
+    // Apply a promo OR a neighbor's referral code (re-validated; owner honors final total).
     let promoCode = '';
     let discount = 0;
+    let referredBy = null;
     const promo = await lookupPromo(code);
     if (promo) {
       discount = computeDiscount(promo, subtotal);
       promoCode = promo.code;
       promo.uses += 1;
       await promo.save();
+    } else if (code) {
+      const rc = referralConfig(settings);
+      const referrer = rc.enabled ? await lookupReferralUser(code, req.userId) : null;
+      if (referrer) {
+        discount = discountAmount(rc.type, rc.value, subtotal);
+        promoCode = referrer.referralCode;
+        referredBy = referrer._id;
+      }
     }
 
     const order = new Order({
@@ -178,6 +189,7 @@ router.post('/', optionalAuth, async (req, res) => {
       rushPercent: isRush ? rushPercent : 0,
       promoCode,
       discount,
+      referredBy,
       user: req.userId || null,
       statusHistory: [{ status: 'pending', at: new Date() }],
     });
@@ -261,7 +273,8 @@ router.get('/', auth, requireAdmin, async (req, res) => {
     if (orderType) filter.orderType = orderType;
     const orders = await Order.find(filter)
       .sort({ createdAt: -1 })
-      .populate('user', 'email firstName lastName');
+      .populate('user', 'email firstName lastName')
+      .populate('referredBy', 'firstName lastName email');
     return res.json(orders);
   } catch (error) {
     console.error('List orders error:', error);

@@ -20,6 +20,12 @@ const settingsSchema = new mongoose.Schema({
     type: String,
     default: 'Your bundles will be set out by the front-door Ring camera — grab them anytime during your window.',
   },
+  // Neighbor-referral discount for the NEW customer (referrer is rewarded manually).
+  referralDiscount: {
+    enabled: { type: Boolean, default: true },
+    type: { type: String, enum: ['amount', 'percent'], default: 'amount' },
+    value: { type: Number, default: 5, min: 0 },
+  },
 }, { timestamps: true, minimize: false });
 
 export default mongoose.model('Settings', settingsSchema);

@@ -54,6 +54,12 @@ const orderSchema = new mongoose.Schema({
   // Promo code applied at checkout + the dollar discount recorded (owner honors final total).
   promoCode: { type: String, default: '' },
   discount: { type: Number, default: 0 },
+  // Set when a referral code was used — the referring customer (for manual reward).
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
   // When the "evening before" reminder email was sent (null = not yet). Idempotency guard.
   reminderSentAt: { type: Date, default: null },
   // How the customer receives the order. Pickup orders don't need a delivery address.

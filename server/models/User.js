@@ -34,6 +34,14 @@ const userSchema = new mongoose.Schema({
     enum: ['customer', 'admin'],
     default: 'customer',
   },
+  // Personal referral code (generated on demand). Sparse-unique so users without one don't clash.
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    uppercase: true,
+    trim: true,
+  },
 }, { timestamps: true });
 
 // Hash password before saving
