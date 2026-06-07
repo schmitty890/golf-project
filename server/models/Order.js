@@ -51,6 +51,8 @@ const orderSchema = new mongoose.Schema({
   rushPercent: { type: Number, default: 0 },
   // How the customer pays. Venmo for now.
   paymentMethod: { type: String, default: 'venmo' },
+  // When the "evening before" reminder email was sent (null = not yet). Idempotency guard.
+  reminderSentAt: { type: Date, default: null },
   // How the customer receives the order. Pickup orders don't need a delivery address.
   fulfillment: {
     type: String,

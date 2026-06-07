@@ -159,6 +159,23 @@ export function windowConfirmedEmail(order, pickupInstructions = '') {
   return { subject, html, text };
 }
 
+export function reminderEmail(order, pickupInstructions = '') {
+  const when = [fmtDate(order.schedule?.date), windowsText(order)].filter(Boolean).join(' · ');
+  const isPickup = order.fulfillment === 'pickup';
+  const note = isPickup
+    ? (pickupInstructions || "We'll have your bundles out for your window.")
+    : "We'll deliver within your window.";
+  const venmo = venmoBlock(order);
+  const subject = `Reminder: your firewood is set for tomorrow — ${when}`;
+  const body = `<p>Quick reminder — your ${isPickup ? 'pickup' : 'delivery'} is tomorrow:</p>
+    ${linesToHtml([['When', when], ['How', fulfillmentText(order)], ['Order', describeOrder(order)]])}
+    <p style="margin-top:12px">${note}</p>
+    ${venmo ? `<p style="margin-top:12px">${venmo}</p>` : ''}`;
+  const html = wrap('See you tomorrow!', body);
+  const text = `Reminder — your ${isPickup ? 'pickup' : 'delivery'} is tomorrow.\n\nWhen: ${when}\nOrder: ${describeOrder(order)}\n\n${note}${venmo ? `\n\n${venmo}` : ''}`;
+  return { subject, html, text };
+}
+
 export function deliveredEmail(order) {
   const site = process.env.SITE_URL;
   const fb = site ? `<p><a href="${site}" style="color:#b5471f">Leave a quick review</a> — it helps your neighbors.</p>` : '';
