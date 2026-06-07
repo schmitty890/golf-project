@@ -7,6 +7,7 @@ import authRouter from './routes/auth.js';
 import ordersRouter from './routes/orders.js';
 import settingsRouter from './routes/settings.js';
 import feedbackRouter from './routes/feedback.js';
+import { startReminderJob } from './jobs/reminders.js';
 import { swaggerUi, specs } from './swagger.js';
 
 dotenv.config();
@@ -22,7 +23,10 @@ app.use(express.json());
 // MongoDB Connection
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB Atlas'))
+  .then(() => {
+    console.log('Connected to MongoDB Atlas');
+    startReminderJob(); // evening-before reminder emails
+  })
   .catch((err) => console.error('MongoDB connection error:', err));
 
 // Swagger Documentation
