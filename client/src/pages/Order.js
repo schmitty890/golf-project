@@ -321,8 +321,8 @@ function Order() {
             </a>
           )}
           <p className="mt-2 text-xs text-walnut-300">
-            No payment needed to hold your order. After you send your Venmo payment, we&apos;ll mark
-            your order as paid once we confirm the final total.
+            No payment needed to hold your order. The Venmo button above is pre-filled with your
+            total — just send it, and we&apos;ll mark your order as paid once it arrives.
           </p>
         </div>
 

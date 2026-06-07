@@ -87,7 +87,7 @@ function venmoBlock(order) {
   if (!handle) return null;
   const t = orderTotal(order);
   const amount = t ? `$${t.total}` : 'the order total';
-  return `Pay via Venmo to @${handle.replace(/^@/, '')} for ${amount}. Add your name in the note. (We'll confirm the final total.)`;
+  return `Pay ${amount} via Venmo to @${handle.replace(/^@/, '')} — the amount is pre-filled in the link. Add your name in the note so we can match your order.`;
 }
 
 // Minimal branded HTML wrapper.
