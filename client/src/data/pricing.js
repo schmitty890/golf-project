@@ -18,18 +18,6 @@ export const products = [
     bundles: 3,
     description: 'Best value for longer fires or gatherings.',
   },
-  {
-    id: 'kindling-pack',
-    name: 'Kindling Pack',
-    price: 5,
-    description: 'Quick-light hardwood kindling.',
-  },
-  {
-    id: 'firestarter-kit',
-    name: 'Firestarter Kit',
-    price: 10,
-    description: 'Wax starter + kindling + shavings.',
-  },
 ];
 
 export const getProduct = (id) => products.find((p) => p.id === id);
