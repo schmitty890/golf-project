@@ -175,7 +175,7 @@ router.post('/', optionalAuth, async (req, res) => {
           customerEmail = u?.email || '';
         }
         if (customerEmail) {
-          await sendMail({ to: customerEmail, ...customerConfirmationEmail(order) });
+          await sendMail({ to: customerEmail, ...customerConfirmationEmail(order, settings?.pickupInstructions) });
         }
         if (process.env.OWNER_EMAIL) {
           await sendMail({ to: process.env.OWNER_EMAIL, ...ownerAlertEmail(order) });
@@ -345,8 +345,12 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
     const customerEmail = order.contact?.email || '';
     if (customerEmail && order.status !== prevStatus) {
       let email = null;
-      if (order.status === 'confirmed' && order.schedule?.from) email = windowConfirmedEmail(order);
-      else if (order.status === 'delivered') email = deliveredEmail(order);
+      if (order.status === 'confirmed' && order.schedule?.from) {
+        const settings = await Settings.findOne({ key: 'availability' });
+        email = windowConfirmedEmail(order, settings?.pickupInstructions);
+      } else if (order.status === 'delivered') {
+        email = deliveredEmail(order);
+      }
       if (email) sendMail({ to: customerEmail, ...email });
     }
 

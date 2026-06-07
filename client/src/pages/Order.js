@@ -43,6 +43,8 @@ function Order() {
   const [rushPercent, setRushPercent] = useState(25);
   // Customer opted into a rush ("in a pinch") order to unlock within-lead dates.
   const [rushRequested, setRushRequested] = useState(false);
+  const [pickupInstructions, setPickupInstructions] = useState('');
+  const [venmoHandle, setVenmoHandle] = useState('');
 
   const [contact, setContact] = useState({ name: '', phone: '', email: '' });
   const [address, setAddress] = useState({
@@ -89,6 +91,10 @@ function Order() {
         if (res.data.leadDays !== undefined) setLeadDays(res.data.leadDays);
         if (res.data.rushEnabled !== undefined) setRushEnabled(res.data.rushEnabled);
         if (res.data.rushPercent !== undefined) setRushPercent(res.data.rushPercent);
+        if (res.data.pickupInstructions !== undefined) {
+          setPickupInstructions(res.data.pickupInstructions);
+        }
+        if (res.data.venmoHandle !== undefined) setVenmoHandle(res.data.venmoHandle);
       })
       .catch(() => setDateOverrides({})); // fall back to "all open" on error
   }, []);
@@ -248,19 +254,63 @@ function Order() {
   };
 
   if (submitted) {
+    const handle = (venmoHandle || '').replace(/^@/, '');
+    const amountNum = estimate && !estimate.recurring ? String(estimate.amount).replace(/[^0-9.]/g, '') : '';
+    const venmoNote = `${business.name} firewood order`;
+    const venmoUrl = handle
+      ? `https://venmo.com/${handle}?txn=pay${amountNum ? `&amount=${amountNum}` : ''}&note=${encodeURIComponent(venmoNote)}`
+      : '';
+    const windowsLabel = selectedWindows.map((w) => w.label).join(', ');
+    const addressLine = [address.street, address.unit, address.neighborhood].filter(Boolean).join(', ');
+    const summaryRows = [
+      ['Order', estimate?.line],
+      ['When', `${formatDayLabel(preferredDate)}${windowsLabel ? ` · ${windowsLabel}` : ''}`],
+      ['How', isPickup ? 'Curb pickup' : 'Delivery'],
+      ...(!isPickup ? [['Address', addressLine]] : []),
+      ...(isRush ? [['Rush', `Yes (+${rushPercent}%)`]] : []),
+      [estimate?.recurring ? 'Price' : 'Estimated total', estimate?.amount],
+    ].filter(([, v]) => v);
+
     return (
-      <div className="mx-auto max-w-xl px-4 py-20 text-center sm:px-6 lg:px-8">
-        <CheckCircleIcon className="mx-auto h-16 w-16 text-ember" aria-hidden="true" />
-        <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-walnut">Order received!</h1>
-        <p className="mt-4 text-walnut-400">
-          Thanks for your order. We&apos;ll reach out to confirm details and arrange
-          {' '}
-          {isPickup ? 'a pickup time' : 'delivery'}
-          . For anything urgent, email us at
-          {' '}
-          <a href={`mailto:${business.email}`} className="font-semibold text-ember">{business.email}</a>
-          .
-        </p>
+      <div className="mx-auto max-w-xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <CheckCircleIcon className="mx-auto h-16 w-16 text-ember" aria-hidden="true" />
+          <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-walnut">Order received!</h1>
+          <p className="mt-2 text-walnut-400">Thanks! Here are your details — we&apos;ll confirm your time window shortly.</p>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-cream-300 bg-cream-100 p-6 text-left">
+          <dl className="space-y-2 text-sm">
+            {summaryRows.map(([label, value]) => (
+              <div key={label} className="flex justify-between gap-4">
+                <dt className="shrink-0 text-walnut-300">{label}</dt>
+                <dd className="text-right font-semibold text-walnut">{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <p className="mt-4 rounded-lg bg-white p-3 text-sm text-walnut">
+            {isPickup
+              ? (pickupInstructions || 'We’ll set your bundles out for your window.')
+              : 'We’ll deliver within your window.'}
+          </p>
+
+          {venmoUrl && (
+            <a
+              href={venmoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 flex w-full items-center justify-center rounded-xl bg-[#3D95CE] px-4 py-3 text-base font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              {amountNum ? `Pay $${amountNum} with Venmo` : 'Pay with Venmo'}
+              {` · @${handle}`}
+            </a>
+          )}
+          <p className="mt-2 text-xs text-walnut-300">
+            No payment needed to hold your order — we&apos;ll confirm the final total with you.
+          </p>
+        </div>
+
         <div className="mt-8 flex justify-center gap-4">
           <Link to="/" className="rounded-md bg-cream-300 px-5 py-2.5 text-sm font-semibold text-walnut hover:bg-cream-400">
             Back home
@@ -271,6 +321,12 @@ function Order() {
             </Link>
           )}
         </div>
+        <p className="mt-6 text-center text-sm text-walnut-400">
+          Questions? Email
+          {' '}
+          <a href={`mailto:${business.email}`} className="font-semibold text-ember">{business.email}</a>
+          .
+        </p>
       </div>
     );
   }

@@ -105,13 +105,14 @@ function linesToText(lines) {
   return lines.map(([k, v]) => `${k}: ${v}`).join('\n');
 }
 
-export function customerConfirmationEmail(order) {
+export function customerConfirmationEmail(order, pickupInstructions = '') {
   const lines = summaryLines(order);
   const venmo = venmoBlock(order);
+  const pickup = order.fulfillment === 'pickup' && pickupInstructions ? pickupInstructions : '';
   const subject = `We got your order — ${BUSINESS()}`;
   const intro = "Thanks for your order! Here's what we have. We'll confirm your time window shortly.";
-  const html = wrap('Order received', `<p>${intro}</p>${linesToHtml(lines)}${venmo ? `<p style="margin-top:16px">${venmo}</p>` : ''}`);
-  const text = `${intro}\n\n${linesToText(lines)}${venmo ? `\n\n${venmo}` : ''}`;
+  const html = wrap('Order received', `<p>${intro}</p>${linesToHtml(lines)}${pickup ? `<p style="margin-top:16px">${pickup}</p>` : ''}${venmo ? `<p style="margin-top:16px">${venmo}</p>` : ''}`);
+  const text = `${intro}\n\n${linesToText(lines)}${pickup ? `\n\n${pickup}` : ''}${venmo ? `\n\n${venmo}` : ''}`;
   return { subject, html, text };
 }
 
@@ -124,17 +125,19 @@ export function ownerAlertEmail(order) {
   return { subject, html, text };
 }
 
-export function windowConfirmedEmail(order) {
+export function windowConfirmedEmail(order, pickupInstructions = '') {
   const when = [fmtDate(order.schedule?.date || order.preferredDate), windowsText(order)].filter(Boolean).join(' · ');
   const how = fulfillmentText(order);
+  const isPickup = order.fulfillment === 'pickup';
+  const note = isPickup
+    ? (pickupInstructions || "We'll have your bundles out for that window — grab them anytime within it.")
+    : "We'll deliver within that window.";
   const subject = `You're booked — ${when}`;
-  const body = `<p>Your ${order.fulfillment === 'pickup' ? 'pickup' : 'delivery'} is confirmed:</p>
+  const body = `<p>Your ${isPickup ? 'pickup' : 'delivery'} is confirmed:</p>
     ${linesToHtml([['When', when], ['How', how], ['Order', describeOrder(order)]])}
-    <p style="margin-top:12px">${order.fulfillment === 'pickup'
-    ? "We'll have it out at the curb for that window — grab it anytime within it."
-    : "We'll deliver within that window."}</p>`;
+    <p style="margin-top:12px">${note}</p>`;
   const html = wrap('Window confirmed', body);
-  const text = `Your ${order.fulfillment === 'pickup' ? 'pickup' : 'delivery'} is confirmed.\n\nWhen: ${when}\nHow: ${how}\nOrder: ${describeOrder(order)}`;
+  const text = `Your ${isPickup ? 'pickup' : 'delivery'} is confirmed.\n\nWhen: ${when}\nHow: ${how}\nOrder: ${describeOrder(order)}\n\n${note}`;
   return { subject, html, text };
 }
 
