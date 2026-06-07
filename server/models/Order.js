@@ -49,6 +49,8 @@ const orderSchema = new mongoose.Schema({
   rush: { type: Boolean, default: false },
   // Snapshot of the rush surcharge % applied at order time (0 when not a rush order).
   rushPercent: { type: Number, default: 0 },
+  // How the customer pays. Venmo for now.
+  paymentMethod: { type: String, default: 'venmo' },
   // How the customer receives the order. Pickup orders don't need a delivery address.
   fulfillment: {
     type: String,

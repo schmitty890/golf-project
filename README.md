@@ -107,6 +107,27 @@ npm run dev
 
 The client runs on `http://localhost:3000` and the API on `http://localhost:5001`.
 
+### Email notifications (optional)
+
+The app emails an **order confirmation** to the customer, a **new-order alert** to the owner,
+and **"window confirmed"** / **"thank-you"** updates as orders progress. Until SMTP is
+configured these emails **silently no-op** (they just log), so everything works without it.
+
+To turn them on, add to `server/.env`:
+
+```
+SMTP_HOST=smtp.gmail.com         # or your provider (Resend, SendGrid, Mailgun…)
+SMTP_PORT=587
+SMTP_USER=you@gmail.com          # Gmail needs an App Password, not your login password
+SMTP_PASS=your_app_password
+MAIL_FROM="VOLW Firewood <you@gmail.com>"
+OWNER_EMAIL=you@gmail.com        # where new-order alerts go
+BUSINESS_NAME=VOLW Firewood
+SERVICE_AREA=The Vineyards on Lake Wylie
+VENMO_HANDLE=your-venmo-username  # shown as payment instructions in emails
+SITE_URL=https://your-site-url    # optional; adds a "leave a review" link
+```
+
 **Useful scripts** (run inside `client/` or `server/`): `npm run lint`, `npm run lint:fix`, `npm run build` (client), `npm test` (server).
 
 ## Project structure

@@ -15,6 +15,11 @@ const settingsSchema = new mongoose.Schema({
   rushEnabled: { type: Boolean, default: true },
   // Percentage surcharge applied to rush (same-day / within-lead) orders.
   rushPercent: { type: Number, default: 25, min: 0 },
+  // Admin-editable text shown to pickup customers (success screen + emails).
+  pickupInstructions: {
+    type: String,
+    default: 'Your bundles will be set out by the front-door Ring camera — grab them anytime during your window.',
+  },
 }, { timestamps: true, minimize: false });
 
 export default mongoose.model('Settings', settingsSchema);

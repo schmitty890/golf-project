@@ -7,7 +7,10 @@ const router = express.Router();
 
 const KEY = 'availability';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const DEFAULTS = { leadDays: 1, rushEnabled: true, rushPercent: 25 };
+const DEFAULT_PICKUP = 'Your bundles will be set out by the front-door Ring camera — grab them anytime during your window.';
+const DEFAULTS = {
+  leadDays: 1, rushEnabled: true, rushPercent: 25, pickupInstructions: DEFAULT_PICKUP,
+};
 
 /**
  * @swagger
@@ -27,6 +30,9 @@ router.get('/availability', async (req, res) => {
       leadDays: doc?.leadDays ?? DEFAULTS.leadDays,
       rushEnabled: doc?.rushEnabled ?? DEFAULTS.rushEnabled,
       rushPercent: doc?.rushPercent ?? DEFAULTS.rushPercent,
+      pickupInstructions: doc?.pickupInstructions ?? DEFAULTS.pickupInstructions,
+      // A Venmo handle is public by design (it's how customers pay).
+      venmoHandle: process.env.VENMO_HANDLE || '',
     });
   } catch (error) {
     console.error('Get availability error:', error);
@@ -64,6 +70,9 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
     if (req.body?.rushPercent !== undefined) {
       update.rushPercent = Math.max(0, Number(req.body.rushPercent) || 0);
     }
+    if (req.body?.pickupInstructions !== undefined) {
+      update.pickupInstructions = String(req.body.pickupInstructions);
+    }
 
     const doc = await Settings.findOneAndUpdate(
       { key: KEY },
@@ -75,6 +84,7 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
       leadDays: doc.leadDays,
       rushEnabled: doc.rushEnabled,
       rushPercent: doc.rushPercent,
+      pickupInstructions: doc.pickupInstructions,
     });
   } catch (error) {
     console.error('Update availability error:', error);

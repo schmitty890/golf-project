@@ -30,6 +30,7 @@ function AdminAvailability() {
   const [leadDays, setLeadDays] = useState(1);
   const [rushEnabled, setRushEnabled] = useState(true);
   const [rushPercent, setRushPercent] = useState(25);
+  const [pickupInstructions, setPickupInstructions] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,6 +40,9 @@ function AdminAvailability() {
       if (res.data.leadDays !== undefined) setLeadDays(res.data.leadDays);
       if (res.data.rushEnabled !== undefined) setRushEnabled(res.data.rushEnabled);
       if (res.data.rushPercent !== undefined) setRushPercent(res.data.rushPercent);
+      if (res.data.pickupInstructions !== undefined) {
+        setPickupInstructions(res.data.pickupInstructions);
+      }
       setError('');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load availability');
@@ -73,7 +77,12 @@ function AdminAvailability() {
     try {
       await axios.put(
         `${API_URL}/api/settings/availability`,
-        { leadDays: Number(leadDays) || 0, rushEnabled, rushPercent: Number(rushPercent) || 0 },
+        {
+          leadDays: Number(leadDays) || 0,
+          rushEnabled,
+          rushPercent: Number(rushPercent) || 0,
+          pickupInstructions,
+        },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setError('');
@@ -192,14 +201,28 @@ function AdminAvailability() {
                 className="mt-1 w-24 rounded-lg border border-cream-300 px-3 py-2 text-sm text-walnut disabled:opacity-50"
               />
             </div>
-            <button
-              type="button"
-              onClick={saveRules}
-              className="rounded-lg bg-ember px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600"
-            >
-              Save rules
-            </button>
           </div>
+
+          <div className="mt-4">
+            <label htmlFor="pickup-instructions" className="block text-xs font-semibold text-walnut">
+              Pickup instructions (shown to pickup customers + in emails)
+            </label>
+            <textarea
+              id="pickup-instructions"
+              rows={2}
+              value={pickupInstructions}
+              onChange={(e) => setPickupInstructions(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2 text-sm text-walnut"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={saveRules}
+            className="mt-4 rounded-lg bg-ember px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600"
+          >
+            Save rules
+          </button>
         </div>
       )}
 
