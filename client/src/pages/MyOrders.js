@@ -1,10 +1,11 @@
 /* eslint-disable no-underscore-dangle */
 import { useState, useEffect, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ClockIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import FeedbackModal from '../components/FeedbackModal';
+import { bundles, seasonalPacks } from '../data/pricing';
 import {
   describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
@@ -12,12 +13,42 @@ import {
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
+// Build an "Order again" prefill payload from a past order.
+function buildReorder(order) {
+  const reorder = { orderType: order.orderType, deliveryAddress: order.deliveryAddress || {} };
+  if (order.orderType === 'bundle') {
+    const b = bundles.find((x) => x.name === order.items?.[0]?.name);
+    reorder.bundleId = b?.id;
+    reorder.quantity = order.items?.[0]?.quantity || 1;
+  } else if (order.orderType === 'pack') {
+    reorder.packId = seasonalPacks.find((x) => x.name === order.packName)?.id;
+  } else if (order.orderType === 'subscription') {
+    reorder.subscriptionPlan = order.subscriptionPlan;
+    reorder.season = order.season;
+  }
+  return reorder;
+}
+
 function MyOrders() {
   const { token } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+  const cancelOrder = async (id) => {
+    // eslint-disable-next-line no-alert
+    if (!window.confirm('Cancel this order? This cannot be undone.')) return;
+    try {
+      const res = await axios.patch(`${API_URL}/api/orders/${id}/cancel`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, ...res.data } : o)));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to cancel order');
+    }
+  };
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -119,6 +150,25 @@ function MyOrders() {
                 </li>
               ))}
             </ul>
+
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-cream-300 pt-3">
+              <button
+                type="button"
+                onClick={() => navigate('/order', { state: { reorder: buildReorder(order) } })}
+                className="rounded-lg border border-ember px-3 py-1.5 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
+              >
+                Order again
+              </button>
+              {['pending', 'confirmed'].includes(order.status) && (
+                <button
+                  type="button"
+                  onClick={() => cancelOrder(order._id)}
+                  className="rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </li>
         ))}
       </ul>

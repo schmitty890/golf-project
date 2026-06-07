@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useState, useContext, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { TruckIcon, BuildingStorefrontIcon } from '@heroicons/react/24/outline';
@@ -26,12 +26,31 @@ const QUANTITY_PRESETS = [1, 2, 3, 4, 5, 6];
 function Order() {
   const { user, token } = useContext(AuthContext);
 
-  const [orderType, setOrderType] = useState('bundle');
-  const [bundleId, setBundleId] = useState(bundles[0].id);
-  const [quantity, setQuantity] = useState(1);
-  const [packId, setPackId] = useState(activePacks[0]?.id || '');
-  const [subscriptionPlan, setSubscriptionPlan] = useState(subscriptions[0].plan);
-  const [season, setSeason] = useState(seasons[0].id);
+  // Prefill from an "Order again" navigation (My Orders), sanitized against current data.
+  const location = useLocation();
+  const reorder = location.state?.reorder || null;
+  const reorderType = (() => {
+    const t = reorder?.orderType;
+    if (!['bundle', 'pack', 'subscription'].includes(t)) return 'bundle';
+    if (t === 'pack' && activePacks.length === 0) return 'bundle'; // pack out of season now
+    return t;
+  })();
+
+  const [orderType, setOrderType] = useState(reorderType);
+  const [bundleId, setBundleId] = useState(
+    bundles.some((b) => b.id === reorder?.bundleId) ? reorder.bundleId : bundles[0].id,
+  );
+  const [quantity, setQuantity] = useState(reorder?.quantity > 0 ? reorder.quantity : 1);
+  const [packId, setPackId] = useState(
+    activePacks.some((p) => p.id === reorder?.packId) ? reorder.packId : (activePacks[0]?.id || ''),
+  );
+  const [subscriptionPlan, setSubscriptionPlan] = useState(
+    subscriptions.some((s) => s.plan === reorder?.subscriptionPlan)
+      ? reorder.subscriptionPlan : subscriptions[0].plan,
+  );
+  const [season, setSeason] = useState(
+    seasons.some((s) => s.id === reorder?.season) ? reorder.season : seasons[0].id,
+  );
   const [preferredDate, setPreferredDate] = useState('');
   const [windowFroms, setWindowFroms] = useState([]);
   // Admin date overrides: { 'YYYY-MM-DD': ['HH:MM', ...] }. Absent date = fully open;
@@ -47,7 +66,12 @@ function Order() {
   const [venmoHandle, setVenmoHandle] = useState('');
 
   const [contact, setContact] = useState({ name: '', phone: '', email: '' });
-  const [address, setAddress] = useState({
+  const [address, setAddress] = useState(reorder?.deliveryAddress ? {
+    street: reorder.deliveryAddress.street || '',
+    unit: reorder.deliveryAddress.unit || '',
+    neighborhood: reorder.deliveryAddress.neighborhood || '',
+    notes: reorder.deliveryAddress.notes || '',
+  } : {
     street: '', unit: '', neighborhood: '', notes: '',
   });
 

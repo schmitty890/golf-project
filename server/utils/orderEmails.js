@@ -125,6 +125,15 @@ export function ownerAlertEmail(order) {
   return { subject, html, text };
 }
 
+export function orderCancelledOwnerEmail(order) {
+  const lines = summaryLines(order);
+  const contact = `${order.contact?.name || ''}${order.contact?.phone ? ` · ${order.contact.phone}` : ''}`;
+  const subject = `Order cancelled by customer: ${describeOrder(order)}`;
+  const html = wrap('Order cancelled by customer', `${linesToHtml([...lines, ['Contact', contact]])}`);
+  const text = `A customer cancelled their order.\n\n${linesToText([...lines, ['Contact', contact]])}`;
+  return { subject, html, text };
+}
+
 export function windowConfirmedEmail(order, pickupInstructions = '') {
   const when = [fmtDate(order.schedule?.date || order.preferredDate), windowsText(order)].filter(Boolean).join(' · ');
   const how = fulfillmentText(order);
