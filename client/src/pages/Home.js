@@ -94,7 +94,7 @@ function About() {
 
 const steps = [
   { name: 'Place your order', description: 'Choose your bundles, packs, or a subscription online.', icon: ShoppingCartIcon },
-  { name: 'We deliver', description: 'We bring clean firewood to your doorstep or driveway.', icon: TruckIcon },
+  { name: 'Pickup or delivery', description: 'Pick a date and a 1-hour window — we deliver to your door, or you grab your bundles from our porch during your window.', icon: TruckIcon },
   { name: 'You enjoy', description: 'Light it up and enjoy a cozy fire — no hassle.', icon: FireIcon },
 ];
 
@@ -128,7 +128,7 @@ const reasons = [
   { name: 'Local', icon: MapPinIcon },
   { name: 'Clean bundles', icon: SparklesIcon },
   { name: 'Predictable delivery', icon: ClockIcon },
-  { name: 'Delivery included', icon: TruckIcon },
+  { name: 'Pickup or delivery', icon: TruckIcon },
 ];
 
 function WhyVolw() {
