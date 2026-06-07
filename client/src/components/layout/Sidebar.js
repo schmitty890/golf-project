@@ -8,6 +8,7 @@ import {
   CalendarDaysIcon,
   StarIcon,
   ListBulletIcon,
+  TicketIcon,
 } from '@heroicons/react/24/outline';
 import Logo from '../Logo';
 import { AuthContext } from '../../context/AuthContext';
@@ -25,6 +26,7 @@ function Sidebar({ collapsed = false }) {
     navigation.push({ name: 'Orders (Admin)', href: '/admin/orders', icon: InboxStackIcon });
     navigation.push({ name: 'Availability', href: '/admin/availability', icon: CalendarDaysIcon });
     navigation.push({ name: 'Feedback', href: '/admin/feedback', icon: StarIcon });
+    navigation.push({ name: 'Promo codes', href: '/admin/promos', icon: TicketIcon });
   }
 
   return (
