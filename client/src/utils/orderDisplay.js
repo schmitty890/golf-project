@@ -127,3 +127,12 @@ export const statusClasses = {
   delivered: 'bg-green-100 text-green-800',
   cancelled: 'bg-gray-200 text-gray-700',
 };
+
+export const paymentStatusClasses = {
+  unpaid: 'bg-amber-100 text-amber-800',
+  paid: 'bg-green-100 text-green-800',
+};
+
+export function paymentLabel(order) {
+  return order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid';
+}

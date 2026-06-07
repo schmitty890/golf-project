@@ -9,6 +9,7 @@ import { TIME_WINDOWS } from '../../data/pricing';
 import {
   describeOrder, statusClasses, STATUS_OPTIONS, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
+  paymentStatusClasses, paymentLabel,
 } from '../../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -53,6 +54,15 @@ function AdminOrders() {
       setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, status } : o)));
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update order');
+    }
+  };
+
+  const updatePayment = async (id, paymentStatus) => {
+    try {
+      const res = await axios.patch(`${API_URL}/api/orders/${id}`, { paymentStatus }, authHeaders);
+      setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, ...res.data } : o)));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update payment');
     }
   };
 
@@ -214,6 +224,22 @@ function AdminOrders() {
                     <option key={s} value={s} className="capitalize">{s}</option>
                   ))}
                 </select>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClasses[order.paymentStatus] || paymentStatusClasses.unpaid}`}>
+                  {paymentLabel(order)}
+                  {order.paymentStatus === 'paid' && order.paidAt
+                    ? ` · ${new Date(order.paidAt).toLocaleDateString()}`
+                    : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => updatePayment(
+                    order._id,
+                    order.paymentStatus === 'paid' ? 'unpaid' : 'paid',
+                  )}
+                  className="rounded-md border border-cream-300 px-2 py-1 text-sm font-semibold text-walnut hover:border-ember"
+                >
+                  {order.paymentStatus === 'paid' ? 'Mark unpaid' : 'Mark paid'}
+                </button>
                 <button
                   type="button"
                   onClick={() => deleteOrder(order._id)}

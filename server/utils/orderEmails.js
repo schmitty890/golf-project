@@ -181,6 +181,16 @@ export function reminderEmail(order, pickupInstructions = '') {
   return { subject, html, text };
 }
 
+export function paymentReceivedEmail(order) {
+  const t = orderTotal(order);
+  const amount = t ? `$${t.total}` : 'your order';
+  const subject = `Payment received — ${BUSINESS()}`;
+  const intro = `Thanks! We've marked ${describeOrder(order)} as paid (${amount}).`;
+  const html = wrap('Payment received', `<p>${intro}</p>${linesToHtml(summaryLines(order))}`);
+  const text = `${intro}\n\n${linesToText(summaryLines(order))}`;
+  return { subject, html, text };
+}
+
 export function deliveredEmail(order) {
   const site = process.env.SITE_URL;
   const fb = site ? `<p><a href="${site}" style="color:#b5471f">Leave a quick review</a> — it helps your neighbors.</p>` : '';

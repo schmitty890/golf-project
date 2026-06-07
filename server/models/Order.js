@@ -42,6 +42,10 @@ const orderSchema = new mongoose.Schema({
   rushPercent: { type: Number, default: 0 },
   // How the customer pays. Venmo for now.
   paymentMethod: { type: String, default: 'venmo' },
+  // Whether the owner has confirmed payment was received (manual — Venmo is reconciled by hand).
+  paymentStatus: { type: String, enum: ['unpaid', 'paid'], default: 'unpaid' },
+  // When the order was marked paid (null = not yet).
+  paidAt: { type: Date, default: null },
   // Promo code applied at checkout + the dollar discount recorded (owner honors final total).
   promoCode: { type: String, default: '' },
   discount: { type: Number, default: 0 },

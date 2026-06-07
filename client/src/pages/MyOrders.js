@@ -9,6 +9,7 @@ import RescheduleModal from '../components/RescheduleModal';
 import {
   describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
+  paymentStatusClasses, paymentLabel,
 } from '../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -134,9 +135,14 @@ function MyOrders() {
                   </p>
                 )}
               </div>
-              <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClasses[order.status] || ''}`}>
-                {order.status}
-              </span>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClasses[order.status] || ''}`}>
+                  {order.status}
+                </span>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClasses[order.paymentStatus] || paymentStatusClasses.unpaid}`}>
+                  {paymentLabel(order)}
+                </span>
+              </div>
             </div>
             {formatSchedule(order.schedule) && (
               <p className="mt-3 flex items-center gap-2 rounded-md bg-cream-300/50 px-3 py-2 text-sm font-semibold text-walnut">

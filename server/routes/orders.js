@@ -8,7 +8,7 @@ import requireAdmin from '../middleware/requireAdmin.js';
 import { sendMail } from '../utils/mailer.js';
 import {
   customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
-  orderCancelledOwnerEmail, orderRescheduledOwnerEmail,
+  orderCancelledOwnerEmail, orderRescheduledOwnerEmail, paymentReceivedEmail,
 } from '../utils/orderEmails.js';
 import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
@@ -360,7 +360,9 @@ router.get('/:id', auth, async (req, res) => {
  */
 router.patch('/:id', auth, requireAdmin, async (req, res) => {
   try {
-    const { status, adminNotes, schedule } = req.body;
+    const {
+      status, adminNotes, schedule, paymentStatus,
+    } = req.body;
     const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -370,6 +372,16 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
     if (status !== undefined && status !== order.status) {
       order.statusHistory.push({ status, at: new Date() });
       order.status = status;
+    }
+    const prevPayment = order.paymentStatus;
+    if (paymentStatus !== undefined) {
+      if (!['unpaid', 'paid'].includes(paymentStatus)) {
+        return res.status(400).json({ error: 'Invalid payment status' });
+      }
+      if (paymentStatus !== order.paymentStatus) {
+        order.paymentStatus = paymentStatus;
+        order.paidAt = paymentStatus === 'paid' ? new Date() : null;
+      }
     }
     if (adminNotes !== undefined) order.adminNotes = adminNotes;
     if (schedule !== undefined) {
@@ -392,6 +404,11 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
         email = deliveredEmail(order);
       }
       if (email) sendMail({ to: customerEmail, ...email });
+    }
+
+    // Send a short receipt when the owner marks an order paid (fire-and-forget).
+    if (customerEmail && order.paymentStatus === 'paid' && prevPayment !== 'paid') {
+      sendMail({ to: customerEmail, ...paymentReceivedEmail(order) });
     }
 
     return res.json(order);
