@@ -8,6 +8,7 @@ import requireAdmin from '../middleware/requireAdmin.js';
 import { sendMail } from '../utils/mailer.js';
 import {
   customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
+  orderCancelledOwnerEmail,
 } from '../utils/orderEmails.js';
 
 const router = express.Router();
@@ -360,6 +361,45 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
     if (error.name === 'ValidationError') {
       return res.status(400).json({ error: error.message });
     }
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/orders/{id}/cancel:
+ *   patch:
+ *     summary: Cancel your own order (the order's owner)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.patch('/:id/cancel', auth, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    // Owner-only — a customer can cancel their own order.
+    if (!order.user || order.user.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (['delivered', 'cancelled'].includes(order.status)) {
+      return res.status(400).json({ error: `This order is already ${order.status}.` });
+    }
+
+    order.status = 'cancelled';
+    order.statusHistory.push({ status: 'cancelled', at: new Date() });
+    await order.save();
+
+    // Let the owner know (fire-and-forget).
+    if (process.env.OWNER_EMAIL) {
+      sendMail({ to: process.env.OWNER_EMAIL, ...orderCancelledOwnerEmail(order) });
+    }
+
+    return res.json(order);
+  } catch (error) {
+    console.error('Cancel order error:', error);
     return res.status(500).json({ error: 'Server error' });
   }
 });
