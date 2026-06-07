@@ -129,16 +129,28 @@ const optionalAuth = (req, res, next) => {
 router.post('/', optionalAuth, async (req, res) => {
   try {
     const {
-      orderType, items, packName, bundleCount,
-      subscriptionPlan, season, contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
+      orderType, items, subscriptionPlan, deliveryFee,
+      contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
       rush, code, subtotal,
     } = req.body;
 
-    if (!['bundle', 'pack', 'subscription'].includes(orderType)) {
+    if (!['onetime', 'subscription'].includes(orderType)) {
       return res.status(400).json({ error: 'A valid order type is required' });
     }
     if (!contact?.name || !contact?.phone) {
       return res.status(400).json({ error: 'Contact name and phone are required' });
+    }
+    // Sanitize the cart for one-time orders; require at least one item.
+    const cart = Array.isArray(items)
+      ? items
+        .filter((i) => i && i.name && Number(i.quantity) > 0)
+        .map((i) => ({ name: i.name, quantity: Number(i.quantity), unitPrice: Number(i.unitPrice) || 0 }))
+      : [];
+    if (orderType === 'onetime' && cart.length === 0) {
+      return res.status(400).json({ error: 'Please add at least one item' });
+    }
+    if (orderType === 'subscription' && !subscriptionPlan) {
+      return res.status(400).json({ error: 'Please choose a subscription plan' });
     }
     // Delivery orders need an address; pickup orders don't.
     if (fulfillment !== 'pickup' && !deliveryAddress?.street) {
@@ -176,11 +188,9 @@ router.post('/', optionalAuth, async (req, res) => {
     const order = new Order({
       orderType,
       fulfillment: fulfillment === 'pickup' ? 'pickup' : 'delivery',
-      items: orderType === 'bundle' ? (items || []) : [],
-      packName: orderType === 'pack' ? (packName || '') : '',
-      bundleCount: orderType === 'pack' ? (bundleCount || 0) : 0,
+      items: orderType === 'onetime' ? cart : [],
+      deliveryFee: fulfillment === 'pickup' ? 0 : Math.max(0, Number(deliveryFee) || 0),
       subscriptionPlan: orderType === 'subscription' ? (subscriptionPlan || '') : '',
-      season: orderType === 'subscription' ? (season || '') : '',
       contact,
       deliveryAddress: deliveryAddress || {},
       preferredDate,

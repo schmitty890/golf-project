@@ -1,126 +1,65 @@
-// Single source of truth for pricing — consumed by the homepage sections and the order form.
+// Single source of truth for pricing — consumed by the Pricing page, the order form, and emails.
 
-// Minimum bundles per delivery order (delivery is baked into the delivered-bundle price).
-export const DELIVERY_MIN = 2;
+// Flat delivery fee per order (pickup is free).
+export const DELIVERY_FEE = 5;
 
-export const bundles = [
+// À-la-carte products for a one-time order (the cart). `price` is dollars each.
+export const products = [
   {
-    id: 'pickup',
-    name: 'Pickup Bundle',
-    price: '$7',
-    unitPrice: 7,
-    fulfillment: 'pickup',
-    description: 'Clean firewood bundle — pick up yourself.',
+    id: 'standard-bundle',
+    name: 'Standard Bundle',
+    price: 15,
+    description: 'Clean, dry hardwood for everyday fires.',
   },
   {
-    id: 'delivered',
-    name: 'Delivered Bundle',
-    price: '$12',
-    unitPrice: 12,
-    fulfillment: 'delivery',
-    minQty: DELIVERY_MIN,
-    description: 'Delivered to your doorstep. 2-bundle minimum.',
-  },
-];
-
-export const seasonalPacks = [
-  {
-    id: 'fall-firepit',
-    name: 'Fall Firepit Pack',
-    bundleCount: 3,
-    price: '$33',
-    unitPrice: 33,
-    description: '3 bundles — perfect for cool fall evenings.',
-    window: { start: '09-01', end: '11-30' },
+    id: 'three-bundle-pack',
+    name: '3-Bundle Pack',
+    price: 40,
+    bundles: 3,
+    description: 'Best value for longer fires or gatherings.',
   },
   {
-    id: 'winter-warmth',
-    name: 'Winter Warmth Pack',
-    bundleCount: 5,
-    price: '$50',
-    unitPrice: 50,
-    description: '5 bundles to keep you warm all winter.',
-    window: { start: '12-01', end: '03-15' },
+    id: 'kindling-pack',
+    name: 'Kindling Pack',
+    price: 5,
+    description: 'Quick-light hardwood kindling.',
   },
   {
-    id: 'holiday-hosting',
-    name: 'Holiday Hosting Pack',
-    bundleCount: 6,
-    price: '$54',
-    unitPrice: 54,
-    description: '6 bundles for hosting friends and family.',
-    window: { start: '11-15', end: '01-05' },
+    id: 'firestarter-kit',
+    name: 'Firestarter Kit',
+    price: 10,
+    description: 'Wax starter + kindling + shavings.',
   },
 ];
 
-// Seasonal packs are only offered during their date window. Computed from the LOCAL date so
-// the season matches the customer's calendar (avoids UTC off-by-one issues).
-const mmdd = (d) => (d.getMonth() + 1) * 100 + d.getDate();
+export const getProduct = (id) => products.find((p) => p.id === id);
 
-export function isPackActive(pack, date = new Date()) {
-  const cur = mmdd(date);
-  const [sM, sD] = pack.window.start.split('-').map(Number);
-  const [eM, eD] = pack.window.end.split('-').map(Number);
-  const start = sM * 100 + sD;
-  const end = eM * 100 + eD;
-  // start <= end: normal range; start > end: range wraps the new year (e.g. Dec → Mar).
-  return start <= end ? cur >= start && cur <= end : cur >= start || cur <= end;
-}
-
-export const getActivePacks = (date = new Date()) => (
-  seasonalPacks.filter((p) => isPackActive(p, date))
-);
-
+// Recurring monthly subscription tiers (delivered).
 export const subscriptions = [
   {
-    id: 'monthly',
-    plan: 'monthly',
-    name: 'Monthly',
-    cadence: '2 bundles / month',
-    price: '$22/mo',
-    unitPrice: 22,
-    description: 'A steady supply delivered every month.',
+    id: 'sub-2',
+    plan: '2bundle',
+    name: '2 bundles / month',
+    bundles: 2,
+    price: 20,
+    priceLabel: '$20/mo',
+    description: 'A steady supply — two bundles delivered each month.',
   },
   {
-    id: 'biweekly',
-    plan: 'biweekly',
-    name: 'Bi-Weekly',
-    cadence: '4 bundles / month',
-    price: '$40/mo',
-    unitPrice: 40,
-    description: 'Frequent deliveries for regular burners.',
-  },
-  {
-    id: 'seasonal',
-    plan: 'seasonal',
-    name: 'Seasonal',
-    cadence: 'Fall or Winter',
-    price: 'from $108',
-    unitPrice: 108,
-    description: 'Cover a whole season — choose Fall or Winter.',
+    id: 'sub-3',
+    plan: '3bundle',
+    name: '3 bundles / month',
+    bundles: 3,
+    price: 30,
+    priceLabel: '$30/mo',
+    description: 'Three bundles a month for regular burners.',
   },
 ];
 
-export const seasons = [
-  { id: 'fall', name: 'Fall' },
-  { id: 'winter', name: 'Winter' },
-];
+export const getSubscription = (plan) => subscriptions.find((s) => s.plan === plan);
 
-// Preferred pickup/delivery days. Customers choose a DAY only (no time) — we fulfill sometime
-// that day when available.
-export const WEEKDAYS = [
-  { id: 'sunday', label: 'Sunday', short: 'Sun' },
-  { id: 'monday', label: 'Monday', short: 'Mon' },
-  { id: 'tuesday', label: 'Tuesday', short: 'Tue' },
-  { id: 'wednesday', label: 'Wednesday', short: 'Wed' },
-  { id: 'thursday', label: 'Thursday', short: 'Thu' },
-  { id: 'friday', label: 'Friday', short: 'Fri' },
-  { id: 'saturday', label: 'Saturday', short: 'Sat' },
-];
-
-// Preset 1-hour pickup/delivery windows. Customers pick one; we set the wood out for that
-// window and bring it back to storage afterward. Stored on the order as from/to 'HH:MM'
-// (`from` doubles as the unique id). Edit this list to control which slots are offered.
+// Preset 1-hour pickup/delivery windows. Customers pick one or more; we set the wood out for
+// that window. Stored on the order as from/to 'HH:MM' (`from` doubles as the unique id).
 export const TIME_WINDOWS = [
   { label: '10–11 AM', from: '10:00', to: '11:00' },
   { label: '11 AM–12 PM', from: '11:00', to: '12:00' },
@@ -132,4 +71,15 @@ export const TIME_WINDOWS = [
   { label: '5–6 PM', from: '17:00', to: '18:00' },
   { label: '6–7 PM', from: '18:00', to: '19:00' },
   { label: '7–8 PM', from: '19:00', to: '20:00' },
+];
+
+// Day-of-week labels (still used by legacy order display).
+export const WEEKDAYS = [
+  { id: 'sunday', label: 'Sunday', short: 'Sun' },
+  { id: 'monday', label: 'Monday', short: 'Mon' },
+  { id: 'tuesday', label: 'Tuesday', short: 'Tue' },
+  { id: 'wednesday', label: 'Wednesday', short: 'Wed' },
+  { id: 'thursday', label: 'Thursday', short: 'Thu' },
+  { id: 'friday', label: 'Friday', short: 'Fri' },
+  { id: 'saturday', label: 'Saturday', short: 'Sat' },
 ];

@@ -6,7 +6,6 @@ import { ClockIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import FeedbackModal from '../components/FeedbackModal';
 import RescheduleModal from '../components/RescheduleModal';
-import { bundles, seasonalPacks } from '../data/pricing';
 import {
   describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
@@ -14,20 +13,15 @@ import {
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-// Build an "Order again" prefill payload from a past order.
+// Build an "Order again" prefill payload from a past order (cart model).
 function buildReorder(order) {
-  const reorder = { orderType: order.orderType, deliveryAddress: order.deliveryAddress || {} };
-  if (order.orderType === 'bundle') {
-    const b = bundles.find((x) => x.name === order.items?.[0]?.name);
-    reorder.bundleId = b?.id;
-    reorder.quantity = order.items?.[0]?.quantity || 1;
-  } else if (order.orderType === 'pack') {
-    reorder.packId = seasonalPacks.find((x) => x.name === order.packName)?.id;
-  } else if (order.orderType === 'subscription') {
-    reorder.subscriptionPlan = order.subscriptionPlan;
-    reorder.season = order.season;
-  }
-  return reorder;
+  return {
+    orderType: order.orderType === 'subscription' ? 'subscription' : 'onetime',
+    items: (order.items || []).map((i) => ({ name: i.name, quantity: i.quantity })),
+    subscriptionPlan: order.subscriptionPlan,
+    fulfillment: order.fulfillment,
+    deliveryAddress: order.deliveryAddress || {},
+  };
 }
 
 function MyOrders() {

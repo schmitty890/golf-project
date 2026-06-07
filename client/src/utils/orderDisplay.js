@@ -1,21 +1,16 @@
 // Human-readable description of an order's contents and status styling.
 
+const SUB_LABELS = { '2bundle': '2 bundles / month', '3bundle': '3 bundles / month' };
+
 export function describeOrder(order) {
-  if (order.orderType === 'bundle') {
-    return (order.items || [])
-      .map((i) => `${i.quantity}× ${i.name}`)
-      .join(', ') || 'Bundle order';
-  }
-  if (order.orderType === 'pack') {
-    return `${order.packName} (${order.bundleCount} bundles)`;
-  }
   if (order.orderType === 'subscription') {
-    const plan = order.subscriptionPlan
-      ? order.subscriptionPlan.charAt(0).toUpperCase() + order.subscriptionPlan.slice(1)
-      : 'Subscription';
-    const season = order.season ? ` — ${order.season.charAt(0).toUpperCase() + order.season.slice(1)}` : '';
-    return `${plan} subscription${season}`;
+    return `${SUB_LABELS[order.subscriptionPlan] || order.subscriptionPlan || 'Monthly'} subscription`;
   }
+  if (order.items && order.items.length) {
+    return order.items.map((i) => `${i.quantity}× ${i.name}`).join(', ');
+  }
+  // Legacy fallback (old pack/bundle orders).
+  if (order.packName) return `${order.packName} (${order.bundleCount} bundles)`;
   return 'Order';
 }
 

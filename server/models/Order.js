@@ -7,27 +7,18 @@ const orderItemSchema = new mongoose.Schema({
 }, { _id: false });
 
 const orderSchema = new mongoose.Schema({
-  orderType: {
-    type: String,
-    enum: ['bundle', 'pack', 'subscription'],
-    required: true,
-  },
-  // For one-off bundle orders
+  // 'onetime' (cart of products) or 'subscription'. Plain string so legacy orders still save.
+  orderType: { type: String, required: true },
+  // Cart line items for one-time orders: { name, quantity, unitPrice }.
   items: { type: [orderItemSchema], default: [] },
-  // For seasonal packs
+  // Flat delivery fee charged on this order (0 for pickup).
+  deliveryFee: { type: Number, default: 0 },
+  // Subscription tier plan (e.g. '2bundle' / '3bundle') for subscription orders.
+  subscriptionPlan: { type: String, default: '' },
+  // Deprecated (seasonal packs / seasons) — kept for older orders.
   packName: { type: String, default: '' },
   bundleCount: { type: Number, default: 0 },
-  // For subscriptions
-  subscriptionPlan: {
-    type: String,
-    enum: ['monthly', 'biweekly', 'seasonal', ''],
-    default: '',
-  },
-  season: {
-    type: String,
-    enum: ['fall', 'winter', ''],
-    default: '',
-  },
+  season: { type: String, default: '' },
   // Legacy: customer's preferred day(s) of week (older orders). New orders use preferredDate.
   preferredDays: { type: [String], default: [] },
   // Customer-chosen calendar date ('YYYY-MM-DD', local time, no timezone shift).

@@ -23,19 +23,17 @@ function fmtTime(t) {
   return `${hr}:${String(m || 0).padStart(2, '0')} ${period}`;
 }
 
+const SUB_LABELS = { '2bundle': '2 bundles / month', '3bundle': '3 bundles / month' };
+
 function describeOrder(order) {
-  if (order.orderType === 'bundle') {
-    return (order.items || []).map((i) => `${i.quantity} × ${i.name}`).join(', ') || 'Bundle order';
-  }
-  if (order.orderType === 'pack') {
-    return `${order.packName} (${order.bundleCount} bundles)`;
-  }
   if (order.orderType === 'subscription') {
-    const plan = order.subscriptionPlan
-      ? order.subscriptionPlan.charAt(0).toUpperCase() + order.subscriptionPlan.slice(1)
-      : 'Subscription';
-    return `${plan} subscription${order.season ? ` — ${order.season}` : ''}`;
+    return `${SUB_LABELS[order.subscriptionPlan] || order.subscriptionPlan || 'Monthly'} subscription`;
   }
+  if (order.items && order.items.length) {
+    return order.items.map((i) => `${i.quantity} × ${i.name}`).join(', ');
+  }
+  // Legacy fallback.
+  if (order.packName) return `${order.packName} (${order.bundleCount} bundles)`;
   return 'Order';
 }
 
@@ -56,13 +54,16 @@ function fulfillmentText(order) {
   return `Delivery${addr ? ` to ${addr}` : ''}`;
 }
 
-// Bundle orders carry unit prices; packs/subscriptions don't, so total is null there.
+// Total from the cart items + delivery + rush − discount. Null for subscriptions (recurring price
+// isn't stored on the order).
 function orderTotal(order) {
-  if (order.orderType !== 'bundle') return null;
-  const subtotal = (order.items || [])
+  const itemsSub = (order.items || [])
     .reduce((s, i) => s + (i.quantity || 0) * (i.unitPrice || 0), 0);
-  const surcharge = order.rush ? Math.round(subtotal * ((order.rushPercent || 0) / 100)) : 0;
-  return { subtotal, total: subtotal + surcharge };
+  if (!itemsSub) return null;
+  const delivery = order.deliveryFee || 0;
+  const surcharge = order.rush ? Math.round(itemsSub * ((order.rushPercent || 0) / 100)) : 0;
+  const total = Math.max(0, itemsSub + delivery + surcharge - (order.discount || 0));
+  return { subtotal: itemsSub, delivery, total };
 }
 
 function summaryLines(order) {
@@ -73,7 +74,11 @@ function summaryLines(order) {
   ];
   if (order.rush) lines.push(['Rush', `Yes (+${order.rushPercent || 0}%) — subject to availability`]);
   const t = orderTotal(order);
-  if (t) lines.push(['Estimated total', `$${t.total}`]);
+  if (t) {
+    if (t.delivery) lines.push(['Delivery', `$${t.delivery}`]);
+    if (order.discount) lines.push(['Discount', `${order.promoCode} (−$${order.discount})`]);
+    lines.push(['Estimated total', `$${t.total}`]);
+  }
   return lines;
 }
 
