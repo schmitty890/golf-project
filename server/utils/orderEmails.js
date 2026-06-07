@@ -134,6 +134,15 @@ export function orderCancelledOwnerEmail(order) {
   return { subject, html, text };
 }
 
+export function orderRescheduledOwnerEmail(order) {
+  const lines = summaryLines(order);
+  const contact = `${order.contact?.name || ''}${order.contact?.phone ? ` · ${order.contact.phone}` : ''}`;
+  const subject = `Order rescheduled by customer: ${describeOrder(order)}`;
+  const html = wrap('Order rescheduled by customer', `<p>A customer changed their preferred date/time — please re-confirm a window.</p>${linesToHtml([...lines, ['Contact', contact]])}`);
+  const text = `A customer rescheduled — please re-confirm a window.\n\n${linesToText([...lines, ['Contact', contact]])}`;
+  return { subject, html, text };
+}
+
 export function windowConfirmedEmail(order, pickupInstructions = '') {
   const when = [fmtDate(order.schedule?.date || order.preferredDate), windowsText(order)].filter(Boolean).join(' · ');
   const how = fulfillmentText(order);

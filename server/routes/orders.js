@@ -8,7 +8,7 @@ import requireAdmin from '../middleware/requireAdmin.js';
 import { sendMail } from '../utils/mailer.js';
 import {
   customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
-  orderCancelledOwnerEmail,
+  orderCancelledOwnerEmail, orderRescheduledOwnerEmail,
 } from '../utils/orderEmails.js';
 
 const router = express.Router();
@@ -30,6 +30,36 @@ const addDaysStr = (s, n) => {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${mm}-${dd}`;
+};
+
+// Validate a requested date + time windows against admin availability/lead-time rules.
+// Returns { error } on failure, or { windows, isRush, rushPercent } on success.
+// Shared by order creation and reschedule. `settings` is the availability Settings doc.
+const validateSchedule = ({ preferredDate, preferredTimes, rush }, settings) => {
+  const windows = Array.isArray(preferredTimes) ? preferredTimes.filter((w) => w && w.from) : [];
+  if (!DATE_RE.test(preferredDate || '')) return { error: 'Please choose a valid date' };
+  if (preferredDate < todayStr()) return { error: 'That date is in the past' };
+  if (windows.length === 0) return { error: 'Please choose at least one time window' };
+
+  const override = settings?.dateOverrides?.[preferredDate];
+  if (override !== undefined
+    && (!Array.isArray(override) || !windows.every((w) => override.includes(w.from)))) {
+    return { error: 'Sorry, that date and time is no longer available' };
+  }
+
+  const leadDays = settings?.leadDays ?? 1;
+  const rushEnabled = settings?.rushEnabled ?? true;
+  const rushPercent = settings?.rushPercent ?? 25;
+  const wantsRush = Boolean(rush) && rushEnabled;
+  let isRush = false;
+  if (preferredDate < addDaysStr(todayStr(), leadDays)) {
+    if (!wantsRush) {
+      const notice = leadDays === 1 ? 'next-day notice' : `${leadDays} days' notice`;
+      return { error: `Orders need at least ${notice}. Choose a later date or request a rush order.` };
+    }
+    isRush = true;
+  }
+  return { windows, isRush, rushPercent };
 };
 
 // Soft auth: if a valid Bearer token is present, attach req.userId; otherwise continue
@@ -112,41 +142,13 @@ router.post('/', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'Delivery street address is required' });
     }
 
-    // Validate the requested date + time windows against admin availability.
-    const windows = Array.isArray(preferredTimes)
-      ? preferredTimes.filter((w) => w && w.from)
-      : [];
-    if (!DATE_RE.test(preferredDate || '')) {
-      return res.status(400).json({ error: 'Please choose a valid date' });
-    }
-    if (preferredDate < todayStr()) {
-      return res.status(400).json({ error: 'That date is in the past' });
-    }
-    if (windows.length === 0) {
-      return res.status(400).json({ error: 'Please choose at least one time window' });
-    }
+    // Validate the requested date + time windows against admin availability/lead-time.
     const settings = await Settings.findOne({ key: 'availability' });
-    const override = settings?.dateOverrides?.[preferredDate];
-    // override undefined => fully open; otherwise every chosen window must be listed.
-    if (override !== undefined
-      && (!Array.isArray(override) || !windows.every((w) => override.includes(w.from)))) {
-      return res.status(400).json({ error: 'Sorry, that date and time is no longer available' });
+    const sched = validateSchedule({ preferredDate, preferredTimes, rush }, settings);
+    if (sched.error) {
+      return res.status(400).json({ error: sched.error });
     }
-
-    // Enforce advance notice. Dates inside the lead window are only allowed as rush orders.
-    const leadDays = settings?.leadDays ?? 1;
-    const rushEnabled = settings?.rushEnabled ?? true;
-    const rushPercent = settings?.rushPercent ?? 25;
-    const earliest = addDaysStr(todayStr(), leadDays);
-    const wantsRush = Boolean(rush) && rushEnabled;
-    let isRush = false;
-    if (preferredDate < earliest) {
-      if (!wantsRush) {
-        const notice = leadDays === 1 ? 'next-day notice' : `${leadDays} days' notice`;
-        return res.status(400).json({ error: `Orders need at least ${notice}. Choose a later date or request a rush order.` });
-      }
-      isRush = true;
-    }
+    const { windows, isRush, rushPercent } = sched;
 
     const order = new Order({
       orderType,
@@ -400,6 +402,58 @@ router.patch('/:id/cancel', auth, async (req, res) => {
     return res.json(order);
   } catch (error) {
     console.error('Cancel order error:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/orders/{id}/reschedule:
+ *   patch:
+ *     summary: Reschedule your own order's date/time (the order's owner)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.patch('/:id/reschedule', auth, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    if (!order.user || order.user.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (['delivered', 'cancelled'].includes(order.status)) {
+      return res.status(400).json({ error: `This order is already ${order.status}.` });
+    }
+
+    const { preferredDate, preferredTimes, rush } = req.body;
+    const settings = await Settings.findOne({ key: 'availability' });
+    const sched = validateSchedule({ preferredDate, preferredTimes, rush }, settings);
+    if (sched.error) {
+      return res.status(400).json({ error: sched.error });
+    }
+
+    order.preferredDate = preferredDate;
+    order.preferredTimes = sched.windows.map((w) => ({ from: w.from || '', to: w.to || '' }));
+    order.rush = sched.isRush;
+    order.rushPercent = sched.isRush ? sched.rushPercent : 0;
+    // A new date/time invalidates any confirmed window — reset to pending, clear schedule.
+    if (order.status === 'confirmed') {
+      order.schedule = { date: '', from: '', to: '' };
+      order.status = 'pending';
+      order.statusHistory.push({ status: 'pending', at: new Date() });
+    }
+    await order.save();
+
+    if (process.env.OWNER_EMAIL) {
+      sendMail({ to: process.env.OWNER_EMAIL, ...orderRescheduledOwnerEmail(order) });
+    }
+
+    return res.json(order);
+  } catch (error) {
+    console.error('Reschedule order error:', error);
     return res.status(500).json({ error: 'Server error' });
   }
 });
