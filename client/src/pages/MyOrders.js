@@ -5,6 +5,7 @@ import axios from 'axios';
 import { ClockIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import FeedbackModal from '../components/FeedbackModal';
+import RescheduleModal from '../components/RescheduleModal';
 import { bundles, seasonalPacks } from '../data/pricing';
 import {
   describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
@@ -36,6 +37,7 @@ function MyOrders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [rescheduleOrder, setRescheduleOrder] = useState(null);
 
   const cancelOrder = async (id) => {
     // eslint-disable-next-line no-alert
@@ -88,6 +90,14 @@ function MyOrders() {
       </div>
 
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      <RescheduleModal
+        open={!!rescheduleOrder}
+        order={rescheduleOrder || {}}
+        onClose={() => setRescheduleOrder(null)}
+        onRescheduled={(updated) => setOrders((prev) => (
+          prev.map((o) => (o._id === updated._id ? { ...o, ...updated } : o))
+        ))}
+      />
 
       {loading && <p className="mt-8 text-walnut-400">Loading…</p>}
       {error && <p className="mt-8 text-red-600">{error}</p>}
@@ -160,13 +170,22 @@ function MyOrders() {
                 Order again
               </button>
               {['pending', 'confirmed'].includes(order.status) && (
-                <button
-                  type="button"
-                  onClick={() => cancelOrder(order._id)}
-                  className="rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
-                >
-                  Cancel
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setRescheduleOrder(order)}
+                    className="rounded-lg border border-cream-300 px-3 py-1.5 text-sm font-semibold text-walnut hover:border-ember"
+                  >
+                    Reschedule
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => cancelOrder(order._id)}
+                    className="rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                  >
+                    Cancel
+                  </button>
+                </>
               )}
             </div>
           </li>
