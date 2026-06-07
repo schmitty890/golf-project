@@ -191,6 +191,16 @@ export function paymentReceivedEmail(order) {
   return { subject, html, text };
 }
 
+export function referralRewardEmail(referrer, reward, label) {
+  const hi = referrer?.firstName ? `, ${referrer.firstName}` : '';
+  const subject = `You earned ${label} your next order — ${BUSINESS()}`;
+  const intro = `Good news${hi}! A neighbor just placed an order with your referral code, so you've earned ${label} your next order.`;
+  const use = `Use code <strong>${reward.code}</strong> at checkout.`;
+  const html = wrap('You earned a reward 🔥', `<p>${intro}</p><p style="margin-top:12px">${use}</p><p style="color:#8a7f78;font-size:13px;margin-top:8px">One-time use. Thanks for spreading the word!</p>`);
+  const text = `${intro}\n\nUse code ${reward.code} at checkout. (One-time use.)\n\nThanks for spreading the word!`;
+  return { subject, html, text };
+}
+
 export function deliveredEmail(order) {
   const site = process.env.SITE_URL;
   const fb = site ? `<p><a href="${site}" style="color:#b5471f">Leave a quick review</a> — it helps your neighbors.</p>` : '';

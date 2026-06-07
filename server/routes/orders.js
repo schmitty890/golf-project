@@ -9,9 +9,11 @@ import { sendMail } from '../utils/mailer.js';
 import {
   customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
   orderCancelledOwnerEmail, orderRescheduledOwnerEmail, paymentReceivedEmail,
+  referralRewardEmail,
 } from '../utils/orderEmails.js';
 import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
+  discountLabel, mintReferralReward,
 } from './promos.js';
 
 const router = express.Router();
@@ -169,6 +171,7 @@ router.post('/', optionalAuth, async (req, res) => {
     let promoCode = '';
     let discount = 0;
     let referredBy = null;
+    let referrer = null;
     const promo = await lookupPromo(code);
     if (promo) {
       discount = computeDiscount(promo, subtotal);
@@ -177,7 +180,7 @@ router.post('/', optionalAuth, async (req, res) => {
       await promo.save();
     } else if (code) {
       const rc = referralConfig(settings);
-      const referrer = rc.enabled ? await lookupReferralUser(code, req.userId) : null;
+      referrer = rc.enabled ? await lookupReferralUser(code, req.userId) : null;
       if (referrer) {
         discount = discountAmount(rc.type, rc.value, subtotal);
         promoCode = referrer.referralCode;
@@ -218,6 +221,17 @@ router.post('/', optionalAuth, async (req, res) => {
         }
         if (process.env.OWNER_EMAIL) {
           await sendMail({ to: process.env.OWNER_EMAIL, ...ownerAlertEmail(order) });
+        }
+        // Reward the referrer: mint a one-time discount code for their next order and email it.
+        if (referredBy && referrer) {
+          const rc = referralConfig(settings);
+          const reward = await mintReferralReward(referredBy, rc);
+          if (referrer.email) {
+            await sendMail({
+              to: referrer.email,
+              ...referralRewardEmail(referrer, reward, discountLabel(rc.type, rc.value)),
+            });
+          }
         }
       } catch (mailErr) {
         console.error('Order notification error:', mailErr.message);

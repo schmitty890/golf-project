@@ -123,8 +123,8 @@ function AdminPromos() {
           {refSaved && <span className="text-sm font-semibold text-green-700">Saved ✓</span>}
         </div>
         <p className="mt-1 text-xs text-walnut-400">
-          What a referred neighbor gets off their first order. (You reward the referrer manually —
-          orders show who referred them.)
+          What each side gets: the new neighbor off their first order, and the referrer the same off
+          their next order — granted automatically when their referral places an order.
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-4">
           <label className="flex items-center gap-2 pb-2 text-sm font-semibold text-walnut">

@@ -33,7 +33,7 @@ function ReferralShare({ className }) {
     <div className={`rounded-xl border border-cream-300 bg-cream-100 p-4 ${className}`}>
       <p className="text-sm font-bold text-walnut">Refer a neighbor 🔥</p>
       <p className="mt-1 text-sm text-walnut-400">
-        {`Share your code — your neighbor gets ${data.label} off their first order.`}
+        {`Share your code — your neighbor gets ${data.label} their first order, and once they place an order you get ${data.label} your next one.`}
       </p>
       <div className="mt-3 flex items-center gap-2">
         <span className="rounded-lg border border-cream-300 bg-white px-3 py-2 font-mono text-sm font-bold tracking-wide text-walnut">
@@ -47,6 +47,23 @@ function ReferralShare({ className }) {
           {copied ? 'Copied!' : 'Copy'}
         </button>
       </div>
+      {data.rewards && data.rewards.length > 0 && (
+        <div className="mt-4 border-t border-cream-300 pt-3">
+          <p className="text-sm font-semibold text-walnut">
+            {`You've earned ${data.rewards.length} reward${data.rewards.length > 1 ? 's' : ''} — use at checkout:`}
+          </p>
+          <ul className="mt-2 space-y-1">
+            {data.rewards.map((r) => (
+              <li key={r.code} className="flex items-center gap-2 text-sm">
+                <span className="rounded-md border border-cream-300 bg-white px-2 py-1 font-mono font-bold text-walnut">
+                  {r.code}
+                </span>
+                <span className="text-walnut-400">{r.label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
