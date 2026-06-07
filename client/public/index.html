@@ -10,6 +10,32 @@
       content="VOLW Firewood — premium, HOA-friendly bundled firewood delivered to The Vineyards on Lake Wylie."
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+
+    <!--
+      Social share preview (Open Graph + Twitter Card).
+      TODO before launch:
+        - Swap og:image / twitter:image for a real 1200x630 image at /og-image.png
+          (currently using the square logo as a placeholder).
+        - Once the domain is live, set og:url to the full https URL (and ideally set
+          Netlify's PUBLIC_URL to the domain so the image resolves to an absolute URL).
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="VOLW Firewood" />
+    <meta property="og:title" content="VOLW Firewood — firewood delivered in The Vineyards on Lake Wylie" />
+    <meta
+      property="og:description"
+      content="Neighbor-run, ready-to-burn firewood bundles for backyard firepits — pickup or delivery in The Vineyards on Lake Wylie. Order online in a minute."
+    />
+    <meta property="og:url" content="%PUBLIC_URL%/" />
+    <meta property="og:image" content="%PUBLIC_URL%/logo512.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="VOLW Firewood — firewood delivered in The Vineyards on Lake Wylie" />
+    <meta
+      name="twitter:description"
+      content="Neighbor-run, ready-to-burn firewood bundles for backyard firepits — pickup or delivery in The Vineyards on Lake Wylie."
+    />
+    <meta name="twitter:image" content="%PUBLIC_URL%/logo512.png" />
+
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
@@ -24,7 +50,7 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>VOLW Firewood</title>
+    <title>VOLW Firewood — Firewood Delivered in The Vineyards on Lake Wylie</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

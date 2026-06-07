@@ -20,28 +20,46 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden bg-walnut text-cream">
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+    <section className="relative overflow-hidden bg-gradient-to-br from-walnut-700 via-walnut to-walnut-600 text-cream">
+      {/* Soft "firelight" glows */}
+      <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-ember/20 blur-3xl" aria-hidden="true" />
+      <div className="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-ember/10 blur-3xl" aria-hidden="true" />
+
+      <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
         <div className="max-w-2xl">
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+          <span className="inline-flex items-center gap-2 rounded-full bg-cream/10 px-3 py-1 text-sm font-semibold text-cream ring-1 ring-inset ring-cream/20">
+            <FireIcon className="h-4 w-4 text-ember" aria-hidden="true" />
+            Neighbor-run in
+            {' '}
+            {business.serviceArea}
+          </span>
+
+          <h1 className="mt-6 text-balance text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
             {business.shortPitch}
           </h1>
-          <p className="mt-4 text-lg font-semibold text-ember">
-            {business.valueProps.join(' • ')}
-          </p>
-          <p className="mt-6 text-lg text-cream-300">
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {business.valueProps.map((prop) => (
+              <span key={prop} className="rounded-full bg-ember/15 px-3 py-1 text-sm font-semibold text-ember-200">
+                {prop}
+              </span>
+            ))}
+          </div>
+
+          <p className="mt-6 max-w-xl text-lg text-cream-300">
             {business.tagline}
           </p>
+
           <div className="mt-10 flex flex-wrap gap-4">
             <Link
               to="/order"
-              className="rounded-md bg-ember px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-ember-600 transition-colors"
+              className="rounded-xl bg-ember px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-ember-600"
             >
               Order Firewood
             </Link>
             <a
               href="#pricing"
-              className="rounded-md bg-cream px-6 py-3 text-base font-semibold text-walnut shadow-sm hover:bg-cream-300 transition-colors"
+              className="rounded-xl bg-cream px-6 py-3.5 text-base font-semibold text-walnut shadow-sm transition-colors hover:bg-cream-300"
             >
               View Pricing
             </a>
