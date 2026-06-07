@@ -5,8 +5,7 @@ const business = {
   tagline: 'Bundled firewood delivered right to your doorstep — exclusively for The Vineyards on Lake Wylie.',
   shortPitch: 'Firewood Delivered in The Vineyards',
   valueProps: ['Clean', 'Convenient', 'Local'],
-  // Placeholder until the real contact details are ready to publish.
-  email: 'example@gmail.com',
+  email: 'volwfirewood@gmail.com',
   serviceArea: 'The Vineyards on Lake Wylie',
   // Placeholder profile URLs — replace with the real accounts when they exist.
   social: [
