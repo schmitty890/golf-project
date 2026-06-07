@@ -1,35 +1,74 @@
 import express from 'express';
 import PromoCode from '../models/PromoCode.js';
+import User from '../models/User.js';
+import Settings from '../models/Settings.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 
 const router = express.Router();
 
+const DEFAULT_REFERRAL = { enabled: true, type: 'amount', value: 5 };
+const norm = (code) => String(code || '').toUpperCase().trim();
+
 // --- Shared helpers (also used by the orders create route) ---
+
+// Generic dollar discount for a type/value against a subtotal, clamped to [0, subtotal].
+export function discountAmount(type, value, subtotal) {
+  const sub = Math.max(0, Number(subtotal) || 0);
+  const raw = type === 'percent' ? Math.round(sub * ((Number(value) || 0) / 100)) : (Number(value) || 0);
+  return Math.max(0, Math.min(raw, sub));
+}
+
+export function discountLabel(type, value) {
+  return type === 'percent' ? `${value}% off` : `$${value} off`;
+}
 
 // Look up a usable promo code (active, not expired, under its use cap). Returns the doc or null.
 export async function lookupPromo(code) {
   if (!code) return null;
-  const promo = await PromoCode.findOne({ code: String(code).toUpperCase().trim() });
+  const promo = await PromoCode.findOne({ code: norm(code) });
   if (!promo || !promo.active) return null;
   if (promo.expiresAt && promo.expiresAt.getTime() < Date.now()) return null;
   if (promo.maxUses > 0 && promo.uses >= promo.maxUses) return null;
   return promo;
 }
 
-// Dollar discount for a promo against a subtotal, clamped to [0, subtotal].
 export function computeDiscount(promo, subtotal) {
-  const sub = Math.max(0, Number(subtotal) || 0);
-  const raw = promo.discountType === 'percent'
-    ? Math.round(sub * (promo.discountValue / 100))
-    : promo.discountValue;
-  return Math.max(0, Math.min(raw, sub));
+  return discountAmount(promo.discountType, promo.discountValue, subtotal);
 }
 
 export function promoLabel(promo) {
-  return promo.discountType === 'percent'
-    ? `${promo.discountValue}% off`
-    : `$${promo.discountValue} off`;
+  return discountLabel(promo.discountType, promo.discountValue);
+}
+
+export function referralConfig(settings) {
+  return settings?.referralDiscount || DEFAULT_REFERRAL;
+}
+
+// Find the user who owns a referral code (optionally excluding the buyer, who can't refer self).
+export async function lookupReferralUser(code, excludeUserId) {
+  if (!code) return null;
+  const user = await User.findOne({ referralCode: norm(code) })
+    .select('firstName lastName referralCode');
+  if (!user) return null;
+  // eslint-disable-next-line no-underscore-dangle
+  if (excludeUserId && user._id.toString() === String(excludeUserId)) return null;
+  return user;
+}
+
+// Generate a unique referral code derived from the user's name/email + random suffix.
+const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const suffix = (n = 4) => Array.from({ length: n }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join('');
+export async function generateReferralCode(user) {
+  const raw = (user.firstName || (user.email || '').split('@')[0] || 'VOLW').replace(/[^a-zA-Z0-9]/g, '');
+  const base = (raw || 'VOLW').toUpperCase().slice(0, 8);
+  for (let i = 0; i < 10; i += 1) {
+    const code = `${base}${suffix(4)}`;
+    // eslint-disable-next-line no-await-in-loop
+    const exists = await User.findOne({ referralCode: code }).select('_id');
+    if (!exists) return code;
+  }
+  return `VOLW${suffix(6)}`;
 }
 
 // --- Public: validate a code at checkout ---
@@ -37,18 +76,57 @@ router.post('/validate', async (req, res) => {
   try {
     const { code, subtotal } = req.body;
     const promo = await lookupPromo(code);
-    if (!promo) {
-      return res.json({ valid: false, message: 'That code isn’t valid.' });
+    if (promo) {
+      return res.json({
+        valid: true,
+        kind: 'promo',
+        code: promo.code,
+        discount: computeDiscount(promo, subtotal),
+        label: promoLabel(promo),
+      });
     }
-    return res.json({
-      valid: true,
-      code: promo.code,
-      discount: computeDiscount(promo, subtotal),
-      label: promoLabel(promo),
-    });
+    // Otherwise it might be a neighbor's referral code.
+    const settings = await Settings.findOne({ key: 'availability' });
+    const rc = referralConfig(settings);
+    if (rc.enabled) {
+      const referrer = await lookupReferralUser(code);
+      if (referrer) {
+        return res.json({
+          valid: true,
+          kind: 'referral',
+          code: referrer.referralCode,
+          discount: discountAmount(rc.type, rc.value, subtotal),
+          label: discountLabel(rc.type, rc.value),
+          referrerName: [referrer.firstName, referrer.lastName].filter(Boolean).join(' ') || 'a neighbor',
+        });
+      }
+    }
+    return res.json({ valid: false, message: 'That code isn’t valid.' });
   } catch (error) {
     console.error('Validate promo error:', error);
     return res.status(500).json({ error: 'Failed to validate code' });
+  }
+});
+
+// The current user's own referral code (generated on first request) + the discount it gives.
+router.get('/my-referral', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.referralCode) {
+      user.referralCode = await generateReferralCode(user);
+      await user.save();
+    }
+    const settings = await Settings.findOne({ key: 'availability' });
+    const rc = referralConfig(settings);
+    return res.json({
+      code: user.referralCode,
+      enabled: rc.enabled,
+      label: discountLabel(rc.type, rc.value),
+    });
+  } catch (error) {
+    console.error('My referral error:', error);
+    return res.status(500).json({ error: 'Failed to load referral code' });
   }
 });
 

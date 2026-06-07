@@ -174,6 +174,11 @@ function AdminOrders() {
                   </a>
                   {order.contact?.email ? ` · ${order.contact.email}` : ''}
                 </p>
+                {order.referredBy && (
+                  <p className="text-sm font-semibold text-green-700">
+                    {`Referred by ${[order.referredBy.firstName, order.referredBy.lastName].filter(Boolean).join(' ') || order.referredBy.email}`}
+                  </p>
+                )}
                 <p className="text-sm text-walnut-400">
                   {order.fulfillment === 'pickup' ? (
                     'Pickup — coordinate spot & time'

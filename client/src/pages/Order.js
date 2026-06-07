@@ -10,6 +10,7 @@ import {
   bundles, getActivePacks, subscriptions, seasons, TIME_WINDOWS,
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
+import ReferralShare from '../components/ReferralShare';
 import neighborhoods from '../data/neighborhoods';
 import { todayStr, formatDayLabel, addDays } from '../utils/dates';
 
@@ -390,6 +391,8 @@ function Order() {
             No payment needed to hold your order — we&apos;ll confirm the final total with you.
           </p>
         </div>
+
+        <ReferralShare className="mt-6" />
 
         <div className="mt-8 flex justify-center gap-4">
           <Link to="/" className="rounded-md bg-cream-300 px-5 py-2.5 text-sm font-semibold text-walnut hover:bg-cream-400">
