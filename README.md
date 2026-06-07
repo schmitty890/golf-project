@@ -130,6 +130,36 @@ SITE_URL=https://your-site-url    # optional; adds a "leave a review" link
 
 **Useful scripts** (run inside `client/` or `server/`): `npm run lint`, `npm run lint:fix`, `npm run build` (client), `npm test` (server).
 
+## Deploy (DigitalOcean)
+
+Env vars get set in **two places**: the **backend** (Node service) and the **frontend** (static site, build-time).
+
+### Backend (Node service) → Settings → Environment Variables
+
+| Variable | Example / value | Notes |
+| --- | --- | --- |
+| `MONGODB_URI` | your Atlas connection string | 🔒 encrypt |
+| `JWT_SECRET` | long random string | 🔒 encrypt |
+| `PORT` | *(skip on App Platform)* | App Platform injects `$PORT` automatically; the server already uses it. Only set it on a plain Droplet. |
+| `SMTP_HOST` | `smtp.gmail.com` | |
+| `SMTP_PORT` | `587` | |
+| `SMTP_USER` | `volwfirewood@gmail.com` | |
+| `SMTP_PASS` | your 16-char Gmail App Password | 🔒 encrypt; **no spaces** |
+| `MAIL_FROM` | `VOLW Firewood <volwfirewood@gmail.com>` | no surrounding quotes in the DO UI |
+| `OWNER_EMAIL` | `volwfirewood@gmail.com` | where new-order alerts go |
+| `BUSINESS_NAME` | `VOLW Firewood` | |
+| `SERVICE_AREA` | `The Vineyards on Lake Wylie` | |
+| `VENMO_HANDLE` | `Jason-Schmitt-89` | shown as payment instructions |
+| `SITE_URL` | your public site URL | optional; adds a "leave a review" link in the thank-you email |
+
+### Frontend (static site) → build-time
+
+| Variable | Value | Notes |
+| --- | --- | --- |
+| `REACT_APP_API_URL` | the backend's public URL (e.g. `https://your-api.ondigitalocean.app`) | **Baked in at build time** — set on the static-site component and **rebuild/redeploy the frontend** after any change. If wrong, the site loads but every order/login call fails. |
+
+**Gotchas:** encrypt the three secrets (`MONGODB_URI`, `JWT_SECRET`, `SMTP_PASS`); don't wrap values in quotes in the DO UI; no spaces in the App Password; email silently no-ops until the SMTP vars are set; CORS is open server-side, so there's no CORS variable to configure.
+
 ## Project structure
 
 ```
