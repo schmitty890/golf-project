@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useState, useContext, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import {
@@ -25,6 +25,7 @@ function Order() {
   const { user, token } = useContext(AuthContext);
   const location = useLocation();
   const reorder = location.state?.reorder || null;
+  const [searchParams] = useSearchParams();
 
   // Reorder prefill: map past item names back to product ids; pick mode + fulfillment.
   const initialQty = (() => {
@@ -167,9 +168,9 @@ function Order() {
   const finalTotalNum = Math.max(0, subtotalNum - discount);
 
   // --- Promo / referral code ---
-  const applyCode = async () => {
+  const applyCode = async (codeArg) => {
     setCodeError('');
-    const c = codeInput.trim();
+    const c = (codeArg ?? codeInput).trim();
     if (!c) return;
     try {
       const res = await axios.post(`${API_URL}/api/promos/validate`, { code: c, subtotal: subtotalNum });
@@ -206,6 +207,16 @@ function Order() {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subtotalNum, appliedCode, isSubscription]);
+
+  // Auto-apply a referral/promo code from a shared link (/order?ref=CODE), once on mount.
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setCodeInput(ref);
+      applyCode(ref);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const buildPayload = () => {
     const base = {
@@ -644,7 +655,7 @@ function Order() {
                   Remove
                 </button>
               ) : (
-                <button type="button" onClick={applyCode} className="shrink-0 rounded-xl bg-walnut px-5 py-3 text-sm font-semibold text-white hover:bg-walnut-400">
+                <button type="button" onClick={() => applyCode()} className="shrink-0 rounded-xl bg-walnut px-5 py-3 text-sm font-semibold text-white hover:bg-walnut-400">
                   Apply
                 </button>
               )}
