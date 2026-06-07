@@ -521,6 +521,12 @@ function Order() {
             </label>
           )}
 
+          {leadDays > 0 && (
+            <p className="mt-2 text-xs font-semibold text-walnut">
+              {`Please order at least ${leadDays} day${leadDays === 1 ? '' : 's'} ahead — the earliest date is ${formatDayLabel(earliest)}.`}
+              {rushEnabled ? ' Need it sooner? Request a rush order above.' : ''}
+            </p>
+          )}
           <div className="mt-2">
             <MonthCalendar getDayState={getDayState} onSelectDate={setPreferredDate} />
           </div>

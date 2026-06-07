@@ -22,7 +22,7 @@ const faqs = [
   },
   {
     q: 'How fast can I get firewood?',
-    a: 'We’re built for last-minute fires — we’ll confirm timing as soon as you order.',
+    a: 'Order at least a day ahead and we’ll confirm your window fast. In a pinch, you can request a rush order at checkout to unlock sooner dates.',
   },
 ];
 
