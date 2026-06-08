@@ -335,6 +335,13 @@ router.get('/track/:token', async (req, res) => {
     if (!token) return res.status(404).json({ error: 'Not found' });
     const order = await Order.findOne({ trackingToken: token });
     if (!order) return res.status(404).json({ error: 'Order not found' });
+    // Reveal the pickup address only once the order is confirmed (and it's a pickup order).
+    const confirmedStages = ['confirmed', 'ready', 'completed', 'delivered'];
+    let pickupAddress = '';
+    if (order.fulfillment === 'pickup' && confirmedStages.includes(order.status)) {
+      const settings = await Settings.findOne({ key: 'availability' });
+      pickupAddress = settings?.pickupAddress || '';
+    }
     return res.json({
       status: order.status,
       statusHistory: order.statusHistory,
@@ -351,6 +358,7 @@ router.get('/track/:token', async (req, res) => {
       customerName: (order.contact?.name || '').split(' ')[0],
       total: orderTotal(order)?.total ?? null,
       venmoHandle: process.env.VENMO_HANDLE || '',
+      pickupAddress,
     });
   } catch (error) {
     console.error('Track order error:', error);
@@ -505,10 +513,10 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       let email = null;
       if (order.status === 'confirmed' && order.schedule?.from) {
         const settings = await Settings.findOne({ key: 'availability' });
-        email = windowConfirmedEmail(order, settings?.pickupInstructions);
+        email = windowConfirmedEmail(order, settings?.pickupAddress);
       } else if (order.status === 'ready') {
         const settings = await Settings.findOne({ key: 'availability' });
-        email = readyEmail(order, settings?.pickupInstructions);
+        email = readyEmail(order, settings?.pickupAddress);
       } else if (order.status === 'completed') {
         email = deliveredEmail(order);
       }

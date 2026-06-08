@@ -100,6 +100,13 @@ function TrackOrder() {
         )}
       </div>
 
+      {order.pickupAddress && !cancelled && (
+        <div className="mt-6 rounded-2xl border border-ember/30 bg-ember/5 p-5">
+          <h2 className="text-base font-bold text-walnut">Where to pick up</h2>
+          <p className="mt-1 text-sm text-walnut">{order.pickupAddress}</p>
+        </div>
+      )}
+
       {cancelled ? (
         <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-center">
           <h2 className="text-lg font-bold text-red-700">This order was cancelled</h2>

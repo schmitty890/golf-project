@@ -27,7 +27,7 @@ async function runReminderPass() {
   await Promise.all(due.map(async (order) => {
     await sendMail({
       to: order.contact.email,
-      ...reminderEmail(order, settings?.pickupInstructions),
+      ...reminderEmail(order, settings?.pickupAddress || settings?.pickupInstructions),
     });
     // eslint-disable-next-line no-param-reassign
     order.reminderSentAt = new Date();
