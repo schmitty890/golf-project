@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     q: 'How fast can I get firewood?',
-    a: 'Order at least a day ahead and we’ll confirm your window fast. In a pinch, you can request a rush order at checkout to unlock sooner dates.',
+    a: 'Our schedule shifts week to week — we’re a small crew and are sometimes away or on vacation, so availability changes. When you order, the calendar shows the days and time windows we’re open, so just pick an available slot. Order at least a day ahead; in a pinch, request a rush order at checkout to unlock sooner dates.',
   },
 ];
 
