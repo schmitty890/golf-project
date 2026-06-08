@@ -64,6 +64,9 @@ function Order() {
   const [appliedCode, setAppliedCode] = useState('');
   const [discountInfo, setDiscountInfo] = useState(null); // { discount, label }
   const [codeError, setCodeError] = useState('');
+  // { enabled, type, value } from settings; eligible = signed-in with no prior orders.
+  const [firstOrderCfg, setFirstOrderCfg] = useState(null);
+  const [firstOrderEligible, setFirstOrderEligible] = useState(false);
 
   const [contact, setContact] = useState({ name: '', phone: '', email: '' });
   const [address, setAddress] = useState(reorder?.deliveryAddress ? {
@@ -107,6 +110,7 @@ function Order() {
           setPickupInstructions(res.data.pickupInstructions);
         }
         if (res.data.venmoHandle !== undefined) setVenmoHandle(res.data.venmoHandle);
+        if (res.data.firstOrderDiscount) setFirstOrderCfg(res.data.firstOrderDiscount);
         if (res.data.cardEnabled) {
           setCardEnabled(true);
           setPayMethod('card');
@@ -114,6 +118,14 @@ function Order() {
       })
       .catch(() => setDateOverrides({}));
   }, []);
+
+  // First-order eligibility (signed-in customers only; server confirms no prior orders).
+  useEffect(() => {
+    if (!token) { setFirstOrderEligible(false); return; }
+    axios.get(`${API_URL}/api/promos/first-order`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => setFirstOrderEligible(Boolean(res.data.eligible)))
+      .catch(() => setFirstOrderEligible(false));
+  }, [token]);
 
   // --- Cart ---
   const setProductQty = (id, n) => setQty((prev) => ({ ...prev, [id]: Math.max(0, n) }));
@@ -173,7 +185,16 @@ function Order() {
   // --- Totals (one-time orders; subscriptions show the recurring tier price) ---
   const rushSurcharge = isRush ? Math.round(itemsSub * (rushPercent / 100)) : 0;
   const subtotalNum = itemsSub + rushSurcharge + deliveryFee; // pre-discount
-  const discount = (!isSubscription && discountInfo?.discount) || 0;
+  // A promo/referral code wins; otherwise a signed-in first-timer gets the first-order deal.
+  const codeDiscount = (!isSubscription && discountInfo?.discount) || 0;
+  const foEnabled = !isSubscription && !appliedCode && Boolean(token)
+    && firstOrderEligible && firstOrderCfg?.enabled;
+  const foRaw = firstOrderCfg && firstOrderCfg.type === 'percent'
+    ? Math.round(subtotalNum * ((firstOrderCfg.value || 0) / 100))
+    : (firstOrderCfg?.value || 0);
+  const firstOrderAmount = foEnabled ? Math.max(0, Math.min(foRaw, subtotalNum)) : 0;
+  const discount = codeDiscount || firstOrderAmount;
+  const discountRowLabel = appliedCode ? `Promo ${appliedCode}` : 'First-order discount';
   const finalTotalNum = Math.max(0, subtotalNum - discount);
 
   // --- Promo / referral code ---
@@ -365,7 +386,7 @@ function Order() {
       ...(isPickup && address.neighborhood ? [['Neighborhood', address.neighborhood]] : []),
       ...(isRush ? [['Rush', `Yes (+${rushPercent}%)`]] : []),
       ...(deliveryFee ? [['Delivery', `$${deliveryFee}`]] : []),
-      ...(discount > 0 ? [['Promo', `${appliedCode} (−$${discount})`]] : []),
+      ...(discount > 0 ? [[discountRowLabel, `−$${discount}`]] : []),
       [isSubscription ? 'Price' : 'Estimated total', isSubscription ? selectedSub?.priceLabel : `$${finalTotalNum}`],
     ].filter(([, v]) => v);
 
@@ -794,6 +815,19 @@ function Order() {
           </div>
         )}
 
+        {/* First-order deal nudge for logged-out customers */}
+        {!isSubscription && !token && firstOrderCfg?.enabled && (
+          <div className="rounded-xl border border-ember/30 bg-ember/5 p-4 text-sm text-walnut">
+            <span className="font-semibold text-ember">New here?</span>
+            {' '}
+            {firstOrderCfg.type === 'percent'
+              ? `Sign in to claim ${firstOrderCfg.value}% off your first order.`
+              : `Sign in to claim $${firstOrderCfg.value} off your first order.`}
+            {' '}
+            <Link to="/register" className="font-semibold text-ember underline">Create an account →</Link>
+          </div>
+        )}
+
         {/* Estimate */}
         <div className="rounded-xl border border-cream-300 bg-cream-100 p-4">
           <div className="flex items-center justify-between gap-4">
@@ -827,7 +861,7 @@ function Order() {
               )}
               {discount > 0 && (
                 <p className="flex justify-between font-semibold text-green-700">
-                  <span>{`Promo ${appliedCode}`}</span>
+                  <span>{discountRowLabel}</span>
                   <span>{`−$${discount}`}</span>
                 </p>
               )}

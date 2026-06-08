@@ -23,6 +23,8 @@ function AdminPromos() {
   const [saving, setSaving] = useState(false);
   const [referral, setReferral] = useState({ enabled: true, type: 'amount', value: 5 });
   const [refSaved, setRefSaved] = useState(false);
+  const [firstOrder, setFirstOrder] = useState({ enabled: true, type: 'amount', value: 15 });
+  const [foSaved, setFoSaved] = useState(false);
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -44,9 +46,28 @@ function AdminPromos() {
   useEffect(() => {
     fetchCodes();
     axios.get(`${API_URL}/api/settings/availability`)
-      .then((res) => { if (res.data.referralDiscount) setReferral(res.data.referralDiscount); })
+      .then((res) => {
+        if (res.data.referralDiscount) setReferral(res.data.referralDiscount);
+        if (res.data.firstOrderDiscount) setFirstOrder(res.data.firstOrderDiscount);
+      })
       .catch(() => {});
   }, [fetchCodes]);
+
+  const saveFirstOrder = async () => {
+    try {
+      await axios.put(`${API_URL}/api/settings/availability`, {
+        firstOrderDiscount: {
+          enabled: firstOrder.enabled,
+          type: firstOrder.type,
+          value: Number(firstOrder.value) || 0,
+        },
+      }, authHeaders);
+      setFoSaved(true);
+      setTimeout(() => setFoSaved(false), 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to save first-order discount');
+    }
+  };
 
   const saveReferral = async () => {
     try {
@@ -150,6 +171,45 @@ function AdminPromos() {
             <input id="r-value" type="number" min={0} value={referral.value} onChange={(e) => setReferral({ ...referral, value: e.target.value })} className={`mt-1 w-24 ${inputClass}`} />
           </div>
           <button type="button" onClick={saveReferral} className="rounded-lg bg-ember px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600">
+            Save
+          </button>
+        </div>
+      </div>
+
+      {/* First-order discount config */}
+      <div className="mt-6 rounded-xl border border-cream-300 bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-walnut">First-order discount</h2>
+          {foSaved && <span className="text-sm font-semibold text-green-700">Saved ✓</span>}
+        </div>
+        <p className="mt-1 text-xs text-walnut-400">
+          Auto-applied to a signed-in customer&apos;s first one-time order (once per account). $15
+          makes the 3-Bundle Pack + delivery come to $30. Update the banner copy if you change this.
+        </p>
+        <div className="mt-3 flex flex-wrap items-end gap-4">
+          <label className="flex items-center gap-2 pb-2 text-sm font-semibold text-walnut">
+            <input
+              type="checkbox"
+              checked={firstOrder.enabled}
+              onChange={(e) => setFirstOrder({ ...firstOrder, enabled: e.target.checked })}
+              className="h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+            />
+            Offer first-order deal
+          </label>
+          <div>
+            <label htmlFor="fo-type" className="block text-xs font-semibold text-walnut">Type</label>
+            <select id="fo-type" value={firstOrder.type} onChange={(e) => setFirstOrder({ ...firstOrder, type: e.target.value })} className={`mt-1 ${inputClass}`}>
+              <option value="amount">$ off</option>
+              <option value="percent">% off</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="fo-value" className="block text-xs font-semibold text-walnut">
+              {firstOrder.type === 'percent' ? 'Percent' : 'Amount ($)'}
+            </label>
+            <input id="fo-value" type="number" min={0} value={firstOrder.value} onChange={(e) => setFirstOrder({ ...firstOrder, value: e.target.value })} className={`mt-1 w-24 ${inputClass}`} />
+          </div>
+          <button type="button" onClick={saveFirstOrder} className="rounded-lg bg-ember px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600">
             Save
           </button>
         </div>

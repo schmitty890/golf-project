@@ -10,6 +10,7 @@ const KEY = 'availability';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULT_PICKUP = 'Your bundles will be set out by the front-door Ring camera — grab them anytime during your window.';
 const DEFAULT_REFERRAL = { enabled: true, type: 'amount', value: 5 };
+const DEFAULT_FIRST_ORDER = { enabled: true, type: 'amount', value: 15 };
 const DEFAULTS = {
   leadDays: 1, rushEnabled: true, rushPercent: 25, pickupInstructions: DEFAULT_PICKUP,
 };
@@ -34,6 +35,7 @@ router.get('/availability', async (req, res) => {
       rushPercent: doc?.rushPercent ?? DEFAULTS.rushPercent,
       pickupInstructions: doc?.pickupInstructions ?? DEFAULTS.pickupInstructions,
       referralDiscount: doc?.referralDiscount ?? DEFAULT_REFERRAL,
+      firstOrderDiscount: doc?.firstOrderDiscount ?? DEFAULT_FIRST_ORDER,
       // A Venmo handle is public by design (it's how customers pay).
       venmoHandle: process.env.VENMO_HANDLE || '',
       // Whether card checkout (Stripe) is available — the client shows the card option only if so.
@@ -86,6 +88,14 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
         value: Math.max(0, Number(r.value) || 0),
       };
     }
+    if (req.body?.firstOrderDiscount && typeof req.body.firstOrderDiscount === 'object') {
+      const f = req.body.firstOrderDiscount;
+      update.firstOrderDiscount = {
+        enabled: Boolean(f.enabled),
+        type: f.type === 'percent' ? 'percent' : 'amount',
+        value: Math.max(0, Number(f.value) || 0),
+      };
+    }
 
     const doc = await Settings.findOneAndUpdate(
       { key: KEY },
@@ -99,6 +109,7 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
       rushPercent: doc.rushPercent,
       pickupInstructions: doc.pickupInstructions,
       referralDiscount: doc.referralDiscount,
+      firstOrderDiscount: doc.firstOrderDiscount,
     });
   } catch (error) {
     console.error('Update availability error:', error);

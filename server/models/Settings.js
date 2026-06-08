@@ -26,6 +26,13 @@ const settingsSchema = new mongoose.Schema({
     type: { type: String, enum: ['amount', 'percent'], default: 'amount' },
     value: { type: Number, default: 5, min: 0 },
   },
+  // First-order deal: auto-applied for a signed-in customer's first one-time order (once per account).
+  // Default $15 makes the 3-Bundle Pack ($40) + delivery ($5) come out to $30.
+  firstOrderDiscount: {
+    enabled: { type: Boolean, default: true },
+    type: { type: String, enum: ['amount', 'percent'], default: 'amount' },
+    value: { type: Number, default: 15, min: 0 },
+  },
 }, { timestamps: true, minimize: false });
 
 export default mongoose.model('Settings', settingsSchema);
