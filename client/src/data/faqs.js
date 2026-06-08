@@ -2,7 +2,7 @@
 const faqs = [
   {
     q: 'Do you sell cords or bulk loads?',
-    a: 'No — we deliver small campfire bundles only, perfect for a last-minute backyard fire.',
+    a: 'No — we deliver small bundles only, perfect for cozy backyard firepit fires.',
   },
   {
     q: 'Can I pick up or get it delivered?',
@@ -15,6 +15,8 @@ const faqs = [
   {
     q: 'How do I pay?',
     a: 'Pay with Venmo as soon as you order — we pre-fill the exact amount, so it’s one tap. We set out (or deliver) your firewood once your payment comes through, so paying right away keeps your order on schedule.',
+    // Shown instead of `a` when card checkout (Stripe) is enabled in this environment.
+    aWithCard: 'Two easy ways: pay securely by card at checkout (confirmed instantly), or send it with Venmo — we pre-fill the exact amount. Pick whichever you prefer. We set out or deliver once your payment comes through.',
   },
   {
     q: 'What area do you serve?',
