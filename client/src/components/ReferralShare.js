@@ -13,6 +13,7 @@ function ReferralShare({ className }) {
   const { token } = useContext(AuthContext);
   const [data, setData] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -31,6 +32,18 @@ function ReferralShare({ className }) {
   const flash = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const copyCode = async () => {
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(data.code);
+      } catch {
+        // ignore clipboard errors
+      }
+    }
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 1500);
   };
 
   const share = async () => {
@@ -68,6 +81,13 @@ function ReferralShare({ className }) {
           className="rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-white hover:bg-ember-600"
         >
           {copied ? 'Link copied!' : 'Share'}
+        </button>
+        <button
+          type="button"
+          onClick={copyCode}
+          className="rounded-lg border border-ember px-4 py-2 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
+        >
+          {codeCopied ? 'Copied!' : 'Copy code'}
         </button>
       </div>
       <p className="mt-2 text-xs text-walnut-300">
