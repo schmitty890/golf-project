@@ -15,10 +15,15 @@ const settingsSchema = new mongoose.Schema({
   rushEnabled: { type: Boolean, default: true },
   // Percentage surcharge applied to rush (same-day / within-lead) orders.
   rushPercent: { type: Number, default: 25, min: 0 },
-  // Admin-editable text shown to pickup customers (success screen + emails).
+  // Generic, public-safe pickup note (order form + success screen + on-order email). No address.
   pickupInstructions: {
     type: String,
-    default: 'Your bundles will be set out by the front-door Ring camera — grab them anytime during your window.',
+    default: 'Your bundles will be set out by the front-door Ring camera. During your window, grab the bundle labeled with your name.',
+  },
+  // Address + details, revealed only AFTER the owner confirms an order (confirmed/ready emails + tracking page).
+  pickupAddress: {
+    type: String,
+    default: '',
   },
   // Neighbor-referral discount for the NEW customer (referrer is rewarded manually).
   referralDiscount: {

@@ -10,7 +10,7 @@ const faqs = [
   },
   {
     q: 'Where do I pick up?',
-    a: 'After you place a pickup order, we’ll text you a spot and time here in The Vineyards.',
+    a: 'Once your pickup order is confirmed, we’ll send the exact spot here in The Vineyards — just grab the bundle with your name on it during your window.',
   },
   {
     q: 'How do I pay?',
