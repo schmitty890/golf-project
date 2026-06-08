@@ -240,6 +240,14 @@ function Testimonials() {
 }
 
 function FAQ() {
+  // Show the card+Venmo answer for any FAQ that has one, only where Stripe checkout is enabled.
+  const [cardEnabled, setCardEnabled] = useState(false);
+  useEffect(() => {
+    axios.get(`${API_URL}/api/settings/availability`)
+      .then((res) => setCardEnabled(Boolean(res.data.cardEnabled)))
+      .catch(() => {});
+  }, []);
+
   if (!faqs || faqs.length === 0) return null;
 
   return (
@@ -249,15 +257,18 @@ function FAQ() {
           Frequently asked
         </h2>
         <div className="mt-10 divide-y divide-cream-300 border-y border-cream-300">
-          {faqs.map((item) => (
-            <details key={item.q} className="group py-4">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-walnut [&::-webkit-details-marker]:hidden">
-                {item.q}
-                <span className="ml-2 shrink-0 text-2xl font-normal leading-none text-ember transition-transform duration-200 group-open:rotate-45">+</span>
-              </summary>
-              <p className="mt-3 text-sm text-walnut-400">{item.a}</p>
-            </details>
-          ))}
+          {faqs.map((item) => {
+            const answer = (cardEnabled && item.aWithCard) ? item.aWithCard : item.a;
+            return (
+              <details key={item.q} className="group py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-walnut [&::-webkit-details-marker]:hidden">
+                  {item.q}
+                  <span className="ml-2 shrink-0 text-2xl font-normal leading-none text-ember transition-transform duration-200 group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-3 text-sm text-walnut-400">{answer}</p>
+              </details>
+            );
+          })}
         </div>
       </div>
     </section>
