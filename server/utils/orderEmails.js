@@ -56,7 +56,7 @@ function fulfillmentText(order) {
 
 // Total from the cart items + delivery + rush − discount. Null for subscriptions (recurring price
 // isn't stored on the order).
-function orderTotal(order) {
+export function orderTotal(order) {
   const itemsSub = (order.items || [])
     .reduce((s, i) => s + (i.quantity || 0) * (i.unitPrice || 0), 0);
   if (!itemsSub) return null;

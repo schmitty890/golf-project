@@ -6,6 +6,8 @@ import {
   describeOrder, fulfillmentLabel, formatPreferredSchedule, formatSchedule,
   STATUS_STEPS, statusLabel, normalizeStatus, paymentStatusClasses, paymentLabel,
 } from '../utils/orderDisplay';
+import business from '../data/business';
+import { getSubscription } from '../data/pricing';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -48,6 +50,17 @@ function TrackOrder() {
   const currentIndex = STATUS_STEPS.indexOf(normalizeStatus(order.status));
   const when = formatSchedule(order.schedule) || formatPreferredSchedule(order);
 
+  // Still-unpaid orders get another Venmo pay link here (hidden once the owner marks it paid).
+  const handle = (order.venmoHandle || '').replace(/^@/, '');
+  const amount = order.orderType === 'subscription'
+    ? (getSubscription(order.subscriptionPlan)?.price || '')
+    : (order.total || '');
+  const venmoNote = `${business.name} firewood order`;
+  const venmoUrl = handle
+    ? `https://venmo.com/${handle}?txn=pay${amount ? `&amount=${amount}` : ''}&note=${encodeURIComponent(venmoNote)}`
+    : '';
+  const showPay = order.paymentStatus !== 'paid' && !cancelled && venmoUrl;
+
   return (
     <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
       <p className="text-sm font-semibold text-ember">Order tracking</p>
@@ -64,6 +77,23 @@ function TrackOrder() {
         <span className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClasses[order.paymentStatus] || paymentStatusClasses.unpaid}`}>
           {paymentLabel(order)}
         </span>
+
+        {showPay && (
+          <div className="mt-4 border-t border-cream-300 pt-4">
+            <a
+              href={venmoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-full items-center justify-center rounded-xl bg-[#3D95CE] px-4 py-3 text-base font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              {amount ? `Pay $${amount} with Venmo` : 'Pay with Venmo'}
+              {` · @${handle}`}
+            </a>
+            <p className="mt-2 text-xs font-semibold text-amber-800">
+              Still unpaid — pay now so we can set out or deliver your order.
+            </p>
+          </div>
+        )}
       </div>
 
       {cancelled ? (

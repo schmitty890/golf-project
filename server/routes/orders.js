@@ -10,7 +10,7 @@ import { sendMail } from '../utils/mailer.js';
 import {
   customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
   orderCancelledOwnerEmail, orderRescheduledOwnerEmail, paymentReceivedEmail,
-  referralRewardEmail, readyEmail,
+  referralRewardEmail, readyEmail, orderTotal,
 } from '../utils/orderEmails.js';
 import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
@@ -339,6 +339,8 @@ router.get('/track/:token', async (req, res) => {
       rush: order.rush,
       createdAt: order.createdAt,
       customerName: (order.contact?.name || '').split(' ')[0],
+      total: orderTotal(order)?.total ?? null,
+      venmoHandle: process.env.VENMO_HANDLE || '',
     });
   } catch (error) {
     console.error('Track order error:', error);
