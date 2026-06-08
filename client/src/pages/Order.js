@@ -397,9 +397,10 @@ function Order() {
               {` · @${handle}`}
             </a>
           )}
-          <p className="mt-2 text-xs text-walnut-300">
-            No payment needed to hold your order. The Venmo button above is pre-filled with your
-            total — just send it, and we&apos;ll mark your order as paid once it arrives.
+          <p className="mt-2 rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+            Please send your Venmo now — the button above is pre-filled with your total. We set out
+            or deliver your order only once payment comes through, so paying right away keeps it on
+            schedule.
           </p>
         </div>
 

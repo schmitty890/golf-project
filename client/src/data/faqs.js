@@ -14,7 +14,7 @@ const faqs = [
   },
   {
     q: 'How do I pay?',
-    a: 'We’ll confirm your order and arrange payment directly — no online payment needed.',
+    a: 'Pay with Venmo as soon as you order — we pre-fill the exact amount, so it’s one tap. We set out (or deliver) your firewood once your payment comes through, so paying right away keeps your order on schedule.',
   },
   {
     q: 'What area do you serve?',
