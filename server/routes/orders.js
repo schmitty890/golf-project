@@ -37,6 +37,15 @@ const addDaysStr = (s, n) => {
   return `${d.getFullYear()}-${mm}-${dd}`;
 };
 
+// Minimum subscription commitment before it goes month-to-month (authoritative; keep in sync
+// with SUBSCRIPTION_MIN_MONTHS in client/src/data/pricing.js).
+const SUBSCRIPTION_MIN_MONTHS = 3;
+const addMonths = (date, n) => {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + n);
+  return d;
+};
+
 // Validate a requested date + time windows against admin availability/lead-time rules.
 // Returns { error } on failure, or { windows, isRush, rushPercent } on success.
 // Shared by order creation and reschedule. `settings` is the availability Settings doc.
@@ -133,7 +142,7 @@ router.post('/', optionalAuth, async (req, res) => {
     const {
       orderType, items, subscriptionPlan, deliveryFee,
       contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
-      rush, code, subtotal,
+      rush, code, subtotal, agreedToTerms,
     } = req.body;
 
     if (!['onetime', 'subscription'].includes(orderType)) {
@@ -153,6 +162,9 @@ router.post('/', optionalAuth, async (req, res) => {
     }
     if (orderType === 'subscription' && !subscriptionPlan) {
       return res.status(400).json({ error: 'Please choose a subscription plan' });
+    }
+    if (orderType === 'subscription' && agreedToTerms !== true) {
+      return res.status(400).json({ error: `Please agree to the ${SUBSCRIPTION_MIN_MONTHS}-month commitment to subscribe.` });
     }
     // Delivery orders need an address; pickup orders don't.
     if (fulfillment !== 'pickup' && !deliveryAddress?.street) {
@@ -194,6 +206,9 @@ router.post('/', optionalAuth, async (req, res) => {
       items: orderType === 'onetime' ? cart : [],
       deliveryFee: fulfillment === 'pickup' ? 0 : Math.max(0, Number(deliveryFee) || 0),
       subscriptionPlan: orderType === 'subscription' ? (subscriptionPlan || '') : '',
+      commitmentMonths: orderType === 'subscription' ? SUBSCRIPTION_MIN_MONTHS : 0,
+      commitmentEndsAt: orderType === 'subscription' ? addMonths(new Date(), SUBSCRIPTION_MIN_MONTHS) : null,
+      agreedToTermsAt: orderType === 'subscription' ? new Date() : null,
       contact,
       deliveryAddress: deliveryAddress || {},
       preferredDate,
@@ -456,6 +471,11 @@ router.patch('/:id/cancel', auth, async (req, res) => {
     }
     if (['delivered', 'cancelled'].includes(order.status)) {
       return res.status(400).json({ error: `This order is already ${order.status}.` });
+    }
+    // Subscriptions are locked in until the minimum commitment ends (owner can still override in Admin).
+    if (order.orderType === 'subscription' && order.commitmentEndsAt
+      && new Date() < order.commitmentEndsAt) {
+      return res.status(400).json({ error: `Your subscription has a ${order.commitmentMonths || SUBSCRIPTION_MIN_MONTHS}-month minimum — contact us to make changes.` });
     }
 
     order.status = 'cancelled';

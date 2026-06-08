@@ -189,6 +189,11 @@ function AdminOrders() {
                     {`Referred by ${[order.referredBy.firstName, order.referredBy.lastName].filter(Boolean).join(' ') || order.referredBy.email}`}
                   </p>
                 )}
+                {order.orderType === 'subscription' && order.commitmentEndsAt && (
+                  <p className="text-sm text-walnut-400">
+                    {`Commitment ends ${new Date(order.commitmentEndsAt).toLocaleDateString()}`}
+                  </p>
+                )}
                 <p className="text-sm text-walnut-400">
                   {order.fulfillment === 'pickup' ? (
                     'Pickup — coordinate spot & time'

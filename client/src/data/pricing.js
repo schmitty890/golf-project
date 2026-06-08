@@ -3,6 +3,9 @@
 // Flat delivery fee per order (pickup is free).
 export const DELIVERY_FEE = 5;
 
+// Minimum subscription commitment (months) before it goes month-to-month.
+export const SUBSCRIPTION_MIN_MONTHS = 3;
+
 // À-la-carte products for a one-time order (the cart). `price` is dollars each.
 export const products = [
   {

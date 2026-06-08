@@ -9,7 +9,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import business from '../data/business';
 import {
-  products, subscriptions, getSubscription, DELIVERY_FEE, TIME_WINDOWS,
+  products, subscriptions, getSubscription, DELIVERY_FEE, TIME_WINDOWS, SUBSCRIPTION_MIN_MONTHS,
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
@@ -44,6 +44,7 @@ function Order() {
       ? reorder.subscriptionPlan : subscriptions[0].plan,
   );
   const [fulfillment, setFulfillment] = useState(reorder?.fulfillment === 'delivery' ? 'delivery' : 'pickup');
+  const [agreedSub, setAgreedSub] = useState(false);
 
   const [preferredDate, setPreferredDate] = useState('');
   const [windowFroms, setWindowFroms] = useState([]);
@@ -230,7 +231,9 @@ function Order() {
       subtotal: subtotalNum,
     };
     if (isSubscription) {
-      return { ...base, orderType: 'subscription', subscriptionPlan: subPlan };
+      return {
+        ...base, orderType: 'subscription', subscriptionPlan: subPlan, agreedToTerms: agreedSub,
+      };
     }
     return {
       ...base,
@@ -246,6 +249,10 @@ function Order() {
 
     if (!isSubscription && cart.length === 0) {
       setError('Please add at least one item.');
+      return;
+    }
+    if (isSubscription && !agreedSub) {
+      setError(`Please agree to the ${SUBSCRIPTION_MIN_MONTHS}-month commitment to subscribe.`);
       return;
     }
     if (!preferredDate || !dateIsOpen(preferredDate)) {
@@ -509,6 +516,17 @@ function Order() {
                 </button>
               ))}
             </div>
+            <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl border border-cream-300 bg-cream-100 p-3">
+              <input
+                type="checkbox"
+                checked={agreedSub}
+                onChange={(e) => setAgreedSub(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+              />
+              <span className="text-sm text-walnut">
+                {`I agree to the ${SUBSCRIPTION_MIN_MONTHS}-month minimum commitment, then it continues month-to-month — cancel anytime after.`}
+              </span>
+            </label>
           </div>
         )}
 

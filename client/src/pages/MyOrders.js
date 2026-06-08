@@ -14,6 +14,13 @@ import {
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
+// A subscription is locked in until its minimum commitment ends.
+function withinCommitment(order) {
+  return order.orderType === 'subscription'
+    && order.commitmentEndsAt
+    && new Date(order.commitmentEndsAt) > new Date();
+}
+
 // Build an "Order again" prefill payload from a past order (cart model).
 function buildReorder(order) {
   return {
@@ -178,13 +185,19 @@ function MyOrders() {
                   >
                     Reschedule
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => cancelOrder(order._id)}
-                    className="rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
-                  >
-                    Cancel
-                  </button>
+                  {withinCommitment(order) ? (
+                    <span className="self-center text-xs text-walnut-400">
+                      {`${order.commitmentMonths || 3}-month minimum — contact us to change your subscription.`}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => cancelOrder(order._id)}
+                      className="rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </>
               )}
             </div>

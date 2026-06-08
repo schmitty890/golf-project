@@ -114,10 +114,15 @@ export function customerConfirmationEmail(order, pickupInstructions = '') {
   const lines = summaryLines(order);
   const venmo = venmoBlock(order);
   const pickup = order.fulfillment === 'pickup' && pickupInstructions ? pickupInstructions : '';
+  const m = order.commitmentMonths || 0;
+  const commitmentText = m > 0
+    ? `${m}-month minimum: this subscription runs ${m} months, then continues month-to-month — cancel anytime after.`
+    : '';
   const subject = `We got your order — ${BUSINESS()}`;
   const intro = "Thanks for your order! Here's what we have. We'll confirm your time window shortly.";
-  const html = wrap('Order received', `<p>${intro}</p>${linesToHtml(lines)}${pickup ? `<p style="margin-top:16px">${pickup}</p>` : ''}${venmo ? `<p style="margin-top:16px">${venmo}</p>` : ''}`);
-  const text = `${intro}\n\n${linesToText(lines)}${pickup ? `\n\n${pickup}` : ''}${venmo ? `\n\n${venmo}` : ''}`;
+  const commitmentHtml = commitmentText ? `<p style="margin-top:16px;color:#8a7f78;font-size:13px"><strong>${commitmentText}</strong></p>` : '';
+  const html = wrap('Order received', `<p>${intro}</p>${linesToHtml(lines)}${commitmentHtml}${pickup ? `<p style="margin-top:16px">${pickup}</p>` : ''}${venmo ? `<p style="margin-top:16px">${venmo}</p>` : ''}`);
+  const text = `${intro}\n\n${linesToText(lines)}${commitmentText ? `\n\n${commitmentText}` : ''}${pickup ? `\n\n${pickup}` : ''}${venmo ? `\n\n${venmo}` : ''}`;
   return { subject, html, text };
 }
 

@@ -15,6 +15,10 @@ const orderSchema = new mongoose.Schema({
   deliveryFee: { type: Number, default: 0 },
   // Subscription tier plan (e.g. '2bundle' / '3bundle') for subscription orders.
   subscriptionPlan: { type: String, default: '' },
+  // Subscription minimum commitment: term length, when it ends, and when the customer agreed.
+  commitmentMonths: { type: Number, default: 0 },
+  commitmentEndsAt: { type: Date, default: null },
+  agreedToTermsAt: { type: Date, default: null },
   // Deprecated (seasonal packs / seasons) — kept for older orders.
   packName: { type: String, default: '' },
   bundleCount: { type: Number, default: 0 },

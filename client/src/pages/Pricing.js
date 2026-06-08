@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
-  products, subscriptions, DELIVERY_FEE,
+  products, subscriptions, DELIVERY_FEE, SUBSCRIPTION_MIN_MONTHS,
 } from '../data/pricing';
 import business from '../data/business';
 
@@ -50,6 +50,9 @@ function Pricing() {
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm text-walnut-300">
             Never run out — bundles delivered every month.
+          </p>
+          <p className="mx-auto mt-1 max-w-xl text-center text-xs text-walnut-300">
+            {`${SUBSCRIPTION_MIN_MONTHS}-month minimum, then month-to-month — cancel anytime after.`}
           </p>
           <div className="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2">
             {subscriptions.map((s) => (
