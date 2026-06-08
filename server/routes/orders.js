@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
@@ -9,7 +10,7 @@ import { sendMail } from '../utils/mailer.js';
 import {
   customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
   orderCancelledOwnerEmail, orderRescheduledOwnerEmail, paymentReceivedEmail,
-  referralRewardEmail,
+  referralRewardEmail, readyEmail,
 } from '../utils/orderEmails.js';
 import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
@@ -223,7 +224,9 @@ router.post('/', optionalAuth, async (req, res) => {
       // Card is only offered for one-time orders in Phase 1; everything else stays Venmo.
       paymentMethod: (paymentMethod === 'card' && orderType === 'onetime' && stripeEnabled()) ? 'card' : 'venmo',
       user: req.userId || null,
-      statusHistory: [{ status: 'pending', at: new Date() }],
+      status: 'received',
+      statusHistory: [{ status: 'received', at: new Date() }],
+      trackingToken: crypto.randomBytes(12).toString('hex'),
     });
     await order.save();
 
@@ -237,7 +240,7 @@ router.post('/', optionalAuth, async (req, res) => {
           const base = process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
           const description = (order.items || []).map((i) => `${i.quantity}× ${i.name}`).join(', ');
           const session = await createOneTimeCheckout(order, amountCents, {
-            successUrl: `${base}/order?status=paid`,
+            successUrl: `${base}/order?status=paid&track=${order.trackingToken}`,
             cancelUrl: `${base}/order?status=cancelled`,
             description,
           });
@@ -311,6 +314,34 @@ router.get('/mine', auth, async (req, res) => {
     return res.json(orders);
   } catch (error) {
     console.error('Get my orders error:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Public order tracking by token (no auth). Returns a PII-light view — no phone/email/address.
+router.get('/track/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '');
+    if (!token) return res.status(404).json({ error: 'Not found' });
+    const order = await Order.findOne({ trackingToken: token });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    return res.json({
+      status: order.status,
+      statusHistory: order.statusHistory,
+      fulfillment: order.fulfillment,
+      orderType: order.orderType,
+      items: order.items,
+      subscriptionPlan: order.subscriptionPlan,
+      preferredDate: order.preferredDate,
+      preferredTimes: order.preferredTimes,
+      schedule: order.schedule,
+      paymentStatus: order.paymentStatus,
+      rush: order.rush,
+      createdAt: order.createdAt,
+      customerName: (order.contact?.name || '').split(' ')[0],
+    });
+  } catch (error) {
+    console.error('Track order error:', error);
     return res.status(500).json({ error: 'Server error' });
   }
 });
@@ -427,8 +458,12 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    const ALLOWED_STATUSES = ['received', 'confirmed', 'ready', 'completed', 'cancelled'];
     const prevStatus = order.status;
     if (status !== undefined && status !== order.status) {
+      if (!ALLOWED_STATUSES.includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+      }
       order.statusHistory.push({ status, at: new Date() });
       order.status = status;
     }
@@ -459,7 +494,10 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       if (order.status === 'confirmed' && order.schedule?.from) {
         const settings = await Settings.findOne({ key: 'availability' });
         email = windowConfirmedEmail(order, settings?.pickupInstructions);
-      } else if (order.status === 'delivered') {
+      } else if (order.status === 'ready') {
+        const settings = await Settings.findOne({ key: 'availability' });
+        email = readyEmail(order, settings?.pickupInstructions);
+      } else if (order.status === 'completed') {
         email = deliveredEmail(order);
       }
       if (email) sendMail({ to: customerEmail, ...email });

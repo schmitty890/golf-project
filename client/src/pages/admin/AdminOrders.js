@@ -9,7 +9,7 @@ import { TIME_WINDOWS } from '../../data/pricing';
 import {
   describeOrder, statusClasses, STATUS_OPTIONS, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
-  paymentStatusClasses, paymentLabel,
+  paymentStatusClasses, paymentLabel, statusLabel, normalizeStatus,
 } from '../../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -138,7 +138,7 @@ function AdminOrders() {
             >
               <option value="all">All</option>
               {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s} className="capitalize">{s}</option>
+                <option key={s} value={s}>{statusLabel(s)}</option>
               ))}
             </select>
           </div>
@@ -216,17 +216,17 @@ function AdminOrders() {
               </div>
 
               <div className="flex items-center gap-3">
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClasses[order.status] || ''}`}>
-                  {order.status}
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[order.status] || ''}`}>
+                  {statusLabel(order.status, order.fulfillment)}
                 </span>
                 <select
-                  value={order.status}
+                  value={normalizeStatus(order.status)}
                   onChange={(e) => updateStatus(order._id, e.target.value)}
                   aria-label="Update status"
-                  className="rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut capitalize focus:outline-ember"
+                  className="rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
                 >
                   {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s} className="capitalize">{s}</option>
+                    <option key={s} value={s}>{statusLabel(s, order.fulfillment)}</option>
                   ))}
                 </select>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClasses[order.paymentStatus] || paymentStatusClasses.unpaid}`}>

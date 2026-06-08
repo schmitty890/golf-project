@@ -9,7 +9,7 @@ import RescheduleModal from '../components/RescheduleModal';
 import {
   describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
-  paymentStatusClasses, paymentLabel,
+  paymentStatusClasses, paymentLabel, statusLabel,
 } from '../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -143,8 +143,8 @@ function MyOrders() {
                 )}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClasses[order.status] || ''}`}>
-                  {order.status}
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[order.status] || ''}`}>
+                  {statusLabel(order.status, order.fulfillment)}
                 </span>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClasses[order.paymentStatus] || paymentStatusClasses.unpaid}`}>
                   {paymentLabel(order)}
@@ -162,13 +162,21 @@ function MyOrders() {
             <ul className="mt-3 space-y-1 border-t border-cream-300 pt-3">
               {statusTimeline(order).map((e) => (
                 <li key={`${e.status}-${e.at}`} className="flex justify-between gap-3 text-xs text-walnut-400">
-                  <span className="font-semibold text-walnut">{statusEventLabel(e.status)}</span>
+                  <span className="font-semibold text-walnut">{statusEventLabel(e.status, order.fulfillment)}</span>
                   <span>{e.at ? new Date(e.at).toLocaleString() : ''}</span>
                 </li>
               ))}
             </ul>
 
             <div className="mt-4 flex flex-wrap gap-2 border-t border-cream-300 pt-3">
+              {order.trackingToken && (
+                <Link
+                  to={`/track/${order.trackingToken}`}
+                  className="rounded-lg border border-cream-300 px-3 py-1.5 text-sm font-semibold text-walnut hover:border-ember"
+                >
+                  Track
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => navigate('/order', { state: { reorder: buildReorder(order) } })}

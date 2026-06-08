@@ -58,6 +58,7 @@ function Order() {
   const [cardEnabled, setCardEnabled] = useState(false);
   const [payMethod, setPayMethod] = useState('venmo'); // 'card' | 'venmo'
   const [returnStatus, setReturnStatus] = useState(''); // 'paid' | 'cancelled' after Stripe redirect
+  const [trackToken, setTrackToken] = useState(''); // tracking token of the just-placed order
 
   const [codeInput, setCodeInput] = useState('');
   const [appliedCode, setAppliedCode] = useState('');
@@ -225,6 +226,8 @@ function Order() {
     }
     const status = searchParams.get('status');
     if (status === 'paid' || status === 'cancelled') setReturnStatus(status);
+    const track = searchParams.get('track');
+    if (track) setTrackToken(track);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -287,6 +290,7 @@ function Order() {
         window.location = res.data.stripeCheckoutUrl;
         return;
       }
+      if (res.data.trackingToken) setTrackToken(res.data.trackingToken);
       setSubmitted(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong. Please try again.');
@@ -302,12 +306,18 @@ function Order() {
         <CheckCircleIcon className="mx-auto h-14 w-14 text-green-600" aria-hidden="true" />
         <h1 className="mt-4 text-2xl font-extrabold text-walnut">Payment received — thank you!</h1>
         <p className="mt-2 text-walnut-400">
-          Your order is paid and confirmed. Check your email for the details, and we&apos;ll be in
-          touch about your time window.
+          Your order is paid and confirmed. We&apos;ll be in touch about your time window — follow
+          along below.
         </p>
-        <Link to="/" className="mt-6 inline-block rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600">
-          Back home
-        </Link>
+        {trackToken ? (
+          <Link to={`/track/${trackToken}`} className="mt-6 inline-block rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600">
+            Track your order →
+          </Link>
+        ) : (
+          <Link to="/" className="mt-6 inline-block rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600">
+            Back home
+          </Link>
+        )}
       </div>
     );
   }
@@ -392,6 +402,12 @@ function Order() {
             total — just send it, and we&apos;ll mark your order as paid once it arrives.
           </p>
         </div>
+
+        {trackToken && (
+          <Link to={`/track/${trackToken}`} className="mt-6 flex w-full items-center justify-center rounded-xl border border-ember px-4 py-3 text-base font-semibold text-ember hover:bg-ember hover:text-white">
+            Track your order →
+          </Link>
+        )}
 
         <ReferralShare className="mt-6" />
 

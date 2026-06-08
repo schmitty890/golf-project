@@ -82,10 +82,11 @@ const orderSchema = new mongoose.Schema({
     neighborhood: { type: String, trim: true, default: '' },
     notes: { type: String, trim: true, default: '' },
   },
+  // Fulfillment stage. Plain string (validated in the route) so legacy values still read.
+  // Canonical: received → confirmed → ready → completed, plus cancelled.
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'delivered', 'cancelled'],
-    default: 'pending',
+    default: 'received',
   },
   // Timestamped record of each status change (for the customer timeline + admin tracking).
   statusHistory: {
@@ -95,6 +96,8 @@ const orderSchema = new mongoose.Schema({
     }],
     default: [],
   },
+  // Random token for the public order-tracking link (no login needed to view that one order).
+  trackingToken: { type: String, index: true, default: '' },
   // Admin-set pickup/delivery window, shown to logged-in customers. Stored as plain strings
   // (date 'YYYY-MM-DD', from/to 'HH:MM') to avoid timezone conversion issues.
   schedule: {

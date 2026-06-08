@@ -8,6 +8,7 @@ import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Order from './pages/Order';
 import Pricing from './pages/Pricing';
+import TrackOrder from './pages/TrackOrder';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MyOrders from './pages/MyOrders';
@@ -28,6 +29,7 @@ function App() {
           <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
           <Route path="/order" element={<PublicLayout><Order /></PublicLayout>} />
           <Route path="/pricing" element={<PublicLayout><Pricing /></PublicLayout>} />
+          <Route path="/track/:token" element={<PublicLayout><TrackOrder /></PublicLayout>} />
 
           {/* Auth - standalone */}
           <Route path="/login" element={<Login />} />
