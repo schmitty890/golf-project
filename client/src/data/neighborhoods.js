@@ -1,11 +1,15 @@
 // Sub-neighborhoods within The Vineyards, used by the order form and feedback dropdowns.
-// PLACEHOLDER list — replace these with the real neighborhood names.
 const neighborhoods = [
-  'Placeholder Neighborhood 1',
-  'Placeholder Neighborhood 2',
-  'Placeholder Neighborhood 3',
-  'Placeholder Neighborhood 4',
-  'Placeholder Neighborhood 5',
+  'Kenwood Townhomes',
+  'Redwood Rookery',
+  'The Ridge at Calistoga',
+  'Napa',
+  'Calistoga',
+  'Salinas',
+  'Solena I',
+  'Solena II',
+  'San Simeon',
+  'St. Helena',
 ];
 
 export default neighborhoods;
