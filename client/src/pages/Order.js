@@ -241,7 +241,7 @@ function Order() {
     const base = {
       fulfillment: isPickup ? 'pickup' : 'delivery',
       contact,
-      deliveryAddress: needsAddress ? address : {},
+      deliveryAddress: needsAddress ? address : { neighborhood: address.neighborhood },
       preferredDate,
       preferredTimes: selectedWindows.map((w) => ({ from: w.from, to: w.to })),
       rush: isRush,
@@ -362,6 +362,7 @@ function Order() {
       ['When', `${formatDayLabel(preferredDate)}${windowsLabel ? ` · ${windowsLabel}` : ''}`],
       ['How', isPickup ? 'Curb pickup' : 'Delivery'],
       ...(needsAddress ? [['Address', addressLine]] : []),
+      ...(isPickup && address.neighborhood ? [['Neighborhood', address.neighborhood]] : []),
       ...(isRush ? [['Rush', `Yes (+${rushPercent}%)`]] : []),
       ...(deliveryFee ? [['Delivery', `$${deliveryFee}`]] : []),
       ...(discount > 0 ? [['Promo', `${appliedCode} (−$${discount})`]] : []),
@@ -675,11 +676,22 @@ function Order() {
 
         {/* Pickup info or delivery address */}
         {isPickup ? (
-          <div className="rounded-md bg-cream-300/50 p-4">
-            <p className="text-base font-bold text-walnut">Curb pickup</p>
-            <p className="mt-1 text-sm text-walnut-400">
-              {pickupInstructions || 'We’ll set your bundles out for your window — grab them anytime within it.'}
-            </p>
+          <div className="space-y-4">
+            <div className="rounded-md bg-cream-300/50 p-4">
+              <p className="text-base font-bold text-walnut">Curb pickup</p>
+              <p className="mt-1 text-sm text-walnut-400">
+                {pickupInstructions || 'We’ll set your bundles out for your window — grab them anytime within it.'}
+              </p>
+            </div>
+            <div>
+              <label htmlFor="pickup-neighborhood" className={labelClass}>Neighborhood (optional)</label>
+              <select id="pickup-neighborhood" value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} className={`mt-2 ${inputClass}`}>
+                <option value="">Select…</option>
+                {neighborhoods.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
           </div>
         ) : (
           <fieldset className="space-y-4">
