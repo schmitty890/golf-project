@@ -135,7 +135,7 @@ function WhyVolw() {
   return (
     <section id="why-volw" className="bg-walnut py-16 text-cream sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 className="text-center text-3xl font-extrabold tracking-tight">Why VOLW</h2>
+        <h2 className="text-center text-3xl font-extrabold tracking-tight">Why VOLW Firewood</h2>
         <div className="mt-12 grid grid-cols-2 gap-8 sm:grid-cols-4">
           {reasons.map((reason) => (
             <div key={reason.name} className="flex flex-col items-center text-center">
