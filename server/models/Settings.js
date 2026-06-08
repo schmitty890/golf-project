@@ -1,5 +1,9 @@
 import mongoose from 'mongoose';
 
+// Default pickup address/details — emailed to PAYING pickup customers + shown post-confirmation.
+// Exported so the routes can fall back to it when the owner hasn't saved a custom address.
+export const DEFAULT_PICKUP_ADDRESS = 'Pickup is at 2019 Merida Street — your bundles are set out in the front doorway (there\'s a Ring camera on the door). Grab the bundle labeled with your name during your pickup window.';
+
 // Singleton site settings (keyed by `key`). Holds calendar-date availability exceptions.
 // `dateOverrides` maps 'YYYY-MM-DD' -> array of enabled time-window `from` times ('HH:MM').
 //   - a date absent from the map is fully open (all windows)
@@ -20,10 +24,10 @@ const settingsSchema = new mongoose.Schema({
     type: String,
     default: 'Your bundles will be set out by the front-door Ring camera. During your window, grab the bundle labeled with your name.',
   },
-  // Address + details, revealed only AFTER the owner confirms an order (confirmed/ready emails + tracking page).
+  // Address + details, emailed to paying pickup customers + shown post-confirmation.
   pickupAddress: {
     type: String,
-    default: '',
+    default: DEFAULT_PICKUP_ADDRESS,
   },
   // Neighbor-referral discount for the NEW customer (referrer is rewarded manually).
   referralDiscount: {
@@ -31,7 +35,7 @@ const settingsSchema = new mongoose.Schema({
     type: { type: String, enum: ['amount', 'percent'], default: 'amount' },
     value: { type: Number, default: 5, min: 0 },
   },
-  // First-order deal: auto-applied for a signed-in customer's first one-time order (once per account).
+  // First-order deal: auto-applied for a signed-in customer's first one-time order (once per acct).
   // Default $15 makes the 3-Bundle Pack ($40) + delivery ($5) come out to $30.
   firstOrderDiscount: {
     enabled: { type: Boolean, default: true },

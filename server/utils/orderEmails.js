@@ -189,7 +189,7 @@ export function readyEmail(order, pickupInstructions = '') {
   const isPickup = order.fulfillment === 'pickup';
   const headline = isPickup ? 'Ready for pickup!' : 'Out for delivery!';
   const note = isPickup
-    ? (pickupInstructions || "Your bundles are set out — grab them during your window.")
+    ? (pickupInstructions || 'Your bundles are set out — grab them during your window.')
     : "Your firewood is on the way — we'll deliver within your window.";
   const body = `<p>${note}</p>
     ${linesToHtml([['Order', describeOrder(order)], ['How', fulfillmentText(order)]])}${trackBlockHtml(order)}`;
@@ -215,13 +215,20 @@ export function reminderEmail(order, pickupInstructions = '') {
   return { subject, html, text };
 }
 
-export function paymentReceivedEmail(order) {
+export function paymentReceivedEmail(order, pickupAddress = '') {
   const t = orderTotal(order);
   const amount = t ? `$${t.total}` : 'your order';
   const subject = `Payment received — ${BUSINESS()}`;
   const intro = `Thanks! We've marked ${describeOrder(order)} as paid (${amount}).`;
-  const html = wrap('Payment received', `<p>${intro}</p>${linesToHtml(summaryLines(order))}`);
-  const text = `${intro}\n\n${linesToText(summaryLines(order))}`;
+  // Now that they've paid, pickup customers get the address.
+  const pickup = order.fulfillment === 'pickup' && pickupAddress
+    ? `<p style="margin-top:16px"><strong>Where to pick up:</strong> ${pickupAddress}</p>`
+    : '';
+  const pickupText = order.fulfillment === 'pickup' && pickupAddress
+    ? `\n\nWhere to pick up: ${pickupAddress}`
+    : '';
+  const html = wrap('Payment received', `<p>${intro}</p>${linesToHtml(summaryLines(order))}${pickup}`);
+  const text = `${intro}\n\n${linesToText(summaryLines(order))}${pickupText}`;
   return { subject, html, text };
 }
 

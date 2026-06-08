@@ -1,6 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import Settings from '../models/Settings.js';
+import Settings, { DEFAULT_PICKUP_ADDRESS } from '../models/Settings.js';
 import User from '../models/User.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
@@ -25,11 +25,13 @@ const router = express.Router();
 const KEY = 'availability';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULT_PICKUP = 'Your bundles will be set out by the front-door Ring camera. During your window, grab the bundle labeled with your name.';
-const DEFAULT_PICKUP_ADDRESS = 'Pickup is at 2019 Merida Street — your bundles are set out in the front doorway (there\'s a Ring camera on the door). Grab the bundle labeled with your name during your pickup window.';
 const DEFAULT_REFERRAL = { enabled: true, type: 'amount', value: 5 };
 const DEFAULT_FIRST_ORDER = { enabled: true, type: 'amount', value: 15 };
 const DEFAULTS = {
-  leadDays: 1, rushEnabled: true, rushPercent: 25, pickupInstructions: DEFAULT_PICKUP,
+  leadDays: 1,
+  rushEnabled: true,
+  rushPercent: 25,
+  pickupInstructions: DEFAULT_PICKUP,
   pickupAddress: DEFAULT_PICKUP_ADDRESS,
 };
 
