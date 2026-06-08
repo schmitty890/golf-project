@@ -150,7 +150,10 @@ Env vars get set in **two places**: the **backend** (Node service) and the **fro
 | `BUSINESS_NAME` | `VOLW Firewood` | |
 | `SERVICE_AREA` | `The Vineyards on Lake Wylie` | |
 | `VENMO_HANDLE` | `Jason-Schmitt-89` | shown as payment instructions |
-| `SITE_URL` | your public site URL | optional; adds a "leave a review" link in the thank-you email |
+| `SITE_URL` | `https://volwfirewood.com` | front-end URL; used for the "leave a review" email link **and Stripe checkout redirects** — set to the live domain when cards are on |
+| `STRIPE_SECRET_KEY` | `sk_live_…` (test: `sk_test_…`) | 🔒 encrypt; enables card checkout (empty = card off, Venmo only) |
+| `STRIPE_PUBLISHABLE_KEY` | `pk_live_…` | public key (safe to expose) |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_…` | 🔒 encrypt; from the Stripe webhook endpoint — lets paid card orders auto-mark "paid" |
 
 ### Frontend (static site) → build-time
 
@@ -159,6 +162,20 @@ Env vars get set in **two places**: the **backend** (Node service) and the **fro
 | `REACT_APP_API_URL` | the backend's public URL (e.g. `https://your-api.ondigitalocean.app`) | **Baked in at build time** — set on the static-site component and **rebuild/redeploy the frontend** after any change. If wrong, the site loads but every order/login call fails. |
 
 **Gotchas:** encrypt the three secrets (`MONGODB_URI`, `JWT_SECRET`, `SMTP_PASS`); don't wrap values in quotes in the DO UI; no spaces in the App Password; email silently no-ops until the SMTP vars are set; CORS is open server-side, so there's no CORS variable to configure.
+
+## Going live (custom domain + card payments)
+
+Stack: **front-end on Netlify**, **backend (API) on DigitalOcean**. When you buy the domain (e.g. `volwfirewood.com`) and turn on real card payments:
+
+1. **Domain → Netlify.** Add `volwfirewood.com` as the custom domain on the Netlify front-end and point DNS as Netlify instructs (HTTPS is automatic).
+2. **Netlify (front-end) env.** Confirm `REACT_APP_API_URL` = the DigitalOcean API URL, then **rebuild/redeploy** (it's baked in at build time).
+3. **DigitalOcean (backend) env.** Set `SITE_URL=https://volwfirewood.com`; swap in **live** Stripe keys (`STRIPE_SECRET_KEY=sk_live_…`, `STRIPE_PUBLISHABLE_KEY=pk_live_…`); encrypt the secret key. Restart.
+4. **Stripe (Live mode).** Finish account **activation** (business + bank details) so live charges work. Then Developers → **Webhooks → Add endpoint** → `https://<your-api-host>/api/webhooks/stripe`, event `checkout.session.completed` → copy its **signing secret** into `STRIPE_WEBHOOK_SECRET` on DigitalOcean and restart.
+5. **Smoke test.** Place one small real card order → it should show **Card — paid** in Admin → then **refund** it in Stripe.
+
+> `SITE_URL` (the front-end domain, used for redirects + email links) and the **webhook URL** (your API host) are **different hosts** — don't point them at the same place.
+
+Until live keys are set, card checkout stays off and the site runs on Venmo exactly as before.
 
 ## Project structure
 

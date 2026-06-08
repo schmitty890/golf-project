@@ -6,28 +6,30 @@ import { ClockIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import FeedbackModal from '../components/FeedbackModal';
 import RescheduleModal from '../components/RescheduleModal';
-import { bundles, seasonalPacks } from '../data/pricing';
 import {
   describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
+  paymentStatusClasses, paymentLabel, statusLabel,
 } from '../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-// Build an "Order again" prefill payload from a past order.
+// A subscription is locked in until its minimum commitment ends.
+function withinCommitment(order) {
+  return order.orderType === 'subscription'
+    && order.commitmentEndsAt
+    && new Date(order.commitmentEndsAt) > new Date();
+}
+
+// Build an "Order again" prefill payload from a past order (cart model).
 function buildReorder(order) {
-  const reorder = { orderType: order.orderType, deliveryAddress: order.deliveryAddress || {} };
-  if (order.orderType === 'bundle') {
-    const b = bundles.find((x) => x.name === order.items?.[0]?.name);
-    reorder.bundleId = b?.id;
-    reorder.quantity = order.items?.[0]?.quantity || 1;
-  } else if (order.orderType === 'pack') {
-    reorder.packId = seasonalPacks.find((x) => x.name === order.packName)?.id;
-  } else if (order.orderType === 'subscription') {
-    reorder.subscriptionPlan = order.subscriptionPlan;
-    reorder.season = order.season;
-  }
-  return reorder;
+  return {
+    orderType: order.orderType === 'subscription' ? 'subscription' : 'onetime',
+    items: (order.items || []).map((i) => ({ name: i.name, quantity: i.quantity })),
+    subscriptionPlan: order.subscriptionPlan,
+    fulfillment: order.fulfillment,
+    deliveryAddress: order.deliveryAddress || {},
+  };
 }
 
 function MyOrders() {
@@ -140,9 +142,14 @@ function MyOrders() {
                   </p>
                 )}
               </div>
-              <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClasses[order.status] || ''}`}>
-                {order.status}
-              </span>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[order.status] || ''}`}>
+                  {statusLabel(order.status, order.fulfillment)}
+                </span>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClasses[order.paymentStatus] || paymentStatusClasses.unpaid}`}>
+                  {paymentLabel(order)}
+                </span>
+              </div>
             </div>
             {formatSchedule(order.schedule) && (
               <p className="mt-3 flex items-center gap-2 rounded-md bg-cream-300/50 px-3 py-2 text-sm font-semibold text-walnut">
@@ -155,13 +162,21 @@ function MyOrders() {
             <ul className="mt-3 space-y-1 border-t border-cream-300 pt-3">
               {statusTimeline(order).map((e) => (
                 <li key={`${e.status}-${e.at}`} className="flex justify-between gap-3 text-xs text-walnut-400">
-                  <span className="font-semibold text-walnut">{statusEventLabel(e.status)}</span>
+                  <span className="font-semibold text-walnut">{statusEventLabel(e.status, order.fulfillment)}</span>
                   <span>{e.at ? new Date(e.at).toLocaleString() : ''}</span>
                 </li>
               ))}
             </ul>
 
             <div className="mt-4 flex flex-wrap gap-2 border-t border-cream-300 pt-3">
+              {order.trackingToken && (
+                <Link
+                  to={`/track/${order.trackingToken}`}
+                  className="rounded-lg border border-cream-300 px-3 py-1.5 text-sm font-semibold text-walnut hover:border-ember"
+                >
+                  Track
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => navigate('/order', { state: { reorder: buildReorder(order) } })}
@@ -178,13 +193,19 @@ function MyOrders() {
                   >
                     Reschedule
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => cancelOrder(order._id)}
-                    className="rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
-                  >
-                    Cancel
-                  </button>
+                  {withinCommitment(order) ? (
+                    <span className="self-center text-xs text-walnut-400">
+                      {`${order.commitmentMonths || 3}-month minimum — contact us to change your subscription.`}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => cancelOrder(order._id)}
+                      className="rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </>
               )}
             </div>

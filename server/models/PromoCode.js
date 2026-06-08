@@ -14,6 +14,8 @@ const promoCodeSchema = new mongoose.Schema({
   maxUses: { type: Number, default: 0, min: 0 },
   uses: { type: Number, default: 0, min: 0 },
   description: { type: String, default: '', trim: true },
+  // Set when this is a personal referral-reward code minted for a specific user (null = public code).
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 }, { timestamps: true });
 
 export default mongoose.model('PromoCode', promoCodeSchema);

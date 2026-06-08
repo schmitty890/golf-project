@@ -1,71 +1,65 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useState, useContext, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import { TruckIcon, BuildingStorefrontIcon } from '@heroicons/react/24/outline';
+import {
+  TruckIcon, BuildingStorefrontIcon, PlusIcon, MinusIcon,
+} from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import business from '../data/business';
 import {
-  bundles, getActivePacks, subscriptions, seasons, TIME_WINDOWS,
+  products, subscriptions, getSubscription, DELIVERY_FEE, TIME_WINDOWS, SUBSCRIPTION_MIN_MONTHS,
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
 import neighborhoods from '../data/neighborhoods';
 import { todayStr, formatDayLabel, addDays } from '../utils/dates';
 
-const activePacks = getActivePacks();
-
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 const inputClass = 'block w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-base text-walnut placeholder:text-walnut-200 transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30';
 const labelClass = 'block text-sm font-semibold text-walnut';
 
-// Common bundle counts offered as quick-pick buttons (filtered to the bundle's minimum).
-const QUANTITY_PRESETS = [1, 2, 3, 4, 5, 6];
-
 function Order() {
   const { user, token } = useContext(AuthContext);
-
-  // Prefill from an "Order again" navigation (My Orders), sanitized against current data.
   const location = useLocation();
   const reorder = location.state?.reorder || null;
-  const reorderType = (() => {
-    const t = reorder?.orderType;
-    if (!['bundle', 'pack', 'subscription'].includes(t)) return 'bundle';
-    if (t === 'pack' && activePacks.length === 0) return 'bundle'; // pack out of season now
-    return t;
+  const [searchParams] = useSearchParams();
+
+  // Reorder prefill: map past item names back to product ids; pick mode + fulfillment.
+  const initialQty = (() => {
+    const q = {};
+    (reorder?.items || []).forEach((it) => {
+      const p = products.find((x) => x.name === it.name);
+      if (p) q[p.id] = Number(it.quantity) || 1;
+    });
+    return q;
   })();
 
-  const [orderType, setOrderType] = useState(reorderType);
-  const [bundleId, setBundleId] = useState(
-    bundles.some((b) => b.id === reorder?.bundleId) ? reorder.bundleId : bundles[0].id,
-  );
-  const [quantity, setQuantity] = useState(reorder?.quantity > 0 ? reorder.quantity : 1);
-  const [packId, setPackId] = useState(
-    activePacks.some((p) => p.id === reorder?.packId) ? reorder.packId : (activePacks[0]?.id || ''),
-  );
-  const [subscriptionPlan, setSubscriptionPlan] = useState(
+  const [mode, setMode] = useState(reorder?.orderType === 'subscription' ? 'subscription' : 'onetime');
+  const [qty, setQty] = useState(initialQty);
+  const [subPlan, setSubPlan] = useState(
     subscriptions.some((s) => s.plan === reorder?.subscriptionPlan)
       ? reorder.subscriptionPlan : subscriptions[0].plan,
   );
-  const [season, setSeason] = useState(
-    seasons.some((s) => s.id === reorder?.season) ? reorder.season : seasons[0].id,
-  );
+  const [fulfillment, setFulfillment] = useState(reorder?.fulfillment === 'delivery' ? 'delivery' : 'pickup');
+  const [agreedSub, setAgreedSub] = useState(false);
+
   const [preferredDate, setPreferredDate] = useState('');
   const [windowFroms, setWindowFroms] = useState([]);
-  // Admin date overrides: { 'YYYY-MM-DD': ['HH:MM', ...] }. Absent date = fully open;
-  // [] = closed; subset = only those windows.
   const [dateOverrides, setDateOverrides] = useState({});
-  // Scheduling rules from admin settings.
   const [leadDays, setLeadDays] = useState(1);
   const [rushEnabled, setRushEnabled] = useState(true);
   const [rushPercent, setRushPercent] = useState(25);
-  // Customer opted into a rush ("in a pinch") order to unlock within-lead dates.
   const [rushRequested, setRushRequested] = useState(false);
   const [pickupInstructions, setPickupInstructions] = useState('');
   const [venmoHandle, setVenmoHandle] = useState('');
-  // Promo / referral code.
+  const [cardEnabled, setCardEnabled] = useState(false);
+  const [payMethod, setPayMethod] = useState('venmo'); // 'card' | 'venmo'
+  const [returnStatus, setReturnStatus] = useState(''); // 'paid' | 'cancelled' after Stripe redirect
+  const [trackToken, setTrackToken] = useState(''); // tracking token of the just-placed order
+
   const [codeInput, setCodeInput] = useState('');
   const [appliedCode, setAppliedCode] = useState('');
   const [discountInfo, setDiscountInfo] = useState(null); // { discount, label }
@@ -85,17 +79,10 @@ function Order() {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const selectedBundle = bundles.find((b) => b.id === bundleId);
-  const minQty = selectedBundle?.minQty || 1;
-  // Pickup only applies to the pickup bundle; packs/subscriptions are always delivery.
-  const isPickup = orderType === 'bundle' && selectedBundle?.fulfillment === 'pickup';
-
-  // "Seasonal Pack" is only offered when at least one pack is in season today.
-  const orderTypeOptions = [
-    { id: 'bundle', label: 'Bundles' },
-    ...(activePacks.length > 0 ? [{ id: 'pack', label: 'Seasonal Pack' }] : []),
-    { id: 'subscription', label: 'Subscription' },
-  ];
+  const isSubscription = mode === 'subscription';
+  // Subscriptions are always delivered; one-time orders choose pickup vs delivery.
+  const isPickup = !isSubscription && fulfillment === 'pickup';
+  const needsAddress = !isPickup;
 
   // Prefill contact info for logged-in users.
   useEffect(() => {
@@ -108,12 +95,7 @@ function Order() {
     }
   }, [user]);
 
-  // Keep quantity at or above the selected bundle's minimum (delivered bundles require 2).
-  useEffect(() => {
-    setQuantity((q) => (Number(q) < minQty ? minQty : q));
-  }, [minQty]);
-
-  // Load admin date availability + scheduling rules (public endpoint — guests order too).
+  // Load admin availability + scheduling rules.
   useEffect(() => {
     axios.get(`${API_URL}/api/settings/availability`)
       .then((res) => {
@@ -125,54 +107,56 @@ function Order() {
           setPickupInstructions(res.data.pickupInstructions);
         }
         if (res.data.venmoHandle !== undefined) setVenmoHandle(res.data.venmoHandle);
+        if (res.data.cardEnabled) {
+          setCardEnabled(true);
+          setPayMethod('card');
+        }
       })
-      .catch(() => setDateOverrides({})); // fall back to "all open" on error
+      .catch(() => setDateOverrides({}));
   }, []);
 
+  // --- Cart ---
+  const setProductQty = (id, n) => setQty((prev) => ({ ...prev, [id]: Math.max(0, n) }));
+  const cart = products
+    .filter((p) => (qty[p.id] || 0) > 0)
+    .map((p) => ({ ...p, count: qty[p.id] }));
+  const itemsSub = cart.reduce((s, c) => s + c.price * c.count, 0);
+  const selectedSub = getSubscription(subPlan);
+  const deliveryFee = (!isSubscription && fulfillment === 'delivery') ? DELIVERY_FEE : 0;
+
+  // --- Date / windows / rush ---
   const today = todayStr();
-  // Earliest non-rush date given the required advance notice.
   const earliest = addDays(today, leadDays);
   const allFroms = TIME_WINDOWS.map((w) => w.from);
-  // Open window `from` times for a date (all windows unless overridden).
   const windowsForDate = (date) => {
     const ov = dateOverrides[date];
     return Array.isArray(ov) ? ov : allFroms;
   };
-  // Whether a date falls inside the advance-notice (rush-only) window.
   const isRushDate = (date) => date >= today && date < earliest;
-  // A date is selectable if not closed, has a window, and is either past the lead
-  // window or unlocked via a rush request.
   const dateIsOpen = (date) => date >= today
     && windowsForDate(date).length > 0
     && (date >= earliest || (rushEnabled && rushRequested));
-  // This order is a rush if the chosen date is inside the lead window.
   const isRush = Boolean(preferredDate) && isRushDate(preferredDate);
-
   const availableFroms = new Set(preferredDate ? windowsForDate(preferredDate) : []);
-  // The selected windows as {from,to} objects, in the canonical TIME_WINDOWS order.
   const selectedWindows = TIME_WINDOWS.filter((w) => windowFroms.includes(w.from));
 
   const toggleWindow = (from) => setWindowFroms((prev) => (
     prev.includes(from) ? prev.filter((f) => f !== from) : [...prev, from]
   ));
 
-  // Day styling/selectability for the calendar.
   const getDayState = (date) => {
     if (date < today) return { disabled: true, tone: 'open' };
     const ov = dateOverrides[date];
     const closed = Array.isArray(ov) && ov.length === 0;
     const rushWindow = isRushDate(date);
-    // Within the lead window: only selectable when a rush is requested.
-    const disabled = closed || (rushWindow && !(rushEnabled && rushRequested));
     return {
-      disabled,
+      disabled: closed || (rushWindow && !(rushEnabled && rushRequested)),
       // eslint-disable-next-line no-nested-ternary
       tone: closed ? 'closed' : (rushWindow ? 'rush' : 'open'),
       selected: date === preferredDate,
     };
   };
 
-  // Drop any chosen windows no longer available for the selected date.
   useEffect(() => {
     setWindowFroms((prev) => {
       const next = prev.filter((f) => availableFroms.has(f));
@@ -181,52 +165,21 @@ function Order() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preferredDate, dateOverrides]);
 
-  // If the rush request is turned off while an in-window date is selected, clear it.
   useEffect(() => {
     if (!rushRequested && preferredDate && isRushDate(preferredDate)) setPreferredDate('');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rushRequested, preferredDate, earliest]);
 
-  // Live price estimate for the current selection (no payment is taken at order time).
-  // For one-time orders, a rush request adds a `rushPercent` surcharge to the total.
-  const estimate = (() => {
-    const withRush = (subtotal, line) => {
-      const surcharge = isRush ? Math.round(subtotal * (rushPercent / 100)) : 0;
-      return {
-        line,
-        amount: `$${subtotal + surcharge}`,
-        recurring: false,
-        rushLine: surcharge ? `Rush +${rushPercent}%: $${surcharge}` : '',
-      };
-    };
-    if (orderType === 'bundle') {
-      const qty = Number(quantity) || 0;
-      const subtotal = qty * (selectedBundle?.unitPrice || 0);
-      return withRush(subtotal, `${qty} × ${selectedBundle?.name} ($${selectedBundle?.unitPrice} each)`);
-    }
-    if (orderType === 'pack') {
-      const pack = activePacks.find((p) => p.id === packId);
-      return pack && withRush(pack.unitPrice, `${pack.name} — ${pack.bundleCount} bundles`);
-    }
-    const sub = subscriptions.find((s) => s.plan === subscriptionPlan);
-    return sub && {
-      line: `${sub.name} subscription — ${sub.cadence}`,
-      amount: sub.price,
-      recurring: true,
-      rushLine: '',
-    };
-  })();
-
-  // Numeric subtotal for one-time orders (promo discounts don't apply to subscriptions).
-  const subtotalNum = estimate && !estimate.recurring
-    ? Number(String(estimate.amount).replace(/[^0-9.]/g, '')) || 0
-    : 0;
-  const discount = (!estimate?.recurring && discountInfo?.discount) || 0;
+  // --- Totals (one-time orders; subscriptions show the recurring tier price) ---
+  const rushSurcharge = isRush ? Math.round(itemsSub * (rushPercent / 100)) : 0;
+  const subtotalNum = itemsSub + rushSurcharge + deliveryFee; // pre-discount
+  const discount = (!isSubscription && discountInfo?.discount) || 0;
   const finalTotalNum = Math.max(0, subtotalNum - discount);
 
-  const applyCode = async () => {
+  // --- Promo / referral code ---
+  const applyCode = async (codeArg) => {
     setCodeError('');
-    const c = codeInput.trim();
+    const c = (codeArg ?? codeInput).trim();
     if (!c) return;
     try {
       const res = await axios.post(`${API_URL}/api/promos/validate`, { code: c, subtotal: subtotalNum });
@@ -250,9 +203,8 @@ function Order() {
     setCodeError('');
   };
 
-  // Keep the discount in sync if the subtotal changes after a code was applied.
   useEffect(() => {
-    if (!appliedCode || estimate?.recurring) return undefined;
+    if (!appliedCode || isSubscription) return undefined;
     let cancelled = false;
     axios.post(`${API_URL}/api/promos/validate`, { code: appliedCode, subtotal: subtotalNum })
       .then((res) => {
@@ -263,41 +215,50 @@ function Order() {
       .catch(() => {});
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subtotalNum, appliedCode]);
+  }, [subtotalNum, appliedCode, isSubscription]);
+
+  // Auto-apply a referral/promo code from a shared link (/order?ref=CODE), once on mount.
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setCodeInput(ref);
+      applyCode(ref);
+    }
+    const status = searchParams.get('status');
+    if (status === 'paid' || status === 'cancelled') setReturnStatus(status);
+    const track = searchParams.get('track');
+    if (track) setTrackToken(track);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The success / payment-return views render on the same /order route (no path change), so scroll
+  // to the top when one appears — otherwise the page stays where the form was scrolled.
+  useEffect(() => {
+    if (submitted || returnStatus) window.scrollTo(0, 0);
+  }, [submitted, returnStatus]);
 
   const buildPayload = () => {
-    const fulfillment = isPickup ? 'pickup' : 'delivery';
     const base = {
-      orderType,
-      fulfillment,
+      fulfillment: isPickup ? 'pickup' : 'delivery',
       contact,
-      deliveryAddress: isPickup ? {} : address,
+      deliveryAddress: needsAddress ? address : {},
       preferredDate,
       preferredTimes: selectedWindows.map((w) => ({ from: w.from, to: w.to })),
       rush: isRush,
       code: appliedCode,
       subtotal: subtotalNum,
     };
-    if (orderType === 'bundle') {
-      const bundle = bundles.find((b) => b.id === bundleId);
+    if (isSubscription) {
       return {
-        ...base,
-        items: [{
-          name: bundle.name,
-          quantity: Number(quantity),
-          unitPrice: bundle.unitPrice,
-        }],
+        ...base, orderType: 'subscription', subscriptionPlan: subPlan, agreedToTerms: agreedSub,
       };
     }
-    if (orderType === 'pack') {
-      const pack = activePacks.find((p) => p.id === packId);
-      return { ...base, packName: pack.name, bundleCount: pack.bundleCount };
-    }
-    // subscription
     return {
       ...base,
-      subscriptionPlan,
-      season: subscriptionPlan === 'seasonal' ? season : '',
+      orderType: 'onetime',
+      items: cart.map((c) => ({ name: c.name, quantity: c.count, unitPrice: c.price })),
+      deliveryFee,
+      paymentMethod: cardEnabled && payMethod === 'card' ? 'card' : 'venmo',
     };
   };
 
@@ -305,26 +266,37 @@ function Order() {
     e.preventDefault();
     setError('');
 
-    if (orderType === 'bundle' && Number(quantity) < minQty) {
-      setError(`The ${selectedBundle.name} has a ${minQty}-bundle minimum.`);
+    if (!isSubscription && cart.length === 0) {
+      setError('Please add at least one item.');
       return;
     }
-
+    if (isSubscription && !agreedSub) {
+      setError(`Please agree to the ${SUBSCRIPTION_MIN_MONTHS}-month commitment to subscribe.`);
+      return;
+    }
     if (!preferredDate || !dateIsOpen(preferredDate)) {
       setError('Please choose an available date.');
       return;
     }
-
     if (windowFroms.length === 0) {
       setError('Please choose at least one pickup/delivery time window.');
       return;
     }
+    if (needsAddress && !address.street.trim()) {
+      setError('Please enter a delivery address.');
+      return;
+    }
 
     setSubmitting(true);
-
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API_URL}/api/orders`, buildPayload(), { headers });
+      const res = await axios.post(`${API_URL}/api/orders`, buildPayload(), { headers });
+      if (res.data.stripeCheckoutUrl) {
+        // Card order — hand off to Stripe Checkout (returns to /order?status=paid|cancelled).
+        window.location = res.data.stripeCheckoutUrl;
+        return;
+      }
+      if (res.data.trackingToken) setTrackToken(res.data.trackingToken);
       setSubmitted(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong. Please try again.');
@@ -333,23 +305,67 @@ function Order() {
     }
   };
 
+  // Returned from Stripe Checkout (full reload — cart state is gone; details are in the email).
+  if (returnStatus === 'paid') {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
+        <CheckCircleIcon className="mx-auto h-14 w-14 text-green-600" aria-hidden="true" />
+        <h1 className="mt-4 text-2xl font-extrabold text-walnut">Payment received — thank you!</h1>
+        <p className="mt-2 text-walnut-400">
+          Your order is paid and confirmed. We&apos;ll be in touch about your time window — follow
+          along below.
+        </p>
+        {trackToken ? (
+          <Link to={`/track/${trackToken}`} className="mt-6 inline-block rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600">
+            Track your order →
+          </Link>
+        ) : (
+          <Link to="/" className="mt-6 inline-block rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600">
+            Back home
+          </Link>
+        )}
+      </div>
+    );
+  }
+  if (returnStatus === 'cancelled') {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
+        <h1 className="text-2xl font-extrabold text-walnut">Payment canceled</h1>
+        <p className="mt-2 text-walnut-400">
+          No charge was made and your order is held as unpaid. You can try again or pay by Venmo.
+        </p>
+        <button
+          type="button"
+          onClick={() => setReturnStatus('')}
+          className="mt-6 inline-block rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600"
+        >
+          Start a new order
+        </button>
+      </div>
+    );
+  }
+
   if (submitted) {
     const handle = (venmoHandle || '').replace(/^@/, '');
-    const amountNum = estimate && !estimate.recurring ? String(finalTotalNum) : '';
+    const amountNum = isSubscription ? String(selectedSub?.price || '') : String(finalTotalNum);
     const venmoNote = `${business.name} firewood order`;
     const venmoUrl = handle
       ? `https://venmo.com/${handle}?txn=pay${amountNum ? `&amount=${amountNum}` : ''}&note=${encodeURIComponent(venmoNote)}`
       : '';
     const windowsLabel = selectedWindows.map((w) => w.label).join(', ');
     const addressLine = [address.street, address.unit, address.neighborhood].filter(Boolean).join(', ');
+    const orderLabel = isSubscription
+      ? `${selectedSub?.name} subscription`
+      : cart.map((c) => `${c.count}× ${c.name}`).join(', ');
     const summaryRows = [
-      ['Order', estimate?.line],
+      ['Order', orderLabel],
       ['When', `${formatDayLabel(preferredDate)}${windowsLabel ? ` · ${windowsLabel}` : ''}`],
       ['How', isPickup ? 'Curb pickup' : 'Delivery'],
-      ...(!isPickup ? [['Address', addressLine]] : []),
+      ...(needsAddress ? [['Address', addressLine]] : []),
       ...(isRush ? [['Rush', `Yes (+${rushPercent}%)`]] : []),
+      ...(deliveryFee ? [['Delivery', `$${deliveryFee}`]] : []),
       ...(discount > 0 ? [['Promo', `${appliedCode} (−$${discount})`]] : []),
-      [estimate?.recurring ? 'Price' : 'Estimated total', estimate?.recurring ? estimate?.amount : `$${finalTotalNum}`],
+      [isSubscription ? 'Price' : 'Estimated total', isSubscription ? selectedSub?.priceLabel : `$${finalTotalNum}`],
     ].filter(([, v]) => v);
 
     return (
@@ -387,10 +403,18 @@ function Order() {
               {` · @${handle}`}
             </a>
           )}
-          <p className="mt-2 text-xs text-walnut-300">
-            No payment needed to hold your order — we&apos;ll confirm the final total with you.
+          <p className="mt-2 rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+            Please send your Venmo now — the button above is pre-filled with your total. We set out
+            or deliver your order only once payment comes through, so paying right away keeps it on
+            schedule.
           </p>
         </div>
+
+        {trackToken && (
+          <Link to={`/track/${trackToken}`} className="mt-6 flex w-full items-center justify-center rounded-xl border border-ember px-4 py-3 text-base font-semibold text-ember hover:bg-ember hover:text-white">
+            Track your order →
+          </Link>
+        )}
 
         <ReferralShare className="mt-6" />
 
@@ -418,10 +442,10 @@ function Order() {
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-extrabold tracking-tight text-walnut">Order Firewood</h1>
       <p className="mt-2 text-walnut-400">
-        Premium bundles delivered in
+        Hand-split, ready-to-burn bundles in
         {' '}
         {business.serviceArea}
-        . No payment now — we&apos;ll confirm and arrange payment with you.
+        . No payment now — we&apos;ll confirm and arrange Venmo with you.
       </p>
 
       {!token && (
@@ -439,135 +463,149 @@ function Order() {
           <div className="rounded-md bg-red-50 p-4 text-sm text-red-800">{error}</div>
         )}
 
-        {/* Order type */}
+        {/* One-time vs subscription */}
         <div>
           <span className={labelClass}>What would you like?</span>
-          <div className={`mt-2 grid gap-3 ${orderTypeOptions.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            {orderTypeOptions.map((opt) => (
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            {[{ id: 'onetime', label: 'One-time order' }, { id: 'subscription', label: 'Subscription' }].map((m) => (
               <button
-                key={opt.id}
+                key={m.id}
                 type="button"
-                onClick={() => setOrderType(opt.id)}
+                onClick={() => setMode(m.id)}
                 className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
-                  orderType === opt.id
+                  mode === m.id
                     ? 'border-ember bg-ember text-white'
                     : 'border-cream-300 bg-white text-walnut hover:border-ember'
                 }`}
               >
-                {opt.label}
+                {m.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Conditional fields */}
-        {orderType === 'bundle' && (
-          <div className="space-y-4">
+        {/* One-time: product cart */}
+        {!isSubscription && (
+          <>
             <div>
-              <span className={labelClass}>Pickup or delivery?</span>
-              <div className="mt-2 grid grid-cols-2 gap-3">
-                {bundles.map((b) => {
-                  const Icon = b.fulfillment === 'pickup' ? BuildingStorefrontIcon : TruckIcon;
-                  const selected = bundleId === b.id;
+              <span className={labelClass}>Add items</span>
+              <div className="mt-2 space-y-3">
+                {products.map((p) => {
+                  const count = qty[p.id] || 0;
                   return (
-                    <button
-                      type="button"
-                      key={b.id}
-                      onClick={() => setBundleId(b.id)}
-                      className={`flex flex-col items-start gap-1.5 rounded-xl border p-4 text-left transition-colors ${
-                        selected
-                          ? 'border-ember bg-cream-100 ring-2 ring-ember/30'
-                          : 'border-cream-300 bg-white hover:border-ember'
+                    <div
+                      key={p.id}
+                      className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors ${
+                        count > 0 ? 'border-ember bg-cream-100' : 'border-cream-300 bg-white'
                       }`}
                     >
-                      <Icon className="h-6 w-6 text-ember" aria-hidden="true" />
-                      <span className="text-sm font-bold text-walnut">{b.name}</span>
-                      <span className="text-lg font-extrabold text-ember">
-                        {b.price}
-                        <span className="text-xs font-semibold text-walnut-300"> / bundle</span>
-                      </span>
-                      <span className="text-xs text-walnut-400">{b.description}</span>
-                    </button>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-walnut">
+                          {p.name}
+                          <span className="ml-2 font-extrabold text-ember">{`$${p.price}`}</span>
+                        </p>
+                        <p className="text-xs text-walnut-400">{p.description}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          type="button"
+                          aria-label={`Remove one ${p.name}`}
+                          onClick={() => setProductQty(p.id, count - 1)}
+                          disabled={count === 0}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-cream-300 text-walnut hover:border-ember disabled:opacity-40"
+                        >
+                          <MinusIcon className="h-4 w-4" />
+                        </button>
+                        <span className="w-6 text-center text-sm font-bold text-walnut">{count}</span>
+                        <button
+                          type="button"
+                          aria-label={`Add one ${p.name}`}
+                          onClick={() => setProductQty(p.id, count + 1)}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-cream-300 text-walnut hover:border-ember"
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
             </div>
+
+            {/* Pickup or delivery */}
             <div>
-              <span className={labelClass}>How many bundles?</span>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {QUANTITY_PRESETS.filter((n) => n >= minQty).map((n) => (
+              <span className={labelClass}>Pickup or delivery?</span>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                {[
+                  {
+                    id: 'pickup', label: 'Pickup', note: 'Free', Icon: BuildingStorefrontIcon,
+                  },
+                  {
+                    id: 'delivery', label: 'Delivery', note: `+ $${DELIVERY_FEE}`, Icon: TruckIcon,
+                  },
+                ].map(({
+                  id, label, note, Icon,
+                }) => (
                   <button
                     type="button"
-                    key={n}
-                    onClick={() => setQuantity(n)}
-                    className={`h-11 w-11 rounded-xl border text-sm font-semibold transition-colors ${
-                      Number(quantity) === n
-                        ? 'border-ember bg-ember text-white'
-                        : 'border-cream-300 bg-white text-walnut hover:border-ember'
+                    key={id}
+                    onClick={() => setFulfillment(id)}
+                    className={`flex flex-col items-start gap-1 rounded-xl border p-4 text-left transition-colors ${
+                      fulfillment === id
+                        ? 'border-ember bg-cream-100 ring-2 ring-ember/30'
+                        : 'border-cream-300 bg-white hover:border-ember'
                     }`}
                   >
-                    {n}
+                    <Icon className="h-6 w-6 text-ember" aria-hidden="true" />
+                    <span className="text-sm font-bold text-walnut">{label}</span>
+                    <span className="text-xs font-semibold text-walnut-300">{note}</span>
                   </button>
                 ))}
-                <div className="flex items-center gap-2 pl-1">
-                  <label htmlFor="quantity" className="text-sm font-semibold text-walnut-300">Other</label>
-                  <input
-                    id="quantity"
-                    type="number"
-                    min={minQty}
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    className="h-11 w-20 rounded-xl border border-cream-300 bg-white px-3 text-base text-walnut transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30"
-                  />
-                </div>
               </div>
-              {minQty > 1 && (
-                <p className="mt-1 text-xs text-walnut-300">
-                  {`${minQty}-bundle minimum for delivery.`}
-                </p>
-              )}
             </div>
-          </div>
+          </>
         )}
 
-        {orderType === 'pack' && (
+        {/* Subscription: tier picker */}
+        {isSubscription && (
           <div>
-            <label htmlFor="pack" className={labelClass}>Seasonal pack</label>
-            <select id="pack" value={packId} onChange={(e) => setPackId(e.target.value)} className={`mt-2 ${inputClass}`}>
-              {activePacks.map((p) => (
-                <option key={p.id} value={p.id}>{`${p.name} — ${p.bundleCount} bundles`}</option>
+            <span className={labelClass}>Choose a plan (delivered monthly)</span>
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {subscriptions.map((s) => (
+                <button
+                  type="button"
+                  key={s.id}
+                  onClick={() => setSubPlan(s.plan)}
+                  className={`flex flex-col items-start gap-1 rounded-xl border p-4 text-left transition-colors ${
+                    subPlan === s.plan
+                      ? 'border-ember bg-cream-100 ring-2 ring-ember/30'
+                      : 'border-cream-300 bg-white hover:border-ember'
+                  }`}
+                >
+                  <span className="text-sm font-bold text-walnut">{s.name}</span>
+                  <span className="text-lg font-extrabold text-ember">{s.priceLabel}</span>
+                  <span className="text-xs text-walnut-400">{s.description}</span>
+                </button>
               ))}
-            </select>
-          </div>
-        )}
-
-        {orderType === 'subscription' && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="plan" className={labelClass}>Plan</label>
-              <select id="plan" value={subscriptionPlan} onChange={(e) => setSubscriptionPlan(e.target.value)} className={`mt-2 ${inputClass}`}>
-                {subscriptions.map((s) => (
-                  <option key={s.id} value={s.plan}>{`${s.name} — ${s.cadence}`}</option>
-                ))}
-              </select>
             </div>
-            {subscriptionPlan === 'seasonal' && (
-              <div>
-                <label htmlFor="season" className={labelClass}>Season</label>
-                <select id="season" value={season} onChange={(e) => setSeason(e.target.value)} className={`mt-2 ${inputClass}`}>
-                  {seasons.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl border border-cream-300 bg-cream-100 p-3">
+              <input
+                type="checkbox"
+                checked={agreedSub}
+                onChange={(e) => setAgreedSub(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+              />
+              <span className="text-sm text-walnut">
+                {`I agree to the ${SUBSCRIPTION_MIN_MONTHS}-month minimum commitment, then it continues month-to-month — cancel anytime after.`}
+              </span>
+            </label>
           </div>
         )}
 
         {/* Preferred date */}
         <div>
           <span className={labelClass}>
-            {orderType === 'subscription' ? 'First delivery date' : 'Pickup / delivery date'}
+            {isSubscription ? 'First delivery date' : 'Pickup / delivery date'}
           </span>
 
           {rushEnabled && leadDays > 0 && (
@@ -580,15 +618,17 @@ function Order() {
               />
               <span className="text-sm text-walnut">
                 <span className="font-semibold">In a pinch? Request a rush order.</span>
-                {' '}
-                Unlocks sooner dates for a
-                {' '}
-                {rushPercent}
-                % rush charge — subject to our availability; we&apos;ll confirm we can make it.
+                {` Unlocks sooner dates for a ${rushPercent}% rush charge — subject to availability.`}
               </span>
             </label>
           )}
 
+          {leadDays > 0 && (
+            <p className="mt-2 text-xs font-semibold text-walnut">
+              {`Please order at least ${leadDays} day${leadDays === 1 ? '' : 's'} ahead — the earliest date is ${formatDayLabel(earliest)}.`}
+              {rushEnabled ? ' Need it sooner? Request a rush order above.' : ''}
+            </p>
+          )}
           <div className="mt-2">
             <MonthCalendar getDayState={getDayState} onSelectDate={setPreferredDate} />
           </div>
@@ -599,7 +639,7 @@ function Order() {
           </p>
         </div>
 
-        {/* Pickup / delivery windows (multi-select) */}
+        {/* Time windows */}
         <div>
           <span className={labelClass}>Pickup / delivery windows</span>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -636,13 +676,9 @@ function Order() {
         {/* Pickup info or delivery address */}
         {isPickup ? (
           <div className="rounded-md bg-cream-300/50 p-4">
-            <p className="text-base font-bold text-walnut">Pickup order</p>
+            <p className="text-base font-bold text-walnut">Curb pickup</p>
             <p className="mt-1 text-sm text-walnut-400">
-              No delivery address needed — we&apos;ll text you a pickup spot and time in
-              {' '}
-              {business.serviceArea}
-              {' '}
-              after you order.
+              {pickupInstructions || 'We’ll set your bundles out for your window — grab them anytime within it.'}
             </p>
           </div>
         ) : (
@@ -691,64 +727,116 @@ function Order() {
           </div>
         </fieldset>
 
-        {/* Promo / referral code */}
-        <div>
-          <label htmlFor="promo" className={labelClass}>Promo or referral code (optional)</label>
-          <div className="mt-2 flex gap-2">
-            <input
-              id="promo"
-              type="text"
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value)}
-              placeholder="Enter code"
-              className={inputClass}
-            />
-            {appliedCode ? (
-              <button type="button" onClick={removeCode} className="shrink-0 rounded-xl border border-cream-300 px-4 py-3 text-sm font-semibold text-walnut hover:border-ember">
-                Remove
-              </button>
-            ) : (
-              <button type="button" onClick={applyCode} className="shrink-0 rounded-xl bg-walnut px-5 py-3 text-sm font-semibold text-white hover:bg-walnut-400">
-                Apply
-              </button>
-            )}
-          </div>
-          {codeError && <p className="mt-1 text-xs text-red-600">{codeError}</p>}
-          {appliedCode && discountInfo && (
-            <p className="mt-1 text-xs font-semibold text-green-700">{`Applied ${appliedCode} — ${discountInfo.label}.`}</p>
-          )}
-        </div>
-
-        {/* Live price estimate */}
-        {estimate && (
-          <div className="rounded-xl border border-cream-300 bg-cream-100 p-4">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm font-semibold text-walnut">
-                {estimate.recurring ? 'Estimated price' : 'Estimated total'}
-              </span>
-              <span className="text-2xl font-extrabold text-ember">
-                {estimate.recurring ? estimate.amount : `$${finalTotalNum}`}
-              </span>
+        {/* Promo / referral code (one-time only) */}
+        {!isSubscription && (
+          <div>
+            <label htmlFor="promo" className={labelClass}>Promo or referral code (optional)</label>
+            <div className="mt-2 flex gap-2">
+              <input
+                id="promo"
+                type="text"
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+                placeholder="Enter code"
+                className={inputClass}
+              />
+              {appliedCode ? (
+                <button type="button" onClick={removeCode} className="shrink-0 rounded-xl border border-cream-300 px-4 py-3 text-sm font-semibold text-walnut hover:border-ember">
+                  Remove
+                </button>
+              ) : (
+                <button type="button" onClick={() => applyCode()} className="shrink-0 rounded-xl bg-walnut px-5 py-3 text-sm font-semibold text-white hover:bg-walnut-400">
+                  Apply
+                </button>
+              )}
             </div>
-            <p className="mt-1 text-sm text-walnut-400">{estimate.line}</p>
-            {estimate.rushLine && (
-              <p className="mt-1 text-sm font-semibold text-amber-700">{estimate.rushLine}</p>
+            {codeError && <p className="mt-1 text-xs text-red-600">{codeError}</p>}
+            {appliedCode && discountInfo && (
+              <p className="mt-1 text-xs font-semibold text-green-700">{`Applied ${appliedCode} — ${discountInfo.label}.`}</p>
             )}
-            {discount > 0 && (
-              <p className="mt-1 text-sm font-semibold text-green-700">{`Promo ${appliedCode}: −$${discount}`}</p>
-            )}
-            <p className="mt-2 text-xs text-walnut-300">
-              Estimate only — no payment now. We&apos;ll confirm the final total with you.
-            </p>
           </div>
         )}
+
+        {/* Payment method (one-time only; card shown when Stripe is enabled) */}
+        {!isSubscription && cardEnabled && (
+          <div>
+            <span className={labelClass}>How would you like to pay?</span>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setPayMethod('card')}
+                className={`rounded-xl border p-4 text-left transition-colors ${payMethod === 'card' ? 'border-ember bg-cream-100 ring-2 ring-ember/30' : 'border-cream-300 bg-white hover:border-ember'}`}
+              >
+                <span className="block text-sm font-bold text-walnut">Pay by card</span>
+                <span className="block text-xs text-walnut-400">Secure checkout now</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayMethod('venmo')}
+                className={`rounded-xl border p-4 text-left transition-colors ${payMethod === 'venmo' ? 'border-ember bg-cream-100 ring-2 ring-ember/30' : 'border-cream-300 bg-white hover:border-ember'}`}
+              >
+                <span className="block text-sm font-bold text-walnut">Pay with Venmo</span>
+                <span className="block text-xs text-walnut-400">After you order</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Estimate */}
+        <div className="rounded-xl border border-cream-300 bg-cream-100 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm font-semibold text-walnut">
+              {isSubscription ? 'Monthly price' : 'Estimated total'}
+            </span>
+            <span className="text-2xl font-extrabold text-ember">
+              {isSubscription ? (selectedSub?.priceLabel || '—') : `$${finalTotalNum}`}
+            </span>
+          </div>
+          {!isSubscription && (
+            <div className="mt-2 space-y-0.5 text-sm text-walnut-400">
+              {cart.map((c) => (
+                <p key={c.id} className="flex justify-between">
+                  <span>{`${c.count}× ${c.name}`}</span>
+                  <span>{`$${c.price * c.count}`}</span>
+                </p>
+              ))}
+              {cart.length === 0 && <p>Add items above to see your total.</p>}
+              {deliveryFee > 0 && (
+                <p className="flex justify-between">
+                  <span>Delivery</span>
+                  <span>{`$${deliveryFee}`}</span>
+                </p>
+              )}
+              {rushSurcharge > 0 && (
+                <p className="flex justify-between font-semibold text-amber-700">
+                  <span>{`Rush +${rushPercent}%`}</span>
+                  <span>{`$${rushSurcharge}`}</span>
+                </p>
+              )}
+              {discount > 0 && (
+                <p className="flex justify-between font-semibold text-green-700">
+                  <span>{`Promo ${appliedCode}`}</span>
+                  <span>{`−$${discount}`}</span>
+                </p>
+              )}
+            </div>
+          )}
+          <p className="mt-2 text-xs text-walnut-300">
+            {!isSubscription && cardEnabled && payMethod === 'card'
+              ? "You'll pay securely by card on the next step."
+              : "Estimate only — no payment now. We'll confirm the final total with you."}
+          </p>
+        </div>
 
         <button
           type="submit"
           disabled={submitting}
           className="w-full rounded-xl bg-ember px-4 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-ember-600 disabled:opacity-50"
         >
-          {submitting ? 'Submitting…' : 'Submit Order'}
+          {/* eslint-disable-next-line no-nested-ternary */}
+          {submitting
+            ? 'Submitting…'
+            : (!isSubscription && cardEnabled && payMethod === 'card' ? 'Continue to payment →' : 'Submit Order')}
         </button>
       </form>
     </div>

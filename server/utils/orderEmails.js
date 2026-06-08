@@ -23,19 +23,17 @@ function fmtTime(t) {
   return `${hr}:${String(m || 0).padStart(2, '0')} ${period}`;
 }
 
+const SUB_LABELS = { '2bundle': '2 bundles / month', '3bundle': '3 bundles / month' };
+
 function describeOrder(order) {
-  if (order.orderType === 'bundle') {
-    return (order.items || []).map((i) => `${i.quantity} × ${i.name}`).join(', ') || 'Bundle order';
-  }
-  if (order.orderType === 'pack') {
-    return `${order.packName} (${order.bundleCount} bundles)`;
-  }
   if (order.orderType === 'subscription') {
-    const plan = order.subscriptionPlan
-      ? order.subscriptionPlan.charAt(0).toUpperCase() + order.subscriptionPlan.slice(1)
-      : 'Subscription';
-    return `${plan} subscription${order.season ? ` — ${order.season}` : ''}`;
+    return `${SUB_LABELS[order.subscriptionPlan] || order.subscriptionPlan || 'Monthly'} subscription`;
   }
+  if (order.items && order.items.length) {
+    return order.items.map((i) => `${i.quantity} × ${i.name}`).join(', ');
+  }
+  // Legacy fallback.
+  if (order.packName) return `${order.packName} (${order.bundleCount} bundles)`;
   return 'Order';
 }
 
@@ -56,13 +54,16 @@ function fulfillmentText(order) {
   return `Delivery${addr ? ` to ${addr}` : ''}`;
 }
 
-// Bundle orders carry unit prices; packs/subscriptions don't, so total is null there.
-function orderTotal(order) {
-  if (order.orderType !== 'bundle') return null;
-  const subtotal = (order.items || [])
+// Total from the cart items + delivery + rush − discount. Null for subscriptions (recurring price
+// isn't stored on the order).
+export function orderTotal(order) {
+  const itemsSub = (order.items || [])
     .reduce((s, i) => s + (i.quantity || 0) * (i.unitPrice || 0), 0);
-  const surcharge = order.rush ? Math.round(subtotal * ((order.rushPercent || 0) / 100)) : 0;
-  return { subtotal, total: subtotal + surcharge };
+  if (!itemsSub) return null;
+  const delivery = order.deliveryFee || 0;
+  const surcharge = order.rush ? Math.round(itemsSub * ((order.rushPercent || 0) / 100)) : 0;
+  const total = Math.max(0, itemsSub + delivery + surcharge - (order.discount || 0));
+  return { subtotal: itemsSub, delivery, total };
 }
 
 function summaryLines(order) {
@@ -73,8 +74,28 @@ function summaryLines(order) {
   ];
   if (order.rush) lines.push(['Rush', `Yes (+${order.rushPercent || 0}%) — subject to availability`]);
   const t = orderTotal(order);
-  if (t) lines.push(['Estimated total', `$${t.total}`]);
+  if (t) {
+    if (t.delivery) lines.push(['Delivery', `$${t.delivery}`]);
+    if (order.discount) lines.push(['Discount', `${order.promoCode} (−$${order.discount})`]);
+    lines.push(['Estimated total', `$${t.total}`]);
+  }
   return lines;
+}
+
+// Public "track your order" link (needs SITE_URL + the order's token). Empty when unavailable.
+function trackUrl(order) {
+  const site = process.env.SITE_URL;
+  return site && order.trackingToken ? `${site}/track/${order.trackingToken}` : '';
+}
+
+function trackBlockHtml(order) {
+  const url = trackUrl(order);
+  return url ? `<p style="margin-top:16px"><a href="${url}" style="color:#b5471f;font-weight:bold">Track your order →</a></p>` : '';
+}
+
+function trackBlockText(order) {
+  const url = trackUrl(order);
+  return url ? `\n\nTrack your order: ${url}` : '';
 }
 
 function venmoBlock(order) {
@@ -82,7 +103,7 @@ function venmoBlock(order) {
   if (!handle) return null;
   const t = orderTotal(order);
   const amount = t ? `$${t.total}` : 'the order total';
-  return `Pay via Venmo to @${handle.replace(/^@/, '')} for ${amount}. Add your name in the note. (We'll confirm the final total.)`;
+  return `Pay ${amount} via Venmo to @${handle.replace(/^@/, '')} — the amount is pre-filled in the link. Add your name in the note so we can match your order. Please pay now — we set out or deliver once your payment arrives.`;
 }
 
 // Minimal branded HTML wrapper.
@@ -109,10 +130,15 @@ export function customerConfirmationEmail(order, pickupInstructions = '') {
   const lines = summaryLines(order);
   const venmo = venmoBlock(order);
   const pickup = order.fulfillment === 'pickup' && pickupInstructions ? pickupInstructions : '';
+  const m = order.commitmentMonths || 0;
+  const commitmentText = m > 0
+    ? `${m}-month minimum: this subscription runs ${m} months, then continues month-to-month — cancel anytime after.`
+    : '';
   const subject = `We got your order — ${BUSINESS()}`;
   const intro = "Thanks for your order! Here's what we have. We'll confirm your time window shortly.";
-  const html = wrap('Order received', `<p>${intro}</p>${linesToHtml(lines)}${pickup ? `<p style="margin-top:16px">${pickup}</p>` : ''}${venmo ? `<p style="margin-top:16px">${venmo}</p>` : ''}`);
-  const text = `${intro}\n\n${linesToText(lines)}${pickup ? `\n\n${pickup}` : ''}${venmo ? `\n\n${venmo}` : ''}`;
+  const commitmentHtml = commitmentText ? `<p style="margin-top:16px;color:#8a7f78;font-size:13px"><strong>${commitmentText}</strong></p>` : '';
+  const html = wrap('Order received', `<p>${intro}</p>${linesToHtml(lines)}${commitmentHtml}${pickup ? `<p style="margin-top:16px">${pickup}</p>` : ''}${venmo ? `<p style="margin-top:16px">${venmo}</p>` : ''}${trackBlockHtml(order)}`);
+  const text = `${intro}\n\n${linesToText(lines)}${commitmentText ? `\n\n${commitmentText}` : ''}${pickup ? `\n\n${pickup}` : ''}${venmo ? `\n\n${venmo}` : ''}${trackBlockText(order)}`;
   return { subject, html, text };
 }
 
@@ -153,10 +179,23 @@ export function windowConfirmedEmail(order, pickupInstructions = '') {
   const subject = `You're booked — ${when}`;
   const body = `<p>Your ${isPickup ? 'pickup' : 'delivery'} is confirmed:</p>
     ${linesToHtml([['When', when], ['How', how], ['Order', describeOrder(order)]])}
-    <p style="margin-top:12px">${note}</p>`;
+    <p style="margin-top:12px">${note}</p>${trackBlockHtml(order)}`;
   const html = wrap('Window confirmed', body);
-  const text = `Your ${isPickup ? 'pickup' : 'delivery'} is confirmed.\n\nWhen: ${when}\nHow: ${how}\nOrder: ${describeOrder(order)}\n\n${note}`;
+  const text = `Your ${isPickup ? 'pickup' : 'delivery'} is confirmed.\n\nWhen: ${when}\nHow: ${how}\nOrder: ${describeOrder(order)}\n\n${note}${trackBlockText(order)}`;
   return { subject, html, text };
+}
+
+export function readyEmail(order, pickupInstructions = '') {
+  const isPickup = order.fulfillment === 'pickup';
+  const headline = isPickup ? 'Ready for pickup!' : 'Out for delivery!';
+  const note = isPickup
+    ? (pickupInstructions || "Your bundles are set out — grab them during your window.")
+    : "Your firewood is on the way — we'll deliver within your window.";
+  const body = `<p>${note}</p>
+    ${linesToHtml([['Order', describeOrder(order)], ['How', fulfillmentText(order)]])}${trackBlockHtml(order)}`;
+  const html = wrap(headline, body);
+  const text = `${headline}\n\n${note}\n\nOrder: ${describeOrder(order)}${trackBlockText(order)}`;
+  return { subject: `${BUSINESS()} — ${headline}`, html, text };
 }
 
 export function reminderEmail(order, pickupInstructions = '') {
@@ -176,11 +215,31 @@ export function reminderEmail(order, pickupInstructions = '') {
   return { subject, html, text };
 }
 
+export function paymentReceivedEmail(order) {
+  const t = orderTotal(order);
+  const amount = t ? `$${t.total}` : 'your order';
+  const subject = `Payment received — ${BUSINESS()}`;
+  const intro = `Thanks! We've marked ${describeOrder(order)} as paid (${amount}).`;
+  const html = wrap('Payment received', `<p>${intro}</p>${linesToHtml(summaryLines(order))}`);
+  const text = `${intro}\n\n${linesToText(summaryLines(order))}`;
+  return { subject, html, text };
+}
+
+export function referralRewardEmail(referrer, reward, label) {
+  const hi = referrer?.firstName ? `, ${referrer.firstName}` : '';
+  const subject = `You earned ${label} your next order — ${BUSINESS()}`;
+  const intro = `Good news${hi}! A neighbor just placed an order with your referral code, so you've earned ${label} your next order.`;
+  const use = `Use code <strong>${reward.code}</strong> at checkout.`;
+  const html = wrap('You earned a reward 🔥', `<p>${intro}</p><p style="margin-top:12px">${use}</p><p style="color:#8a7f78;font-size:13px;margin-top:8px">One-time use. Thanks for spreading the word!</p>`);
+  const text = `${intro}\n\nUse code ${reward.code} at checkout. (One-time use.)\n\nThanks for spreading the word!`;
+  return { subject, html, text };
+}
+
 export function deliveredEmail(order) {
   const site = process.env.SITE_URL;
   const fb = site ? `<p><a href="${site}" style="color:#b5471f">Leave a quick review</a> — it helps your neighbors.</p>` : '';
   const subject = `Thanks from ${BUSINESS()}!`;
-  const html = wrap('All done — thank you!', `<p>Your firewood is ${order.fulfillment === 'pickup' ? 'ready/handed off' : 'delivered'}. Thanks for supporting a local neighbor!</p>${fb}`);
-  const text = `Your firewood is ${order.fulfillment === 'pickup' ? 'ready/handed off' : 'delivered'}. Thanks!${site ? `\n\nLeave a review: ${site}` : ''}`;
+  const html = wrap('All done — thank you!', `<p>Your firewood is ${order.fulfillment === 'pickup' ? 'picked up' : 'delivered'}. Thanks for supporting a local neighbor!</p>${fb}`);
+  const text = `Your firewood is ${order.fulfillment === 'pickup' ? 'picked up' : 'delivered'}. Thanks!${site ? `\n\nLeave a review: ${site}` : ''}`;
   return { subject, html, text };
 }

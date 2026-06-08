@@ -49,26 +49,54 @@ export function referralConfig(settings) {
 export async function lookupReferralUser(code, excludeUserId) {
   if (!code) return null;
   const user = await User.findOne({ referralCode: norm(code) })
-    .select('firstName lastName referralCode');
+    .select('firstName lastName referralCode email');
   if (!user) return null;
   // eslint-disable-next-line no-underscore-dangle
   if (excludeUserId && user._id.toString() === String(excludeUserId)) return null;
   return user;
 }
 
-// Generate a unique referral code derived from the user's name/email + random suffix.
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const suffix = (n = 4) => Array.from({ length: n }, () => CHARS[Math.floor(Math.random() * CHARS.length)]).join('');
-export async function generateReferralCode(user) {
-  const raw = (user.firstName || (user.email || '').split('@')[0] || 'VOLW').replace(/[^a-zA-Z0-9]/g, '');
-  const base = (raw || 'VOLW').toUpperCase().slice(0, 8);
-  for (let i = 0; i < 10; i += 1) {
-    const code = `${base}${suffix(4)}`;
+const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+// Generate a unique, brand-based referral code (e.g. FIREWOOD37) — no personal names.
+const REFERRAL_BASE = 'FIREWOOD';
+export async function generateReferralCode() {
+  for (let i = 0; i < 12; i += 1) {
+    // Start short (FIREWOOD10–99), widen the number on later attempts to avoid collisions.
+    const num = i < 6 ? randInt(10, 99) : randInt(100, 9999);
+    const code = `${REFERRAL_BASE}${num}`;
     // eslint-disable-next-line no-await-in-loop
     const exists = await User.findOne({ referralCode: code }).select('_id');
     if (!exists) return code;
   }
-  return `VOLW${suffix(6)}`;
+  return `${REFERRAL_BASE}${randInt(10000, 99999)}`;
+}
+
+// Generate a unique PromoCode string (for minted referral-reward codes).
+export async function generatePromoCode(prefix = 'THANKS') {
+  for (let i = 0; i < 10; i += 1) {
+    const code = `${prefix}${suffix(4)}`;
+    // eslint-disable-next-line no-await-in-loop
+    const exists = await PromoCode.findOne({ code }).select('_id');
+    if (!exists) return code;
+  }
+  return `${prefix}${suffix(6)}`;
+}
+
+// Mint a one-time, owner-bound reward code for a referrer (granted when their referral orders).
+export async function mintReferralReward(ownerId, rc) {
+  const code = await generatePromoCode('THANKS');
+  return PromoCode.create({
+    code,
+    discountType: rc.type,
+    discountValue: rc.value,
+    active: true,
+    maxUses: 1,
+    owner: ownerId,
+    description: 'Referral reward — a neighbor ordered with your code',
+  });
 }
 
 // --- Public: validate a code at checkout ---
@@ -114,15 +142,24 @@ router.get('/my-referral', auth, async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (!user.referralCode) {
-      user.referralCode = await generateReferralCode(user);
+      user.referralCode = await generateReferralCode();
       await user.save();
     }
     const settings = await Settings.findOne({ key: 'availability' });
     const rc = referralConfig(settings);
+    // Reward codes this user has earned and can still use on their next order.
+    // eslint-disable-next-line no-underscore-dangle
+    const owned = await PromoCode.find({ owner: user._id, active: true });
+    const now = Date.now();
+    const rewards = owned
+      .filter((p) => !(p.expiresAt && p.expiresAt.getTime() < now))
+      .filter((p) => !(p.maxUses > 0 && p.uses >= p.maxUses))
+      .map((p) => ({ code: p.code, label: discountLabel(p.discountType, p.discountValue) }));
     return res.json({
       code: user.referralCode,
       enabled: rc.enabled,
       label: discountLabel(rc.type, rc.value),
+      rewards,
     });
   } catch (error) {
     console.error('My referral error:', error);

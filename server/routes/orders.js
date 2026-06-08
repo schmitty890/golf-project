@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
@@ -8,11 +9,15 @@ import requireAdmin from '../middleware/requireAdmin.js';
 import { sendMail } from '../utils/mailer.js';
 import {
   customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
-  orderCancelledOwnerEmail, orderRescheduledOwnerEmail,
+  orderCancelledOwnerEmail, orderRescheduledOwnerEmail, paymentReceivedEmail,
+  referralRewardEmail, readyEmail, orderTotal,
 } from '../utils/orderEmails.js';
 import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
+  discountLabel, mintReferralReward,
 } from './promos.js';
+import { stripeEnabled, createOneTimeCheckout } from '../utils/stripe.js';
+import { computeChargeCents } from '../data/catalog.js';
 
 const router = express.Router();
 
@@ -33,6 +38,15 @@ const addDaysStr = (s, n) => {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${mm}-${dd}`;
+};
+
+// Minimum subscription commitment before it goes month-to-month (authoritative; keep in sync
+// with SUBSCRIPTION_MIN_MONTHS in client/src/data/pricing.js).
+const SUBSCRIPTION_MIN_MONTHS = 3;
+const addMonths = (date, n) => {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + n);
+  return d;
 };
 
 // Validate a requested date + time windows against admin availability/lead-time rules.
@@ -129,16 +143,31 @@ const optionalAuth = (req, res, next) => {
 router.post('/', optionalAuth, async (req, res) => {
   try {
     const {
-      orderType, items, packName, bundleCount,
-      subscriptionPlan, season, contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
-      rush, code, subtotal,
+      orderType, items, subscriptionPlan, deliveryFee,
+      contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
+      rush, code, subtotal, agreedToTerms, paymentMethod,
     } = req.body;
 
-    if (!['bundle', 'pack', 'subscription'].includes(orderType)) {
+    if (!['onetime', 'subscription'].includes(orderType)) {
       return res.status(400).json({ error: 'A valid order type is required' });
     }
     if (!contact?.name || !contact?.phone) {
       return res.status(400).json({ error: 'Contact name and phone are required' });
+    }
+    // Sanitize the cart for one-time orders; require at least one item.
+    const cart = Array.isArray(items)
+      ? items
+        .filter((i) => i && i.name && Number(i.quantity) > 0)
+        .map((i) => ({ name: i.name, quantity: Number(i.quantity), unitPrice: Number(i.unitPrice) || 0 }))
+      : [];
+    if (orderType === 'onetime' && cart.length === 0) {
+      return res.status(400).json({ error: 'Please add at least one item' });
+    }
+    if (orderType === 'subscription' && !subscriptionPlan) {
+      return res.status(400).json({ error: 'Please choose a subscription plan' });
+    }
+    if (orderType === 'subscription' && agreedToTerms !== true) {
+      return res.status(400).json({ error: `Please agree to the ${SUBSCRIPTION_MIN_MONTHS}-month commitment to subscribe.` });
     }
     // Delivery orders need an address; pickup orders don't.
     if (fulfillment !== 'pickup' && !deliveryAddress?.street) {
@@ -157,6 +186,7 @@ router.post('/', optionalAuth, async (req, res) => {
     let promoCode = '';
     let discount = 0;
     let referredBy = null;
+    let referrer = null;
     const promo = await lookupPromo(code);
     if (promo) {
       discount = computeDiscount(promo, subtotal);
@@ -165,7 +195,7 @@ router.post('/', optionalAuth, async (req, res) => {
       await promo.save();
     } else if (code) {
       const rc = referralConfig(settings);
-      const referrer = rc.enabled ? await lookupReferralUser(code, req.userId) : null;
+      referrer = rc.enabled ? await lookupReferralUser(code, req.userId) : null;
       if (referrer) {
         discount = discountAmount(rc.type, rc.value, subtotal);
         promoCode = referrer.referralCode;
@@ -176,11 +206,12 @@ router.post('/', optionalAuth, async (req, res) => {
     const order = new Order({
       orderType,
       fulfillment: fulfillment === 'pickup' ? 'pickup' : 'delivery',
-      items: orderType === 'bundle' ? (items || []) : [],
-      packName: orderType === 'pack' ? (packName || '') : '',
-      bundleCount: orderType === 'pack' ? (bundleCount || 0) : 0,
+      items: orderType === 'onetime' ? cart : [],
+      deliveryFee: fulfillment === 'pickup' ? 0 : Math.max(0, Number(deliveryFee) || 0),
       subscriptionPlan: orderType === 'subscription' ? (subscriptionPlan || '') : '',
-      season: orderType === 'subscription' ? (season || '') : '',
+      commitmentMonths: orderType === 'subscription' ? SUBSCRIPTION_MIN_MONTHS : 0,
+      commitmentEndsAt: orderType === 'subscription' ? addMonths(new Date(), SUBSCRIPTION_MIN_MONTHS) : null,
+      agreedToTermsAt: orderType === 'subscription' ? new Date() : null,
       contact,
       deliveryAddress: deliveryAddress || {},
       preferredDate,
@@ -190,10 +221,40 @@ router.post('/', optionalAuth, async (req, res) => {
       promoCode,
       discount,
       referredBy,
+      // Card is only offered for one-time orders in Phase 1; everything else stays Venmo.
+      paymentMethod: (paymentMethod === 'card' && orderType === 'onetime' && stripeEnabled()) ? 'card' : 'venmo',
       user: req.userId || null,
-      statusHistory: [{ status: 'pending', at: new Date() }],
+      status: 'received',
+      statusHistory: [{ status: 'received', at: new Date() }],
+      trackingToken: crypto.randomBytes(12).toString('hex'),
     });
     await order.save();
+
+    // Card path: create a hosted Stripe Checkout Session for the server-authoritative amount and
+    // return its URL so the client can redirect. Falls through to the Venmo response on any issue.
+    let stripeCheckoutUrl = '';
+    if (order.paymentMethod === 'card') {
+      try {
+        const amountCents = computeChargeCents(order);
+        if (amountCents >= 50) {
+          const base = process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
+          const description = (order.items || []).map((i) => `${i.quantity}× ${i.name}`).join(', ');
+          const session = await createOneTimeCheckout(order, amountCents, {
+            successUrl: `${base}/order?status=paid&track=${order.trackingToken}`,
+            cancelUrl: `${base}/order?status=cancelled`,
+            description,
+          });
+          if (session?.url) {
+            order.stripeSessionId = session.id;
+            await order.save();
+            stripeCheckoutUrl = session.url;
+          }
+        }
+      } catch (stripeErr) {
+        console.error('Stripe checkout error:', stripeErr.message);
+        // Leave the order as-is (unpaid); client falls back to the Venmo screen.
+      }
+    }
 
     // Fire-and-forget notifications — never block or fail the order on email issues.
     (async () => {
@@ -209,12 +270,23 @@ router.post('/', optionalAuth, async (req, res) => {
         if (process.env.OWNER_EMAIL) {
           await sendMail({ to: process.env.OWNER_EMAIL, ...ownerAlertEmail(order) });
         }
+        // Reward the referrer: mint a one-time discount code for their next order and email it.
+        if (referredBy && referrer) {
+          const rc = referralConfig(settings);
+          const reward = await mintReferralReward(referredBy, rc);
+          if (referrer.email) {
+            await sendMail({
+              to: referrer.email,
+              ...referralRewardEmail(referrer, reward, discountLabel(rc.type, rc.value)),
+            });
+          }
+        }
       } catch (mailErr) {
         console.error('Order notification error:', mailErr.message);
       }
     })();
 
-    return res.status(201).json(order);
+    return res.status(201).json({ ...order.toObject(), stripeCheckoutUrl });
   } catch (error) {
     console.error('Create order error:', error);
     if (error.name === 'ValidationError') {
@@ -242,6 +314,36 @@ router.get('/mine', auth, async (req, res) => {
     return res.json(orders);
   } catch (error) {
     console.error('Get my orders error:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Public order tracking by token (no auth). Returns a PII-light view — no phone/email/address.
+router.get('/track/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '');
+    if (!token) return res.status(404).json({ error: 'Not found' });
+    const order = await Order.findOne({ trackingToken: token });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    return res.json({
+      status: order.status,
+      statusHistory: order.statusHistory,
+      fulfillment: order.fulfillment,
+      orderType: order.orderType,
+      items: order.items,
+      subscriptionPlan: order.subscriptionPlan,
+      preferredDate: order.preferredDate,
+      preferredTimes: order.preferredTimes,
+      schedule: order.schedule,
+      paymentStatus: order.paymentStatus,
+      rush: order.rush,
+      createdAt: order.createdAt,
+      customerName: (order.contact?.name || '').split(' ')[0],
+      total: orderTotal(order)?.total ?? null,
+      venmoHandle: process.env.VENMO_HANDLE || '',
+    });
+  } catch (error) {
+    console.error('Track order error:', error);
     return res.status(500).json({ error: 'Server error' });
   }
 });
@@ -350,16 +452,32 @@ router.get('/:id', auth, async (req, res) => {
  */
 router.patch('/:id', auth, requireAdmin, async (req, res) => {
   try {
-    const { status, adminNotes, schedule } = req.body;
+    const {
+      status, adminNotes, schedule, paymentStatus,
+    } = req.body;
     const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    const ALLOWED_STATUSES = ['received', 'confirmed', 'ready', 'completed', 'cancelled'];
     const prevStatus = order.status;
     if (status !== undefined && status !== order.status) {
+      if (!ALLOWED_STATUSES.includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+      }
       order.statusHistory.push({ status, at: new Date() });
       order.status = status;
+    }
+    const prevPayment = order.paymentStatus;
+    if (paymentStatus !== undefined) {
+      if (!['unpaid', 'paid'].includes(paymentStatus)) {
+        return res.status(400).json({ error: 'Invalid payment status' });
+      }
+      if (paymentStatus !== order.paymentStatus) {
+        order.paymentStatus = paymentStatus;
+        order.paidAt = paymentStatus === 'paid' ? new Date() : null;
+      }
     }
     if (adminNotes !== undefined) order.adminNotes = adminNotes;
     if (schedule !== undefined) {
@@ -378,10 +496,18 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       if (order.status === 'confirmed' && order.schedule?.from) {
         const settings = await Settings.findOne({ key: 'availability' });
         email = windowConfirmedEmail(order, settings?.pickupInstructions);
-      } else if (order.status === 'delivered') {
+      } else if (order.status === 'ready') {
+        const settings = await Settings.findOne({ key: 'availability' });
+        email = readyEmail(order, settings?.pickupInstructions);
+      } else if (order.status === 'completed') {
         email = deliveredEmail(order);
       }
       if (email) sendMail({ to: customerEmail, ...email });
+    }
+
+    // Send a short receipt when the owner marks an order paid (fire-and-forget).
+    if (customerEmail && order.paymentStatus === 'paid' && prevPayment !== 'paid') {
+      sendMail({ to: customerEmail, ...paymentReceivedEmail(order) });
     }
 
     return res.json(order);
@@ -415,6 +541,11 @@ router.patch('/:id/cancel', auth, async (req, res) => {
     }
     if (['delivered', 'cancelled'].includes(order.status)) {
       return res.status(400).json({ error: `This order is already ${order.status}.` });
+    }
+    // Subscriptions are locked in until the minimum commitment ends (owner can override in Admin).
+    if (order.orderType === 'subscription' && order.commitmentEndsAt
+      && new Date() < order.commitmentEndsAt) {
+      return res.status(400).json({ error: `Your subscription has a ${order.commitmentMonths || SUBSCRIPTION_MIN_MONTHS}-month minimum — contact us to make changes.` });
     }
 
     order.status = 'cancelled';

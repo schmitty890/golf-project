@@ -9,6 +9,7 @@ import { TIME_WINDOWS } from '../../data/pricing';
 import {
   describeOrder, statusClasses, STATUS_OPTIONS, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
+  paymentStatusClasses, paymentLabel, statusLabel, normalizeStatus,
 } from '../../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -53,6 +54,15 @@ function AdminOrders() {
       setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, status } : o)));
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update order');
+    }
+  };
+
+  const updatePayment = async (id, paymentStatus) => {
+    try {
+      const res = await axios.patch(`${API_URL}/api/orders/${id}`, { paymentStatus }, authHeaders);
+      setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, ...res.data } : o)));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update payment');
     }
   };
 
@@ -128,7 +138,7 @@ function AdminOrders() {
             >
               <option value="all">All</option>
               {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s} className="capitalize">{s}</option>
+                <option key={s} value={s}>{statusLabel(s)}</option>
               ))}
             </select>
           </div>
@@ -179,6 +189,11 @@ function AdminOrders() {
                     {`Referred by ${[order.referredBy.firstName, order.referredBy.lastName].filter(Boolean).join(' ') || order.referredBy.email}`}
                   </p>
                 )}
+                {order.orderType === 'subscription' && order.commitmentEndsAt && (
+                  <p className="text-sm text-walnut-400">
+                    {`Commitment ends ${new Date(order.commitmentEndsAt).toLocaleDateString()}`}
+                  </p>
+                )}
                 <p className="text-sm text-walnut-400">
                   {order.fulfillment === 'pickup' ? (
                     'Pickup — coordinate spot & time'
@@ -201,19 +216,36 @@ function AdminOrders() {
               </div>
 
               <div className="flex items-center gap-3">
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClasses[order.status] || ''}`}>
-                  {order.status}
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses[order.status] || ''}`}>
+                  {statusLabel(order.status, order.fulfillment)}
                 </span>
                 <select
-                  value={order.status}
+                  value={normalizeStatus(order.status)}
                   onChange={(e) => updateStatus(order._id, e.target.value)}
                   aria-label="Update status"
-                  className="rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut capitalize focus:outline-ember"
+                  className="rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
                 >
                   {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s} className="capitalize">{s}</option>
+                    <option key={s} value={s}>{statusLabel(s, order.fulfillment)}</option>
                   ))}
                 </select>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClasses[order.paymentStatus] || paymentStatusClasses.unpaid}`}>
+                  {order.paymentMethod === 'card' ? 'Card — ' : ''}
+                  {paymentLabel(order)}
+                  {order.paymentStatus === 'paid' && order.paidAt
+                    ? ` · ${new Date(order.paidAt).toLocaleDateString()}`
+                    : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => updatePayment(
+                    order._id,
+                    order.paymentStatus === 'paid' ? 'unpaid' : 'paid',
+                  )}
+                  className="rounded-md border border-cream-300 px-2 py-1 text-sm font-semibold text-walnut hover:border-ember"
+                >
+                  {order.paymentStatus === 'paid' ? 'Mark unpaid' : 'Mark paid'}
+                </button>
                 <button
                   type="button"
                   onClick={() => deleteOrder(order._id)}

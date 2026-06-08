@@ -10,7 +10,6 @@ import {
   FireIcon,
 } from '@heroicons/react/24/outline';
 import business from '../data/business';
-import { bundles, getActivePacks, subscriptions } from '../data/pricing';
 import testimonials from '../data/testimonials';
 import faqs from '../data/faqs';
 import ReviewsCarousel from '../components/ReviewsCarousel';
@@ -57,12 +56,12 @@ function Hero() {
             >
               Order Firewood
             </Link>
-            <a
-              href="#pricing"
+            <Link
+              to="/pricing"
               className="rounded-xl bg-cream px-6 py-3.5 text-base font-semibold text-walnut shadow-sm transition-colors hover:bg-cream-300"
             >
               View Pricing
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -93,105 +92,9 @@ function About() {
   );
 }
 
-function Pricing() {
-  return (
-    <section id="pricing" className="bg-cream-300/40 py-16 sm:py-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 className="text-center text-3xl font-extrabold tracking-tight text-walnut">Pricing</h2>
-        <p className="mx-auto mt-3 max-w-xl text-center text-sm text-walnut-300">
-          Bundles only — no cords or bulk loads. Perfect for a last-minute backyard fire.
-        </p>
-        <div className="mx-auto mt-12 grid max-w-3xl grid-cols-1 gap-8 sm:grid-cols-2">
-          {bundles.map((bundle) => (
-            <div
-              key={bundle.id}
-              className="rounded-2xl border border-cream-300 bg-cream p-8 shadow-sm"
-            >
-              <h3 className="text-lg font-bold text-walnut">{bundle.name}</h3>
-              <p className="mt-2 text-3xl font-extrabold text-ember">
-                {bundle.price}
-                <span className="text-base font-semibold text-walnut-300"> / bundle</span>
-              </p>
-              <p className="mt-3 text-sm text-walnut-400">{bundle.description}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-10 text-center">
-          <Link
-            to="/order"
-            className="rounded-md bg-ember px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-ember-600 transition-colors"
-          >
-            Order Now
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Subscriptions() {
-  return (
-    <section id="subscriptions" className="bg-cream py-16 sm:py-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 className="text-center text-3xl font-extrabold tracking-tight text-walnut">
-          Subscriptions
-        </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-center text-walnut-400">
-          Never run out — set up a recurring delivery and we&apos;ll handle the rest.
-        </p>
-        <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
-          {subscriptions.map((sub) => (
-            <div
-              key={sub.id}
-              className="rounded-2xl border border-cream-300 bg-cream-50 p-8 text-center shadow-sm"
-            >
-              <h3 className="text-lg font-bold text-walnut">{sub.name}</h3>
-              <p className="mt-2 text-3xl font-extrabold text-ember">{sub.price}</p>
-              <p className="mt-1 text-sm font-semibold text-walnut">{sub.cadence}</p>
-              <p className="mt-3 text-sm text-walnut-400">{sub.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SeasonalPacks() {
-  const activePacks = getActivePacks();
-  if (activePacks.length === 0) return null;
-
-  return (
-    <section id="seasonal-packs" className="bg-cream-300/40 py-16 sm:py-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 className="text-center text-3xl font-extrabold tracking-tight text-walnut">
-          Seasonal Packages
-        </h2>
-        <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
-          {activePacks.map((pack) => (
-            <div
-              key={pack.id}
-              className="rounded-2xl border border-cream-300 bg-cream p-8 text-center shadow-sm"
-            >
-              <h3 className="text-lg font-bold text-walnut">{pack.name}</h3>
-              <p className="mt-2 text-3xl font-extrabold text-ember">{pack.price}</p>
-              <p className="mt-1 text-sm font-semibold text-walnut">
-                {pack.bundleCount}
-                {' '}
-                bundles
-              </p>
-              <p className="mt-3 text-sm text-walnut-400">{pack.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 const steps = [
-  { name: 'Place your order', description: 'Choose your bundles, packs, or a subscription online.', icon: ShoppingCartIcon },
-  { name: 'We deliver', description: 'We bring clean firewood to your doorstep or driveway.', icon: TruckIcon },
+  { name: 'Place your order', description: 'Choose your bundles or a subscription — at least a day ahead (or request a rush order for sooner).', icon: ShoppingCartIcon },
+  { name: 'Pickup or delivery', description: 'Pick a date and a 1-hour window — we deliver to your door, or you grab your bundles from our porch during your window.', icon: TruckIcon },
   { name: 'You enjoy', description: 'Light it up and enjoy a cozy fire — no hassle.', icon: FireIcon },
 ];
 
@@ -225,7 +128,7 @@ const reasons = [
   { name: 'Local', icon: MapPinIcon },
   { name: 'Clean bundles', icon: SparklesIcon },
   { name: 'Predictable delivery', icon: ClockIcon },
-  { name: 'Delivery included', icon: TruckIcon },
+  { name: 'Pickup or delivery', icon: TruckIcon },
 ];
 
 function WhyVolw() {
@@ -366,9 +269,6 @@ function Home() {
       <Hero />
       <About />
       <Gallery />
-      <Pricing />
-      <Subscriptions />
-      <SeasonalPacks />
       <HowItWorks />
       <WhyVolw />
       <Testimonials />

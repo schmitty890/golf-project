@@ -1,21 +1,16 @@
 // Human-readable description of an order's contents and status styling.
 
+const SUB_LABELS = { '2bundle': '2 bundles / month', '3bundle': '3 bundles / month' };
+
 export function describeOrder(order) {
-  if (order.orderType === 'bundle') {
-    return (order.items || [])
-      .map((i) => `${i.quantity}× ${i.name}`)
-      .join(', ') || 'Bundle order';
-  }
-  if (order.orderType === 'pack') {
-    return `${order.packName} (${order.bundleCount} bundles)`;
-  }
   if (order.orderType === 'subscription') {
-    const plan = order.subscriptionPlan
-      ? order.subscriptionPlan.charAt(0).toUpperCase() + order.subscriptionPlan.slice(1)
-      : 'Subscription';
-    const season = order.season ? ` — ${order.season.charAt(0).toUpperCase() + order.season.slice(1)}` : '';
-    return `${plan} subscription${season}`;
+    return `${SUB_LABELS[order.subscriptionPlan] || order.subscriptionPlan || 'Monthly'} subscription`;
   }
+  if (order.items && order.items.length) {
+    return order.items.map((i) => `${i.quantity}× ${i.name}`).join(', ');
+  }
+  // Legacy fallback (old pack/bundle orders).
+  if (order.packName) return `${order.packName} (${order.bundleCount} bundles)`;
   return 'Order';
 }
 
@@ -113,22 +108,57 @@ export function effectiveStart(order) {
   return froms.length ? froms.slice().sort()[0] : '';
 }
 
-export function statusEventLabel(status) {
-  if (status === 'pending') return 'Order placed';
-  return status ? status.charAt(0).toUpperCase() + status.slice(1) : '';
+// Canonical fulfillment stages, in order. (cancelled is handled separately.)
+export const STATUS_OPTIONS = ['received', 'confirmed', 'ready', 'completed', 'cancelled'];
+export const STATUS_STEPS = ['received', 'confirmed', 'ready', 'completed'];
+
+// Map legacy statuses to the canonical set so old orders still render.
+export function normalizeStatus(status) {
+  if (status === 'pending') return 'received';
+  if (status === 'delivered') return 'completed';
+  return status || 'received';
+}
+
+// Human label for a status, fulfillment-aware for the ready/completed stages.
+export function statusLabel(status, fulfillment) {
+  const s = normalizeStatus(status);
+  const isPickup = fulfillment === 'pickup';
+  switch (s) {
+    case 'received': return 'Order received';
+    case 'confirmed': return 'Confirmed';
+    case 'ready': return isPickup ? 'Ready for pickup' : 'Out for delivery';
+    case 'completed': return isPickup ? 'Picked up' : 'Delivered';
+    case 'cancelled': return 'Cancelled';
+    default: return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+}
+
+export function statusEventLabel(status, fulfillment) {
+  return statusLabel(status, fulfillment);
 }
 
 // Timestamped status history; falls back to a single synthesized entry for older orders.
 export function statusTimeline(order) {
   if (order.statusHistory && order.statusHistory.length > 0) return order.statusHistory;
-  return [{ status: order.status || 'pending', at: order.createdAt }];
+  return [{ status: order.status || 'received', at: order.createdAt }];
 }
 
-export const STATUS_OPTIONS = ['pending', 'confirmed', 'delivered', 'cancelled'];
-
 export const statusClasses = {
-  pending: 'bg-yellow-100 text-yellow-800',
+  received: 'bg-yellow-100 text-yellow-800',
   confirmed: 'bg-blue-100 text-blue-800',
-  delivered: 'bg-green-100 text-green-800',
+  ready: 'bg-indigo-100 text-indigo-800',
+  completed: 'bg-green-100 text-green-800',
   cancelled: 'bg-gray-200 text-gray-700',
+  // legacy
+  pending: 'bg-yellow-100 text-yellow-800',
+  delivered: 'bg-green-100 text-green-800',
 };
+
+export const paymentStatusClasses = {
+  unpaid: 'bg-amber-100 text-amber-800',
+  paid: 'bg-green-100 text-green-800',
+};
+
+export function paymentLabel(order) {
+  return order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid';
+}

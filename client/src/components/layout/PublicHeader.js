@@ -5,8 +5,7 @@ import Logo from '../Logo';
 import { AuthContext } from '../../context/AuthContext';
 
 const navLinks = [
-  { name: 'Pricing', href: '/#pricing' },
-  { name: 'Subscriptions', href: '/#subscriptions' },
+  { name: 'Pricing', to: '/pricing' },
   { name: 'How It Works', href: '/#how-it-works' },
   { name: 'Contact', href: '/#contact' },
 ];
@@ -24,7 +23,15 @@ function PublicHeader() {
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-x-8 md:flex">
-          {navLinks.map((link) => (
+          {navLinks.map((link) => (link.to ? (
+            <Link
+              key={link.name}
+              to={link.to}
+              className="text-sm font-semibold text-walnut hover:text-ember transition-colors"
+            >
+              {link.name}
+            </Link>
+          ) : (
             <a
               key={link.name}
               href={link.href}
@@ -32,7 +39,7 @@ function PublicHeader() {
             >
               {link.name}
             </a>
-          ))}
+          )))}
           <Link
             to={token ? '/my-orders' : '/login'}
             className="text-sm font-semibold text-walnut hover:text-ember transition-colors"
@@ -62,7 +69,16 @@ function PublicHeader() {
       {mobileOpen && (
         <div className="border-t border-cream-300 bg-cream px-4 py-4 md:hidden">
           <div className="flex flex-col gap-y-3">
-            {navLinks.map((link) => (
+            {navLinks.map((link) => (link.to ? (
+              <Link
+                key={link.name}
+                to={link.to}
+                onClick={() => setMobileOpen(false)}
+                className="text-sm font-semibold text-walnut hover:text-ember"
+              >
+                {link.name}
+              </Link>
+            ) : (
               <a
                 key={link.name}
                 href={link.href}
@@ -71,7 +87,7 @@ function PublicHeader() {
               >
                 {link.name}
               </a>
-            ))}
+            )))}
             <Link
               to={token ? '/my-orders' : '/login'}
               onClick={() => setMobileOpen(false)}

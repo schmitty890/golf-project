@@ -7,27 +7,22 @@ const orderItemSchema = new mongoose.Schema({
 }, { _id: false });
 
 const orderSchema = new mongoose.Schema({
-  orderType: {
-    type: String,
-    enum: ['bundle', 'pack', 'subscription'],
-    required: true,
-  },
-  // For one-off bundle orders
+  // 'onetime' (cart of products) or 'subscription'. Plain string so legacy orders still save.
+  orderType: { type: String, required: true },
+  // Cart line items for one-time orders: { name, quantity, unitPrice }.
   items: { type: [orderItemSchema], default: [] },
-  // For seasonal packs
+  // Flat delivery fee charged on this order (0 for pickup).
+  deliveryFee: { type: Number, default: 0 },
+  // Subscription tier plan (e.g. '2bundle' / '3bundle') for subscription orders.
+  subscriptionPlan: { type: String, default: '' },
+  // Subscription minimum commitment: term length, when it ends, and when the customer agreed.
+  commitmentMonths: { type: Number, default: 0 },
+  commitmentEndsAt: { type: Date, default: null },
+  agreedToTermsAt: { type: Date, default: null },
+  // Deprecated (seasonal packs / seasons) — kept for older orders.
   packName: { type: String, default: '' },
   bundleCount: { type: Number, default: 0 },
-  // For subscriptions
-  subscriptionPlan: {
-    type: String,
-    enum: ['monthly', 'biweekly', 'seasonal', ''],
-    default: '',
-  },
-  season: {
-    type: String,
-    enum: ['fall', 'winter', ''],
-    default: '',
-  },
+  season: { type: String, default: '' },
   // Legacy: customer's preferred day(s) of week (older orders). New orders use preferredDate.
   preferredDays: { type: [String], default: [] },
   // Customer-chosen calendar date ('YYYY-MM-DD', local time, no timezone shift).
@@ -49,8 +44,16 @@ const orderSchema = new mongoose.Schema({
   rush: { type: Boolean, default: false },
   // Snapshot of the rush surcharge % applied at order time (0 when not a rush order).
   rushPercent: { type: Number, default: 0 },
-  // How the customer pays. Venmo for now.
+  // How the customer pays: 'venmo' (manual) or 'card' (Stripe).
   paymentMethod: { type: String, default: 'venmo' },
+  // Whether payment was received — set by the Stripe webhook for cards, or by hand for Venmo.
+  paymentStatus: { type: String, enum: ['unpaid', 'paid'], default: 'unpaid' },
+  // When the order was marked paid (null = not yet).
+  paidAt: { type: Date, default: null },
+  // Stripe references (empty unless paid by card).
+  stripeSessionId: { type: String, default: '' },
+  stripePaymentIntentId: { type: String, default: '' },
+  stripeCustomerId: { type: String, default: '' },
   // Promo code applied at checkout + the dollar discount recorded (owner honors final total).
   promoCode: { type: String, default: '' },
   discount: { type: Number, default: 0 },
@@ -79,10 +82,11 @@ const orderSchema = new mongoose.Schema({
     neighborhood: { type: String, trim: true, default: '' },
     notes: { type: String, trim: true, default: '' },
   },
+  // Fulfillment stage. Plain string (validated in the route) so legacy values still read.
+  // Canonical: received → confirmed → ready → completed, plus cancelled.
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'delivered', 'cancelled'],
-    default: 'pending',
+    default: 'received',
   },
   // Timestamped record of each status change (for the customer timeline + admin tracking).
   statusHistory: {
@@ -92,6 +96,8 @@ const orderSchema = new mongoose.Schema({
     }],
     default: [],
   },
+  // Random token for the public order-tracking link (no login needed to view that one order).
+  trackingToken: { type: String, index: true, default: '' },
   // Admin-set pickup/delivery window, shown to logged-in customers. Stored as plain strings
   // (date 'YYYY-MM-DD', from/to 'HH:MM') to avoid timezone conversion issues.
   schedule: {
