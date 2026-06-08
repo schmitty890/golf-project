@@ -231,6 +231,12 @@ function Order() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The success / payment-return views render on the same /order route (no path change), so scroll
+  // to the top when one appears — otherwise the page stays where the form was scrolled.
+  useEffect(() => {
+    if (submitted || returnStatus) window.scrollTo(0, 0);
+  }, [submitted, returnStatus]);
+
   const buildPayload = () => {
     const base = {
       fulfillment: isPickup ? 'pickup' : 'delivery',
