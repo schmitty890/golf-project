@@ -28,7 +28,7 @@ function getTransport() {
 
 // Send an email. Resolves silently (logging) when unconfigured or when `to` is empty.
 export async function sendMail({
-  to, subject, html, text,
+  to, subject, html, text, replyTo,
 }) {
   if (!to) return;
   const t = getTransport();
@@ -43,6 +43,7 @@ export async function sendMail({
       subject,
       text,
       html,
+      ...(replyTo ? { replyTo } : {}),
     });
   } catch (err) {
     console.error(`[mail] failed to send "${subject}" to ${to}:`, err.message);

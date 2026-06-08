@@ -235,6 +235,19 @@ export function referralRewardEmail(referrer, reward, label) {
   return { subject, html, text };
 }
 
+export function contactFormEmail({
+  name, email, phone, message,
+}) {
+  const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const lines = [['Name', esc(name)], ['Email', esc(email)]];
+  if (phone) lines.push(['Phone', esc(phone)]);
+  const subject = `New contact message from ${name}`;
+  const body = `${linesToHtml(lines)}<p style="margin-top:16px;white-space:pre-wrap">${esc(message)}</p>`;
+  const html = wrap('New contact message', body);
+  const text = `${linesToText(lines)}\n\nMessage:\n${message}`;
+  return { subject, html, text };
+}
+
 export function deliveredEmail(order) {
   const site = process.env.SITE_URL;
   const fb = site ? `<p><a href="${site}" style="color:#b5471f">Leave a quick review</a> — it helps your neighbors.</p>` : '';
