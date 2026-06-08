@@ -14,6 +14,7 @@ import testimonials from '../data/testimonials';
 import faqs from '../data/faqs';
 import ReviewsCarousel from '../components/ReviewsCarousel';
 import FeedbackModal from '../components/FeedbackModal';
+import ContactForm from '../components/ContactForm';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -263,6 +264,31 @@ function FAQ() {
   );
 }
 
+function Contact() {
+  return (
+    <section id="contact" className="bg-cream-300/40 py-16 sm:py-20">
+      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
+        <h2 className="text-center text-3xl font-extrabold tracking-tight text-walnut">Get in touch</h2>
+        <p className="mt-3 text-center text-lg text-walnut-400">
+          Questions about an order or anything firewood? Send us a message and we&apos;ll get back
+          to you.
+        </p>
+        <p className="mt-1 text-center text-sm text-walnut-300">
+          Or email us directly at
+          {' '}
+          <a href={`mailto:${business.email}`} className="font-semibold text-ember hover:text-ember-600">
+            {business.email}
+          </a>
+          .
+        </p>
+        <div className="mt-8">
+          <ContactForm />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Home() {
   return (
     <>
@@ -274,7 +300,7 @@ function Home() {
       <Testimonials />
       <FAQ />
       <ServiceArea />
-      {/* Contact lives in the footer (#contact) */}
+      <Contact />
     </>
   );
 }
