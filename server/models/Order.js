@@ -44,12 +44,16 @@ const orderSchema = new mongoose.Schema({
   rush: { type: Boolean, default: false },
   // Snapshot of the rush surcharge % applied at order time (0 when not a rush order).
   rushPercent: { type: Number, default: 0 },
-  // How the customer pays. Venmo for now.
+  // How the customer pays: 'venmo' (manual) or 'card' (Stripe).
   paymentMethod: { type: String, default: 'venmo' },
-  // Whether the owner has confirmed payment was received (manual — Venmo is reconciled by hand).
+  // Whether payment was received — set by the Stripe webhook for cards, or by hand for Venmo.
   paymentStatus: { type: String, enum: ['unpaid', 'paid'], default: 'unpaid' },
   // When the order was marked paid (null = not yet).
   paidAt: { type: Date, default: null },
+  // Stripe references (empty unless paid by card).
+  stripeSessionId: { type: String, default: '' },
+  stripePaymentIntentId: { type: String, default: '' },
+  stripeCustomerId: { type: String, default: '' },
   // Promo code applied at checkout + the dollar discount recorded (owner honors final total).
   promoCode: { type: String, default: '' },
   discount: { type: Number, default: 0 },

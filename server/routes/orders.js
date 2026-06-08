@@ -15,6 +15,8 @@ import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
   discountLabel, mintReferralReward,
 } from './promos.js';
+import { stripeEnabled, createOneTimeCheckout } from '../utils/stripe.js';
+import { computeChargeCents } from '../data/catalog.js';
 
 const router = express.Router();
 
@@ -142,7 +144,7 @@ router.post('/', optionalAuth, async (req, res) => {
     const {
       orderType, items, subscriptionPlan, deliveryFee,
       contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
-      rush, code, subtotal, agreedToTerms,
+      rush, code, subtotal, agreedToTerms, paymentMethod,
     } = req.body;
 
     if (!['onetime', 'subscription'].includes(orderType)) {
@@ -218,10 +220,38 @@ router.post('/', optionalAuth, async (req, res) => {
       promoCode,
       discount,
       referredBy,
+      // Card is only offered for one-time orders in Phase 1; everything else stays Venmo.
+      paymentMethod: (paymentMethod === 'card' && orderType === 'onetime' && stripeEnabled()) ? 'card' : 'venmo',
       user: req.userId || null,
       statusHistory: [{ status: 'pending', at: new Date() }],
     });
     await order.save();
+
+    // Card path: create a hosted Stripe Checkout Session for the server-authoritative amount and
+    // return its URL so the client can redirect. Falls through to the Venmo response on any issue.
+    let stripeCheckoutUrl = '';
+    if (order.paymentMethod === 'card') {
+      try {
+        const amountCents = computeChargeCents(order);
+        if (amountCents >= 50) {
+          const base = process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
+          const description = (order.items || []).map((i) => `${i.quantity}× ${i.name}`).join(', ');
+          const session = await createOneTimeCheckout(order, amountCents, {
+            successUrl: `${base}/order?status=paid`,
+            cancelUrl: `${base}/order?status=cancelled`,
+            description,
+          });
+          if (session?.url) {
+            order.stripeSessionId = session.id;
+            await order.save();
+            stripeCheckoutUrl = session.url;
+          }
+        }
+      } catch (stripeErr) {
+        console.error('Stripe checkout error:', stripeErr.message);
+        // Leave the order as-is (unpaid); client falls back to the Venmo screen.
+      }
+    }
 
     // Fire-and-forget notifications — never block or fail the order on email issues.
     (async () => {
@@ -253,7 +283,7 @@ router.post('/', optionalAuth, async (req, res) => {
       }
     })();
 
-    return res.status(201).json(order);
+    return res.status(201).json({ ...order.toObject(), stripeCheckoutUrl });
   } catch (error) {
     console.error('Create order error:', error);
     if (error.name === 'ValidationError') {
@@ -472,7 +502,7 @@ router.patch('/:id/cancel', auth, async (req, res) => {
     if (['delivered', 'cancelled'].includes(order.status)) {
       return res.status(400).json({ error: `This order is already ${order.status}.` });
     }
-    // Subscriptions are locked in until the minimum commitment ends (owner can still override in Admin).
+    // Subscriptions are locked in until the minimum commitment ends (owner can override in Admin).
     if (order.orderType === 'subscription' && order.commitmentEndsAt
       && new Date() < order.commitmentEndsAt) {
       return res.status(400).json({ error: `Your subscription has a ${order.commitmentMonths || SUBSCRIPTION_MIN_MONTHS}-month minimum — contact us to make changes.` });

@@ -9,6 +9,7 @@ import settingsRouter from './routes/settings.js';
 import feedbackRouter from './routes/feedback.js';
 import promosRouter from './routes/promos.js';
 import { startReminderJob } from './jobs/reminders.js';
+import stripeWebhook from './routes/stripeWebhook.js';
 import { swaggerUi, specs } from './swagger.js';
 
 dotenv.config();
@@ -19,6 +20,9 @@ const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors());
+// Stripe webhook needs the RAW body for signature verification — must be registered BEFORE the
+// global express.json() so it isn't parsed away.
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
 app.use(express.json());
 
 // MongoDB Connection

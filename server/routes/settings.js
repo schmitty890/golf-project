@@ -2,6 +2,7 @@ import express from 'express';
 import Settings from '../models/Settings.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
+import { stripeEnabled } from '../utils/stripe.js';
 
 const router = express.Router();
 
@@ -35,6 +36,8 @@ router.get('/availability', async (req, res) => {
       referralDiscount: doc?.referralDiscount ?? DEFAULT_REFERRAL,
       // A Venmo handle is public by design (it's how customers pay).
       venmoHandle: process.env.VENMO_HANDLE || '',
+      // Whether card checkout (Stripe) is available — the client shows the card option only if so.
+      cardEnabled: stripeEnabled(),
     });
   } catch (error) {
     console.error('Get availability error:', error);

@@ -55,6 +55,9 @@ function Order() {
   const [rushRequested, setRushRequested] = useState(false);
   const [pickupInstructions, setPickupInstructions] = useState('');
   const [venmoHandle, setVenmoHandle] = useState('');
+  const [cardEnabled, setCardEnabled] = useState(false);
+  const [payMethod, setPayMethod] = useState('venmo'); // 'card' | 'venmo'
+  const [returnStatus, setReturnStatus] = useState(''); // 'paid' | 'cancelled' after Stripe redirect
 
   const [codeInput, setCodeInput] = useState('');
   const [appliedCode, setAppliedCode] = useState('');
@@ -103,6 +106,10 @@ function Order() {
           setPickupInstructions(res.data.pickupInstructions);
         }
         if (res.data.venmoHandle !== undefined) setVenmoHandle(res.data.venmoHandle);
+        if (res.data.cardEnabled) {
+          setCardEnabled(true);
+          setPayMethod('card');
+        }
       })
       .catch(() => setDateOverrides({}));
   }, []);
@@ -216,6 +223,8 @@ function Order() {
       setCodeInput(ref);
       applyCode(ref);
     }
+    const status = searchParams.get('status');
+    if (status === 'paid' || status === 'cancelled') setReturnStatus(status);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -240,6 +249,7 @@ function Order() {
       orderType: 'onetime',
       items: cart.map((c) => ({ name: c.name, quantity: c.count, unitPrice: c.price })),
       deliveryFee,
+      paymentMethod: cardEnabled && payMethod === 'card' ? 'card' : 'venmo',
     };
   };
 
@@ -271,7 +281,12 @@ function Order() {
     setSubmitting(true);
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API_URL}/api/orders`, buildPayload(), { headers });
+      const res = await axios.post(`${API_URL}/api/orders`, buildPayload(), { headers });
+      if (res.data.stripeCheckoutUrl) {
+        // Card order — hand off to Stripe Checkout (returns to /order?status=paid|cancelled).
+        window.location = res.data.stripeCheckoutUrl;
+        return;
+      }
       setSubmitted(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong. Please try again.');
@@ -279,6 +294,40 @@ function Order() {
       setSubmitting(false);
     }
   };
+
+  // Returned from Stripe Checkout (full reload — cart state is gone; details are in the email).
+  if (returnStatus === 'paid') {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
+        <CheckCircleIcon className="mx-auto h-14 w-14 text-green-600" aria-hidden="true" />
+        <h1 className="mt-4 text-2xl font-extrabold text-walnut">Payment received — thank you!</h1>
+        <p className="mt-2 text-walnut-400">
+          Your order is paid and confirmed. Check your email for the details, and we&apos;ll be in
+          touch about your time window.
+        </p>
+        <Link to="/" className="mt-6 inline-block rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600">
+          Back home
+        </Link>
+      </div>
+    );
+  }
+  if (returnStatus === 'cancelled') {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
+        <h1 className="text-2xl font-extrabold text-walnut">Payment canceled</h1>
+        <p className="mt-2 text-walnut-400">
+          No charge was made and your order is held as unpaid. You can try again or pay by Venmo.
+        </p>
+        <button
+          type="button"
+          onClick={() => setReturnStatus('')}
+          className="mt-6 inline-block rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600"
+        >
+          Start a new order
+        </button>
+      </div>
+    );
+  }
 
   if (submitted) {
     const handle = (venmoHandle || '').replace(/^@/, '');
@@ -685,6 +734,31 @@ function Order() {
           </div>
         )}
 
+        {/* Payment method (one-time only; card shown when Stripe is enabled) */}
+        {!isSubscription && cardEnabled && (
+          <div>
+            <span className={labelClass}>How would you like to pay?</span>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setPayMethod('card')}
+                className={`rounded-xl border p-4 text-left transition-colors ${payMethod === 'card' ? 'border-ember bg-cream-100 ring-2 ring-ember/30' : 'border-cream-300 bg-white hover:border-ember'}`}
+              >
+                <span className="block text-sm font-bold text-walnut">Pay by card</span>
+                <span className="block text-xs text-walnut-400">Secure checkout now</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayMethod('venmo')}
+                className={`rounded-xl border p-4 text-left transition-colors ${payMethod === 'venmo' ? 'border-ember bg-cream-100 ring-2 ring-ember/30' : 'border-cream-300 bg-white hover:border-ember'}`}
+              >
+                <span className="block text-sm font-bold text-walnut">Pay with Venmo</span>
+                <span className="block text-xs text-walnut-400">After you order</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Estimate */}
         <div className="rounded-xl border border-cream-300 bg-cream-100 p-4">
           <div className="flex items-center justify-between gap-4">
@@ -725,7 +799,9 @@ function Order() {
             </div>
           )}
           <p className="mt-2 text-xs text-walnut-300">
-            Estimate only — no payment now. We&apos;ll confirm the final total with you.
+            {!isSubscription && cardEnabled && payMethod === 'card'
+              ? "You'll pay securely by card on the next step."
+              : "Estimate only — no payment now. We'll confirm the final total with you."}
           </p>
         </div>
 
@@ -734,7 +810,10 @@ function Order() {
           disabled={submitting}
           className="w-full rounded-xl bg-ember px-4 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-ember-600 disabled:opacity-50"
         >
-          {submitting ? 'Submitting…' : 'Submit Order'}
+          {/* eslint-disable-next-line no-nested-ternary */}
+          {submitting
+            ? 'Submitting…'
+            : (!isSubscription && cardEnabled && payMethod === 'card' ? 'Continue to payment →' : 'Submit Order')}
         </button>
       </form>
     </div>

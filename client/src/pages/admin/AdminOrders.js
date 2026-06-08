@@ -230,6 +230,7 @@ function AdminOrders() {
                   ))}
                 </select>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClasses[order.paymentStatus] || paymentStatusClasses.unpaid}`}>
+                  {order.paymentMethod === 'card' ? 'Card — ' : ''}
                   {paymentLabel(order)}
                   {order.paymentStatus === 'paid' && order.paidAt
                     ? ` · ${new Date(order.paidAt).toLocaleDateString()}`

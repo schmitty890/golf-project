@@ -1,0 +1,45 @@
+// Stripe webhook handler. Mounted in server.js BEFORE express.json() with express.raw(), because
+// signature verification needs the raw request body. Marks an order paid on checkout completion.
+import Stripe from 'stripe';
+import Order from '../models/Order.js';
+import { sendMail } from '../utils/mailer.js';
+import { paymentReceivedEmail } from '../utils/orderEmails.js';
+
+export default async function stripeWebhook(req, res) {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!secret || !key) return res.status(503).send('Stripe not configured');
+
+  const stripe = new Stripe(key);
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], secret);
+  } catch (err) {
+    console.error('Stripe webhook signature error:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const orderId = session.metadata?.orderId;
+    try {
+      const order = orderId ? await Order.findById(orderId) : null;
+      if (order && order.paymentStatus !== 'paid') {
+        order.paymentStatus = 'paid';
+        order.paidAt = new Date();
+        order.paymentMethod = 'card';
+        order.stripePaymentIntentId = session.payment_intent || '';
+        if (session.customer) order.stripeCustomerId = session.customer;
+        await order.save();
+        if (order.contact?.email) {
+          sendMail({ to: order.contact.email, ...paymentReceivedEmail(order) });
+        }
+      }
+    } catch (err) {
+      console.error('Stripe webhook order update error:', err.message);
+      // Still return 200 so Stripe doesn't retry forever on a non-recoverable error.
+    }
+  }
+
+  return res.json({ received: true });
+}
