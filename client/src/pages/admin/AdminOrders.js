@@ -196,7 +196,7 @@ function AdminOrders() {
                 )}
                 <p className="text-sm text-walnut-400">
                   {order.fulfillment === 'pickup' ? (
-                    'Pickup — coordinate spot & time'
+                    `Pickup${order.deliveryAddress?.neighborhood ? ` · ${order.deliveryAddress.neighborhood}` : ''} — coordinate spot & time`
                   ) : (
                     <>
                       {order.deliveryAddress?.street}
