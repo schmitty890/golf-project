@@ -12,10 +12,11 @@ const business = {
     { name: 'Instagram', href: 'https://instagram.com' },
     { name: 'Facebook', href: 'https://facebook.com' },
   ],
-  // Launch / first-order promo shown in the top announcement bar. Edit the text/amount,
-  // or set launchOffer to null to hide the bar.
+  // First-order promo in the top announcement bar. The $ amount is just copy — keep it in sync with
+  // Settings.firstOrderDiscount (the real discount, applied server-side to a signed-in customer's
+  // first order). Set launchOffer to null to hide the bar.
   launchOffer: {
-    text: 'Now delivering in The Vineyards — new neighbors get 3 bundles delivered for $30.',
+    text: 'New neighbors: $15 off your first order — 3 bundles delivered for just $30.',
     cta: 'Order now',
     href: '/order',
   },

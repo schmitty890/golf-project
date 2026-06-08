@@ -14,7 +14,7 @@ import {
 } from '../utils/orderEmails.js';
 import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
-  discountLabel, mintReferralReward,
+  discountLabel, mintReferralReward, firstOrderConfig,
 } from './promos.js';
 import { stripeEnabled, createOneTimeCheckout } from '../utils/stripe.js';
 import { computeChargeCents } from '../data/catalog.js';
@@ -200,6 +200,16 @@ router.post('/', optionalAuth, async (req, res) => {
         discount = discountAmount(rc.type, rc.value, subtotal);
         promoCode = referrer.referralCode;
         referredBy = referrer._id;
+      }
+    }
+
+    // First-order deal: auto-apply for a signed-in customer's first one-time order, when no code was
+    // used. Server-authoritative (re-checks order history), so a stale client can't claim it twice.
+    if (!promoCode && !discount && orderType === 'onetime' && req.userId) {
+      const fc = firstOrderConfig(settings);
+      if (fc.enabled && !(await Order.exists({ user: req.userId }))) {
+        discount = discountAmount(fc.type, fc.value, subtotal);
+        if (discount > 0) promoCode = 'FIRST-ORDER';
       }
     }
 

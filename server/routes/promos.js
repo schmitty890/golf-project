@@ -1,6 +1,7 @@
 import express from 'express';
 import PromoCode from '../models/PromoCode.js';
 import User from '../models/User.js';
+import Order from '../models/Order.js';
 import Settings from '../models/Settings.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
@@ -8,6 +9,7 @@ import requireAdmin from '../middleware/requireAdmin.js';
 const router = express.Router();
 
 const DEFAULT_REFERRAL = { enabled: true, type: 'amount', value: 5 };
+const DEFAULT_FIRST_ORDER = { enabled: true, type: 'amount', value: 15 };
 const norm = (code) => String(code || '').toUpperCase().trim();
 
 // --- Shared helpers (also used by the orders create route) ---
@@ -43,6 +45,10 @@ export function promoLabel(promo) {
 
 export function referralConfig(settings) {
   return settings?.referralDiscount || DEFAULT_REFERRAL;
+}
+
+export function firstOrderConfig(settings) {
+  return settings?.firstOrderDiscount || DEFAULT_FIRST_ORDER;
 }
 
 // Find the user who owns a referral code (optionally excluding the buyer, who can't refer self).
@@ -164,6 +170,26 @@ router.get('/my-referral', auth, async (req, res) => {
   } catch (error) {
     console.error('My referral error:', error);
     return res.status(500).json({ error: 'Failed to load referral code' });
+  }
+});
+
+// Whether this signed-in user is eligible for the first-order deal (no prior orders).
+router.get('/first-order', auth, async (req, res) => {
+  try {
+    const settings = await Settings.findOne({ key: 'availability' });
+    const fc = firstOrderConfig(settings);
+    const hasOrdered = await Order.exists({ user: req.userId });
+    const eligible = Boolean(fc.enabled) && !hasOrdered;
+    return res.json({
+      eligible,
+      type: fc.type,
+      value: fc.value,
+      discount: fc.value,
+      label: discountLabel(fc.type, fc.value),
+    });
+  } catch (error) {
+    console.error('First-order check error:', error);
+    return res.status(500).json({ error: 'Failed to check eligibility' });
   }
 });
 
