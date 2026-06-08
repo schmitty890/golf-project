@@ -29,8 +29,8 @@ export const subscriptions = [
     plan: '2bundle',
     name: '2 bundles / month',
     bundles: 2,
-    price: 20,
-    priceLabel: '$20/mo',
+    price: 24,
+    priceLabel: '$24/mo',
     description: 'A steady supply — two bundles delivered each month.',
   },
   {
@@ -38,8 +38,8 @@ export const subscriptions = [
     plan: '3bundle',
     name: '3 bundles / month',
     bundles: 3,
-    price: 30,
-    priceLabel: '$30/mo',
+    price: 35,
+    priceLabel: '$35/mo',
     description: 'Three bundles a month for regular burners.',
   },
 ];
