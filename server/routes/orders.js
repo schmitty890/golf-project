@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
-import Settings from '../models/Settings.js';
+import Settings, { DEFAULT_PICKUP_ADDRESS } from '../models/Settings.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 import { sendMail } from '../utils/mailer.js';
@@ -340,7 +340,7 @@ router.get('/track/:token', async (req, res) => {
     let pickupAddress = '';
     if (order.fulfillment === 'pickup' && confirmedStages.includes(order.status)) {
       const settings = await Settings.findOne({ key: 'availability' });
-      pickupAddress = settings?.pickupAddress || '';
+      pickupAddress = settings?.pickupAddress || DEFAULT_PICKUP_ADDRESS;
     }
     return res.json({
       status: order.status,
@@ -513,19 +513,21 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       let email = null;
       if (order.status === 'confirmed' && order.schedule?.from) {
         const settings = await Settings.findOne({ key: 'availability' });
-        email = windowConfirmedEmail(order, settings?.pickupAddress);
+        email = windowConfirmedEmail(order, settings?.pickupAddress || DEFAULT_PICKUP_ADDRESS);
       } else if (order.status === 'ready') {
         const settings = await Settings.findOne({ key: 'availability' });
-        email = readyEmail(order, settings?.pickupAddress);
+        email = readyEmail(order, settings?.pickupAddress || DEFAULT_PICKUP_ADDRESS);
       } else if (order.status === 'completed') {
         email = deliveredEmail(order);
       }
       if (email) sendMail({ to: customerEmail, ...email });
     }
 
-    // Send a short receipt when the owner marks an order paid (fire-and-forget).
+    // Send a short receipt when the owner marks an order paid — pickup orders get the address now.
     if (customerEmail && order.paymentStatus === 'paid' && prevPayment !== 'paid') {
-      sendMail({ to: customerEmail, ...paymentReceivedEmail(order) });
+      const s = await Settings.findOne({ key: 'availability' });
+      const addr = s?.pickupAddress || DEFAULT_PICKUP_ADDRESS;
+      sendMail({ to: customerEmail, ...paymentReceivedEmail(order, addr) });
     }
 
     return res.json(order);
