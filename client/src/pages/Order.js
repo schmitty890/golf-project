@@ -25,6 +25,9 @@ function Order() {
   const { user, token } = useContext(AuthContext);
   const location = useLocation();
   const reorder = location.state?.reorder || null;
+  // The chatbot hands off a partial order via location.state.prefill (date/times/contact —
+  // the fields the `reorder` shape above doesn't cover). Null on every other entry path.
+  const prefill = location.state?.prefill || null;
   const [searchParams] = useSearchParams();
 
   // Reorder prefill: map past item names back to product ids; pick mode + fulfillment.
@@ -46,8 +49,12 @@ function Order() {
   const [fulfillment, setFulfillment] = useState(reorder?.fulfillment === 'delivery' ? 'delivery' : 'pickup');
   const [agreedSub, setAgreedSub] = useState(false);
 
-  const [preferredDate, setPreferredDate] = useState('');
-  const [windowFroms, setWindowFroms] = useState([]);
+  const [preferredDate, setPreferredDate] = useState(prefill?.preferredDate || '');
+  // preferredTimes is [{from,to}]; we track the `from` ids. The prune effect below
+  // drops any window that isn't actually open for the chosen date.
+  const [windowFroms, setWindowFroms] = useState(
+    (prefill?.preferredTimes || []).map((w) => w.from),
+  );
   const [dateOverrides, setDateOverrides] = useState({});
   const [leadDays, setLeadDays] = useState(1);
   const [rushEnabled, setRushEnabled] = useState(true);
@@ -68,7 +75,7 @@ function Order() {
   const [firstOrderCfg, setFirstOrderCfg] = useState(null);
   const [firstOrderEligible, setFirstOrderEligible] = useState(false);
 
-  const [contact, setContact] = useState({ name: '', phone: '', email: '' });
+  const [contact, setContact] = useState(prefill?.contact || { name: '', phone: '', email: '' });
   const [address, setAddress] = useState(reorder?.deliveryAddress ? {
     street: reorder.deliveryAddress.street || '',
     unit: reorder.deliveryAddress.unit || '',

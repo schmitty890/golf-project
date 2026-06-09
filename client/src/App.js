@@ -5,6 +5,7 @@ import PublicLayout from './components/layout/PublicLayout';
 import SidebarLayout from './components/layout/SidebarLayout';
 import RequireAuth from './components/RequireAuth';
 import ScrollToTop from './components/ScrollToTop';
+import ChatWidget from './components/chatbot/ChatWidget';
 import Home from './pages/Home';
 import Order from './pages/Order';
 import Pricing from './pages/Pricing';
@@ -93,6 +94,7 @@ function App() {
             )}
           />
         </Routes>
+        <ChatWidget />
       </AuthProvider>
     </Router>
   );

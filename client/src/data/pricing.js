@@ -1,4 +1,5 @@
-// Single source of truth for pricing — consumed by the Pricing page, the order form, and emails.
+// Single source of truth for pricing — consumed by the Pricing page, the order form, the
+// chatbot widget (client/src/components/chatbot/conversation.js), and emails.
 // NOTE: product prices + DELIVERY_FEE are mirrored server-side in server/data/catalog.js (the
 // authority for real Stripe charges). Keep the two in sync when prices change.
 
