@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import ChatLauncher from './ChatLauncher';
@@ -7,13 +7,9 @@ import ChatPanel from './ChatPanel';
 // Mounted once, site-wide (above <Routes> in App.js) so the conversation persists
 // across navigation — e.g. when the bot deep-links to /order.
 const HIDE_ON = ['/login', '/register'];
-const NUDGE_KEY = 'volw-woody-nudge-seen';
-
-// Module-scoped so the "show the nudge once" decision survives React StrictMode's
-// double-mount and any remount within the same page session. Only a full page
-// reload re-evaluates (and then localStorage gates it).
-let nudgeDecided = false;
-let nudgeShouldShow = false;
+// Stores the epoch-ms of the last time the nudge was dismissed (X'd or chat opened).
+const NUDGE_KEY = 'volw-woody-nudge-dismissed-at';
+const NUDGE_COOLDOWN_MS = 24 * 60 * 60 * 1000; // re-show a day after dismissal
 
 function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -28,26 +24,29 @@ function ChatWidget() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
-  // First-visit nudge: pop Woody's bubble once, ever. Decide a single time per
-  // page session and mark it seen immediately, so it never repeats even if the
-  // visitor navigates/reloads before the bubble appears.
+  // The nudge stays until dismissed; once dismissed it stays hidden for the
+  // cooldown. Show it (after a short beat) unless it was dismissed recently.
   useEffect(() => {
-    if (!nudgeDecided) {
-      nudgeDecided = true;
-      let seen = true;
-      try { seen = Boolean(localStorage.getItem(NUDGE_KEY)); } catch { seen = true; }
-      nudgeShouldShow = !seen;
-      if (nudgeShouldShow) {
-        try { localStorage.setItem(NUDGE_KEY, '1'); } catch { /* ignore */ }
-      }
-    }
-    if (!nudgeShouldShow) return undefined;
+    let dismissedAt = 0;
+    try { dismissedAt = Number(localStorage.getItem(NUDGE_KEY)) || 0; } catch { dismissedAt = 0; }
+    const shouldShow = !dismissedAt || (Date.now() - dismissedAt) >= NUDGE_COOLDOWN_MS;
+    if (!shouldShow) return undefined;
     const showT = setTimeout(() => setShowNudge(true), 1500);
-    const hideT = setTimeout(() => setShowNudge(false), 12000);
-    return () => { clearTimeout(showT); clearTimeout(hideT); };
-  // Run once on mount — the nudge is a first-visit, one-time affair.
+    return () => clearTimeout(showT);
+  // Run once on mount; the cooldown decision is read from localStorage.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Dismissing (X'ing it or engaging with the chat) hides it and starts the cooldown.
+  const dismissNudge = useCallback(() => {
+    setShowNudge(false);
+    try { localStorage.setItem(NUDGE_KEY, String(Date.now())); } catch { /* ignore */ }
+  }, []);
+
+  const openChat = useCallback(() => {
+    dismissNudge();
+    setOpen(true);
+  }, [dismissNudge]);
 
   if (HIDE_ON.includes(pathname)) return null;
 
@@ -60,14 +59,14 @@ function ChatWidget() {
           <div className="relative">
             <button
               type="button"
-              onClick={() => { setShowNudge(false); setOpen(true); }}
+              onClick={openChat}
               className="block max-w-[15rem] rounded-2xl rounded-br-sm border border-cream-300 bg-white py-2 pl-3 pr-7 text-left text-sm font-medium text-walnut shadow-lg transition-colors hover:border-ember"
             >
               Hi, I&apos;m Woody! Need firewood? I can help. 🔥
             </button>
             <button
               type="button"
-              onClick={() => setShowNudge(false)}
+              onClick={dismissNudge}
               aria-label="Dismiss"
               className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-walnut text-cream shadow"
             >
@@ -77,7 +76,7 @@ function ChatWidget() {
         </div>
       )}
 
-      <ChatLauncher open={open} onToggle={() => setOpen((v) => !v)} />
+      <ChatLauncher open={open} onToggle={() => (open ? setOpen(false) : openChat())} />
     </>
   );
 }
