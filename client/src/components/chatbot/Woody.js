@@ -21,26 +21,33 @@ function Woody({ className, title, wave }) {
     >
       {title ? <title>{title}</title> : null}
       <g style={waveStyle} className={wave ? 'motion-safe:animate-woody-wave' : undefined}>
-        {/* log depth + bark rim */}
-        <circle cx="34" cy="35" r="22" fill="#3D2716" />
-        <circle cx="32" cy="32" r="22" fill="#4A2F1B" />
-        <path d="M13 27 A22 22 0 0 1 49 23" stroke="#7A5536" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.7" />
-        {/* cut face + growth rings */}
-        <circle cx="32" cy="32" r="16.5" fill="#F4EDE2" />
-        <circle cx="32" cy="32" r="12" fill="none" stroke="#E86A2A" strokeWidth="1.5" opacity="0.3" />
-        <circle cx="32" cy="32" r="7" fill="none" stroke="#E86A2A" strokeWidth="1.5" opacity="0.45" />
+        {/* bark body — horizontal log cylinder */}
+        <rect x="20" y="18" width="38" height="28" rx="14" fill="#4A2F1B" />
+        {/* top highlight + bark grain */}
+        <path d="M30 22 H52" stroke="#7A5536" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.8" />
+        <path d="M34 39 H53" stroke="#3D2716" strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.6" />
+        {/* ember strap wrapping the log */}
+        <rect x="43" y="17" width="8" height="30" rx="2.5" fill="#E86A2A" />
+        <rect x="49" y="17" width="2" height="30" rx="1" fill="#C9551C" />
+        {/* near cut end: dark bark rim + cream ring face */}
+        <ellipse cx="22" cy="32" rx="13.5" ry="16.5" fill="#3D2716" />
+        <ellipse cx="22" cy="32" rx="12" ry="15" fill="#F4EDE2" />
+        {/* growth rings + pith */}
+        <ellipse cx="22" cy="32" rx="8" ry="10" fill="none" stroke="#E86A2A" strokeWidth="1.3" opacity="0.28" />
+        <ellipse cx="22" cy="32" rx="4.5" ry="5.5" fill="none" stroke="#E86A2A" strokeWidth="1.3" opacity="0.4" />
+        <circle cx="22" cy="32" r="1.4" fill="#3D2716" />
         {/* cheeks */}
-        <circle cx="22" cy="36" r="2.5" fill="#E86A2A" opacity="0.45" />
-        <circle cx="42" cy="36" r="2.5" fill="#E86A2A" opacity="0.45" />
+        <circle cx="14.5" cy="33" r="1.7" fill="#E86A2A" opacity="0.4" />
+        <circle cx="29.5" cy="33" r="1.7" fill="#E86A2A" opacity="0.4" />
         {/* eyes (blink target) */}
         <g style={eyeStyle} className={wave ? 'motion-safe:animate-woody-blink' : undefined}>
-          <circle cx="26" cy="30" r="2.8" fill="#4A2F1B" />
-          <circle cx="38" cy="30" r="2.8" fill="#4A2F1B" />
-          <circle cx="27" cy="29" r="0.9" fill="#FFFFFF" />
-          <circle cx="39" cy="29" r="0.9" fill="#FFFFFF" />
+          <circle cx="18" cy="28" r="2.3" fill="#4A2F1B" />
+          <circle cx="26" cy="28" r="2.3" fill="#4A2F1B" />
+          <circle cx="18.7" cy="27.3" r="0.8" fill="#FFFFFF" />
+          <circle cx="26.7" cy="27.3" r="0.8" fill="#FFFFFF" />
         </g>
         {/* smile */}
-        <path d="M25 35 Q32 42 39 35" stroke="#4A2F1B" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+        <path d="M16.5 35 Q22 40 27.5 35" stroke="#4A2F1B" strokeWidth="2.2" fill="none" strokeLinecap="round" />
       </g>
     </svg>
   );
