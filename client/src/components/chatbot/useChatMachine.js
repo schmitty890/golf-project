@@ -6,20 +6,31 @@
 // socket instead, while the presentational components stay unchanged.
 
 import {
-  useCallback, useContext, useMemo, useState,
+  useCallback, useContext, useEffect, useMemo, useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import business from '../../data/business';
 import { nodes, START, buildOrderNavState } from './conversation';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 const resolve = (v, ctx) => (typeof v === 'function' ? v(ctx) : v);
 
 export default function useChatMachine({ onClose } = {}) {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const ctxOf = useCallback((draft) => ({ draft, user }), [user]);
+  // Whether Stripe card checkout is on — drives the card-aware "How do I pay?"
+  // answer, same source the homepage + order page use.
+  const [cardEnabled, setCardEnabled] = useState(false);
+  useEffect(() => {
+    axios.get(`${API_URL}/api/settings/availability`)
+      .then((res) => setCardEnabled(Boolean(res.data.cardEnabled)))
+      .catch(() => {});
+  }, []);
+
+  const ctxOf = useCallback((draft) => ({ draft, user, cardEnabled }), [user, cardEnabled]);
 
   const [nodeId, setNodeId] = useState(START);
   const [draft, setDraft] = useState({});

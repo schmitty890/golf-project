@@ -286,7 +286,12 @@ export const nodes = {
   faq_answer: {
     id: 'faq_answer',
     kind: 'choices',
-    message: (ctx) => faqs[ctx.draft.faqIndex]?.a || 'Hmm, I don’t have an answer for that one.',
+    message: (ctx) => {
+      const f = faqs[ctx.draft.faqIndex];
+      if (!f) return 'Hmm, I don’t have an answer for that one.';
+      // Show the card+Venmo answer once Stripe checkout is enabled (matches the homepage).
+      return (ctx.cardEnabled && f.aWithCard) ? f.aWithCard : f.a;
+    },
     options: [
       { label: 'Ask another question', next: 'faq_list' },
       { label: 'Talk to a person', next: 'talk_to_person' },
