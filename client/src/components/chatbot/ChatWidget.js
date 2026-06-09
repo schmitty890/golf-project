@@ -9,6 +9,12 @@ import ChatPanel from './ChatPanel';
 const HIDE_ON = ['/login', '/register'];
 const NUDGE_KEY = 'volw-woody-nudge-seen';
 
+// Module-scoped so the "show the nudge once" decision survives React StrictMode's
+// double-mount and any remount within the same page session. Only a full page
+// reload re-evaluates (and then localStorage gates it).
+let nudgeDecided = false;
+let nudgeShouldShow = false;
+
 function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [showNudge, setShowNudge] = useState(false);
@@ -22,17 +28,22 @@ function ChatWidget() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
-  // First-visit nudge: pop Woody's bubble once ever, a couple seconds in.
+  // First-visit nudge: pop Woody's bubble once, ever. Decide a single time per
+  // page session and mark it seen immediately, so it never repeats even if the
+  // visitor navigates/reloads before the bubble appears.
   useEffect(() => {
-    if (HIDE_ON.includes(pathname)) return undefined;
-    let seen = true;
-    try { seen = Boolean(localStorage.getItem(NUDGE_KEY)); } catch { seen = true; }
-    if (seen) return undefined;
-    const showT = setTimeout(() => {
-      setShowNudge(true);
-      try { localStorage.setItem(NUDGE_KEY, '1'); } catch { /* ignore */ }
-    }, 2000);
-    const hideT = setTimeout(() => setShowNudge(false), 10000);
+    if (!nudgeDecided) {
+      nudgeDecided = true;
+      let seen = true;
+      try { seen = Boolean(localStorage.getItem(NUDGE_KEY)); } catch { seen = true; }
+      nudgeShouldShow = !seen;
+      if (nudgeShouldShow) {
+        try { localStorage.setItem(NUDGE_KEY, '1'); } catch { /* ignore */ }
+      }
+    }
+    if (!nudgeShouldShow) return undefined;
+    const showT = setTimeout(() => setShowNudge(true), 1500);
+    const hideT = setTimeout(() => setShowNudge(false), 12000);
     return () => { clearTimeout(showT); clearTimeout(hideT); };
   // Run once on mount — the nudge is a first-visit, one-time affair.
   // eslint-disable-next-line react-hooks/exhaustive-deps
