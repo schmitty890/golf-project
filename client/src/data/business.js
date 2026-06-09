@@ -7,11 +7,9 @@ const business = {
   valueProps: ['Clean', 'Convenient', 'Local'],
   email: 'volwfirewood@gmail.com',
   serviceArea: 'The Vineyards on Lake Wylie',
-  // Placeholder profile URLs — replace with the real accounts when they exist.
-  social: [
-    { name: 'Instagram', href: 'https://instagram.com' },
-    { name: 'Facebook', href: 'https://facebook.com' },
-  ],
+  // Social links are hidden until real accounts exist. To show them in the footer,
+  // add entries here, e.g. { name: 'Instagram', href: 'https://instagram.com/...' }.
+  social: [],
   // First-order promo in the top announcement bar. The $ amount is just copy — keep it in sync with
   // Settings.firstOrderDiscount (the real discount, applied server-side to a signed-in customer's
   // first order). Set launchOffer to null to hide the bar.
