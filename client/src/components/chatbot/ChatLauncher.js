@@ -18,10 +18,11 @@ function ChatLauncher({ open, onToggle }) {
       {open ? (
         <XMarkIcon className="h-6 w-6" aria-hidden="true" />
       ) : (
-        <span className="relative block rounded-3xl border-2 border-ember bg-cream-50 px-2 pb-3 pt-2 shadow-xl">
-          <Woody className="h-20 w-20 motion-safe:animate-woody-bob" />
-          {/* speech-bubble tail */}
-          <span className="absolute -bottom-2 right-6 h-4 w-4 rotate-45 rounded-sm border-b-2 border-r-2 border-ember bg-cream-50" />
+        <span className="flex flex-col items-center gap-1">
+          <Woody className="h-20 w-20 drop-shadow-xl motion-safe:animate-woody-bob" />
+          <span className="rounded-full border border-ember bg-cream px-3 py-1 text-xs font-bold text-walnut shadow">
+            Chat with us
+          </span>
         </span>
       )}
     </button>
