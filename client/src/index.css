@@ -8,6 +8,12 @@ html {
   scroll-padding-top: 180px;
 }
 
+/* Brand native checkboxes/radios with our ember accent instead of the OS default blue. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #e86a2a; /* ember */
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
