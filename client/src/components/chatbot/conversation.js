@@ -54,8 +54,8 @@ export const nodes = {
     id: 'greeting',
     kind: 'choices',
     message: (ctx) => (ctx.user?.firstName
-      ? `Hey ${ctx.user.firstName}! 👋 I'm the VOLW Firewood helper. What can I do for you?`
-      : "Hi there! 👋 I'm the VOLW Firewood helper. What can I do for you?"),
+      ? `Hey ${ctx.user.firstName}! I'm Woody 🪵 — what can I do for you?`
+      : "Hi, I'm Woody! 🪵🔥 Your VOLW Firewood helper — what can I do for you?"),
     options: [
       { label: '🔥 Order firewood', next: 'order_type' },
       { label: '💲 See pricing', action: 'navigate:/pricing' },

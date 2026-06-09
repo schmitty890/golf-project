@@ -4,6 +4,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import ContactForm from '../ContactForm';
 import ChatMessage from './ChatMessage';
 import ChatChoices from './ChatChoices';
+import Woody from './Woody';
 import useChatMachine from './useChatMachine';
 
 const inputClass = 'block w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-base text-walnut placeholder:text-walnut-200 transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30';
@@ -80,7 +81,15 @@ function ChatPanel({ onClose }) {
       className="fixed bottom-24 right-5 z-50 flex max-h-[70vh] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col rounded-2xl border border-cream-300 bg-cream shadow-2xl"
     >
       <header className="flex items-center justify-between rounded-t-2xl bg-walnut px-4 py-3">
-        <span className="font-semibold text-cream">VOLW Firewood</span>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-cream-300">
+            <Woody className="h-7 w-7" wave />
+          </span>
+          <span className="leading-tight">
+            <span className="block font-semibold text-cream">Woody</span>
+            <span className="block text-xs text-cream-400">VOLW Firewood helper</span>
+          </span>
+        </div>
         <button
           type="button"
           onClick={onClose}

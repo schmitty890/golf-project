@@ -41,6 +41,27 @@ module.exports = {
           400: '#DCC9AC',
         },
       },
+      keyframes: {
+        // Woody the mascot. Gentle idle bob; one-shot wave + blink when chat opens.
+        'woody-bob': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-2px) rotate(-3deg)' },
+        },
+        'woody-wave': {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '25%': { transform: 'rotate(-9deg)' },
+          '75%': { transform: 'rotate(9deg)' },
+        },
+        'woody-blink': {
+          '0%, 88%, 100%': { transform: 'scaleY(1)' },
+          '94%': { transform: 'scaleY(0.1)' },
+        },
+      },
+      animation: {
+        'woody-bob': 'woody-bob 2.6s ease-in-out infinite',
+        'woody-wave': 'woody-wave 0.7s ease-in-out 1',
+        'woody-blink': 'woody-blink 2.8s ease-in-out 1',
+      },
     },
   },
   plugins: [],
