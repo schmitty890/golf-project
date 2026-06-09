@@ -26,6 +26,10 @@ const faqs = [
     q: 'How fast can I get firewood?',
     a: 'Our schedule shifts week to week — we’re a small crew and are sometimes away or on vacation, so availability changes. When you order, the calendar shows the days and time windows we’re open, so just pick an available slot. Order at least a day ahead; in a pinch, request a rush order at checkout to unlock sooner dates.',
   },
+  {
+    q: 'Who’s the little log in the corner?',
+    a: 'That’s Woody, our firewood helper! Tap him anytime to start an order in a few taps, check pricing, track an order, or get quick answers. Need a person? He’ll help you send us a message.',
+  },
 ];
 
 export default faqs;
