@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     q: 'How fast can I get firewood?',
-    a: 'Our schedule shifts week to week — we’re a small crew and are sometimes away or on vacation, so availability changes. When you order, the calendar shows the days and time windows we’re open, so just pick an available slot. Order at least a day ahead; in a pinch, request a rush order at checkout to unlock sooner dates.',
+    a: 'Our schedule shifts week to week — we’re a small crew and are sometimes away or on vacation, so availability changes. When you order, the calendar shows the days and time windows we’re open, so just pick an available slot. Order at least a day ahead when you can. Need it sooner? Request a rush order at checkout — if we’re around and able to swing it, we’ll do our best to make it happen (subject to our availability).',
   },
   {
     q: 'Who’s the little log in the corner?',
