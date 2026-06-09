@@ -28,29 +28,23 @@ export const products = [
 
 export const getProduct = (id) => products.find((p) => p.id === id);
 
-// Recurring monthly subscription tiers (delivered).
-export const subscriptions = [
-  {
-    id: 'sub-2',
-    plan: '2bundle',
-    name: '2 bundles / month',
-    bundles: 2,
-    price: 24,
-    priceLabel: '$24/mo',
-    description: 'A steady supply — two bundles delivered each month.',
-  },
-  {
-    id: 'sub-3',
-    plan: '3bundle',
-    name: '3 bundles / month',
-    bundles: 3,
-    price: 35,
-    priceLabel: '$35/mo',
-    description: 'Three bundles a month for regular burners.',
-  },
-];
+// Recurring monthly subscriptions (always delivered): any size 2–10 bundles/month at a flat
+// per-bundle price. The savings story is vs one-time singles ($15 each).
+// NOTE: mirrored server-side in server/data/catalog.js (authority for stored price/emails) —
+// keep SUB_PER_BUNDLE + the formula in sync.
+export const SUB_MIN_BUNDLES = 2;
+export const SUB_MAX_BUNDLES = 10;
+export const SUB_PER_BUNDLE = 12; // flat $/bundle for subscriptions
 
-export const getSubscription = (plan) => subscriptions.find((s) => s.plan === plan);
+// Monthly price for an n-bundle subscription.
+export const subscriptionMonthly = (n) => SUB_PER_BUNDLE * Math.round(Number(n) || 0);
+// Legacy plan strings ('2bundle'/'3bundle') -> bundle count.
+export const bundlesFromPlan = (plan) => parseInt(plan, 10) || 0;
+// Clamp a requested bundle count into the allowed range.
+export const clampBundles = (n) => Math.min(
+  SUB_MAX_BUNDLES,
+  Math.max(SUB_MIN_BUNDLES, Math.round(Number(n) || SUB_MIN_BUNDLES)),
+);
 
 // Preset 1-hour pickup/delivery windows. Customers pick one or more; we set the wood out for
 // that window. Stored on the order as from/to 'HH:MM' (`from` doubles as the unique id).

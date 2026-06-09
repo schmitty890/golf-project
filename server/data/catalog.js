@@ -11,6 +11,16 @@ export const PRODUCT_PRICES = {
   '3-Bundle Pack': 40,
 };
 
+// Subscriptions: any size from SUB_MIN_BUNDLES..SUB_MAX_BUNDLES bundles/month at a flat
+// per-bundle price (the savings story is vs one-time singles at $15). KEEP IN SYNC with the
+// matching block in client/src/data/pricing.js.
+export const SUB_MIN_BUNDLES = 2;
+export const SUB_MAX_BUNDLES = 10;
+export const SUB_PER_BUNDLE = 12; // flat $/bundle for subscriptions
+export const subscriptionMonthly = (n) => SUB_PER_BUNDLE * Math.round(Number(n) || 0);
+// Legacy plan strings ('2bundle'/'3bundle') -> bundle count.
+export const bundlesFromPlan = (plan) => parseInt(plan, 10) || 0;
+
 // Compute the authoritative charge in cents for a one-time order, from the stored cart + delivery +
 // rush − validated discount. Throws if an item isn't in the catalog (don't charge unknown prices).
 export function computeChargeCents(order) {

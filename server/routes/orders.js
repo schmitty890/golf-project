@@ -17,7 +17,9 @@ import {
   discountLabel, mintReferralReward, firstOrderConfig,
 } from './promos.js';
 import { stripeEnabled, createOneTimeCheckout } from '../utils/stripe.js';
-import { computeChargeCents } from '../data/catalog.js';
+import {
+  computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
+} from '../data/catalog.js';
 
 const router = express.Router();
 
@@ -143,7 +145,7 @@ const optionalAuth = (req, res, next) => {
 router.post('/', optionalAuth, async (req, res) => {
   try {
     const {
-      orderType, items, subscriptionPlan, deliveryFee,
+      orderType, items, subscriptionBundles, deliveryFee,
       contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
       rush, code, subtotal, agreedToTerms, paymentMethod,
     } = req.body;
@@ -163,8 +165,13 @@ router.post('/', optionalAuth, async (req, res) => {
     if (orderType === 'onetime' && cart.length === 0) {
       return res.status(400).json({ error: 'Please add at least one item' });
     }
-    if (orderType === 'subscription' && !subscriptionPlan) {
-      return res.status(400).json({ error: 'Please choose a subscription plan' });
+    // Subscriptions: validate the requested size is a whole number in range.
+    const subBundles = Math.round(Number(subscriptionBundles) || 0);
+    if (orderType === 'subscription'
+      && (subBundles < SUB_MIN_BUNDLES || subBundles > SUB_MAX_BUNDLES)) {
+      return res.status(400).json({
+        error: `Please choose ${SUB_MIN_BUNDLES}–${SUB_MAX_BUNDLES} bundles per month`,
+      });
     }
     if (orderType === 'subscription' && agreedToTerms !== true) {
       return res.status(400).json({ error: `Please agree to the ${SUBSCRIPTION_MIN_MONTHS}-month commitment to subscribe.` });
@@ -218,7 +225,9 @@ router.post('/', optionalAuth, async (req, res) => {
       fulfillment: fulfillment === 'pickup' ? 'pickup' : 'delivery',
       items: orderType === 'onetime' ? cart : [],
       deliveryFee: fulfillment === 'pickup' ? 0 : Math.max(0, Number(deliveryFee) || 0),
-      subscriptionPlan: orderType === 'subscription' ? (subscriptionPlan || '') : '',
+      subscriptionPlan: orderType === 'subscription' ? `${subBundles}bundle` : '',
+      subscriptionBundles: orderType === 'subscription' ? subBundles : 0,
+      subscriptionMonthly: orderType === 'subscription' ? subscriptionMonthly(subBundles) : 0,
       commitmentMonths: orderType === 'subscription' ? SUBSCRIPTION_MIN_MONTHS : 0,
       commitmentEndsAt: orderType === 'subscription' ? addMonths(new Date(), SUBSCRIPTION_MIN_MONTHS) : null,
       agreedToTermsAt: orderType === 'subscription' ? new Date() : null,

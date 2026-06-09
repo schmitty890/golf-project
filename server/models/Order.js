@@ -13,8 +13,11 @@ const orderSchema = new mongoose.Schema({
   items: { type: [orderItemSchema], default: [] },
   // Flat delivery fee charged on this order (0 for pickup).
   deliveryFee: { type: Number, default: 0 },
-  // Subscription tier plan (e.g. '2bundle' / '3bundle') for subscription orders.
+  // Subscription tier plan (legacy/back-compat string, e.g. '2bundle' / '5bundle').
   subscriptionPlan: { type: String, default: '' },
+  // Subscription size + monthly price (dollars), locked in at signup.
+  subscriptionBundles: { type: Number, default: 0 },
+  subscriptionMonthly: { type: Number, default: 0 },
   // Subscription minimum commitment: term length, when it ends, and when the customer agreed.
   commitmentMonths: { type: Number, default: 0 },
   commitmentEndsAt: { type: Date, default: null },

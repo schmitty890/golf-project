@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
-  products, subscriptions, DELIVERY_FEE, SUBSCRIPTION_MIN_MONTHS,
+  products, DELIVERY_FEE, SUBSCRIPTION_MIN_MONTHS,
+  subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
 } from '../data/pricing';
 import business from '../data/business';
 
@@ -49,20 +50,23 @@ function Pricing() {
             Monthly subscriptions
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm text-walnut-300">
-            Never run out — bundles delivered every month.
+            {`Never run out — pick any size from ${SUB_MIN_BUNDLES} to ${SUB_MAX_BUNDLES} bundles, delivered every month at $${SUB_PER_BUNDLE} a bundle.`}
           </p>
           <p className="mx-auto mt-1 max-w-xl text-center text-xs text-walnut-300">
             {`${SUBSCRIPTION_MIN_MONTHS}-month minimum, then month-to-month — cancel anytime after.`}
           </p>
-          <div className="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2">
-            {subscriptions.map((s) => (
-              <div key={s.id} className="rounded-2xl border border-cream-300 bg-white p-6 text-center shadow-sm">
-                <h3 className="text-lg font-bold text-walnut">{s.name}</h3>
-                <p className="mt-2 text-3xl font-extrabold text-ember">{s.priceLabel}</p>
-                <p className="mt-3 text-sm text-walnut-400">{s.description}</p>
+          <div className="mx-auto mt-10 grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-3">
+            {[SUB_MIN_BUNDLES, 5, SUB_MAX_BUNDLES].map((n) => (
+              <div key={n} className="rounded-2xl border border-cream-300 bg-white p-6 text-center shadow-sm">
+                <h3 className="text-lg font-bold text-walnut">{`${n} bundles / month`}</h3>
+                <p className="mt-2 text-3xl font-extrabold text-ember">{`$${subscriptionMonthly(n)}/mo`}</p>
+                <p className="mt-3 text-sm text-walnut-400">{`$${SUB_PER_BUNDLE} per bundle, delivered.`}</p>
               </div>
             ))}
           </div>
+          <p className="mx-auto mt-6 max-w-xl text-center text-xs text-walnut-300">
+            Want a different size? Choose anything in between on the order form.
+          </p>
         </div>
       </section>
 

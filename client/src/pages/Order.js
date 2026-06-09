@@ -11,7 +11,9 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import business from '../data/business';
 import {
-  products, subscriptions, getSubscription, DELIVERY_FEE, TIME_WINDOWS, SUBSCRIPTION_MIN_MONTHS,
+  products, DELIVERY_FEE, TIME_WINDOWS, SUBSCRIPTION_MIN_MONTHS,
+  subscriptionMonthly, clampBundles, bundlesFromPlan,
+  SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
@@ -44,10 +46,11 @@ function Order() {
 
   const [mode, setMode] = useState(reorder?.orderType === 'subscription' ? 'subscription' : 'onetime');
   const [qty, setQty] = useState(initialQty);
-  const [subPlan, setSubPlan] = useState(
-    subscriptions.some((s) => s.plan === reorder?.subscriptionPlan)
-      ? reorder.subscriptionPlan : subscriptions[0].plan,
-  );
+  const [subBundles, setSubBundles] = useState(() => {
+    if (reorder?.subscriptionBundles) return clampBundles(reorder.subscriptionBundles);
+    if (reorder?.subscriptionPlan) return clampBundles(bundlesFromPlan(reorder.subscriptionPlan));
+    return SUB_MIN_BUNDLES;
+  });
   const [fulfillment, setFulfillment] = useState(reorder?.fulfillment === 'delivery' ? 'delivery' : 'pickup');
   const [agreedSub, setAgreedSub] = useState(false);
 
@@ -143,7 +146,7 @@ function Order() {
     .filter((p) => (qty[p.id] || 0) > 0)
     .map((p) => ({ ...p, count: qty[p.id] }));
   const itemsSub = cart.reduce((s, c) => s + c.price * c.count, 0);
-  const selectedSub = getSubscription(subPlan);
+  const subMonthly = subscriptionMonthly(subBundles);
   const deliveryFee = (!isSubscription && fulfillment === 'delivery') ? DELIVERY_FEE : 0;
 
   // --- Date / windows / rush ---
@@ -287,7 +290,7 @@ function Order() {
     };
     if (isSubscription) {
       return {
-        ...base, orderType: 'subscription', subscriptionPlan: subPlan, agreedToTerms: agreedSub,
+        ...base, orderType: 'subscription', subscriptionBundles: subBundles, agreedToTerms: agreedSub,
       };
     }
     return {
@@ -384,7 +387,7 @@ function Order() {
 
   if (submitted) {
     const handle = (venmoHandle || '').replace(/^@/, '');
-    const amountNum = isSubscription ? String(selectedSub?.price || '') : String(finalTotalNum);
+    const amountNum = isSubscription ? String(subMonthly || '') : String(finalTotalNum);
     const venmoNote = `${business.name} firewood order`;
     const venmoUrl = handle
       ? `https://venmo.com/${handle}?txn=pay${amountNum ? `&amount=${amountNum}` : ''}&note=${encodeURIComponent(venmoNote)}`
@@ -392,7 +395,7 @@ function Order() {
     const windowsLabel = selectedWindows.map((w) => w.label).join(', ');
     const addressLine = [address.street, address.unit, address.neighborhood].filter(Boolean).join(', ');
     const orderLabel = isSubscription
-      ? `${selectedSub?.name} subscription`
+      ? `${subBundles} bundles / month subscription`
       : cart.map((c) => `${c.count}× ${c.name}`).join(', ');
     const summaryRows = [
       ['Order', orderLabel],
@@ -403,7 +406,7 @@ function Order() {
       ...(isRush ? [['Rush', `Yes (+${rushPercent}%)`]] : []),
       ...(deliveryFee ? [['Delivery', `$${deliveryFee}`]] : []),
       ...(discount > 0 ? [[discountRowLabel, `−$${discount}`]] : []),
-      [isSubscription ? 'Price' : 'Estimated total', isSubscription ? selectedSub?.priceLabel : `$${finalTotalNum}`],
+      [isSubscription ? 'Price' : 'Estimated total', isSubscription ? `$${subMonthly}/mo` : `$${finalTotalNum}`],
     ].filter(([, v]) => v);
 
     return (
@@ -604,28 +607,40 @@ function Order() {
           </>
         )}
 
-        {/* Subscription: tier picker */}
+        {/* Subscription: bundles-per-month quantity */}
         {isSubscription && (
           <div>
-            <span className={labelClass}>Choose a plan (delivered monthly)</span>
-            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {subscriptions.map((s) => (
+            <span className={labelClass}>How many bundles per month? (delivered)</span>
+            <div className="mt-2 flex items-center gap-4 rounded-xl border border-cream-300 bg-white p-4">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  key={s.id}
-                  onClick={() => setSubPlan(s.plan)}
-                  className={`flex flex-col items-start gap-1 rounded-xl border p-4 text-left transition-colors ${
-                    subPlan === s.plan
-                      ? 'border-ember bg-cream-100 ring-2 ring-ember/30'
-                      : 'border-cream-300 bg-white hover:border-ember'
-                  }`}
+                  aria-label="Fewer bundles"
+                  onClick={() => setSubBundles((n) => clampBundles(n - 1))}
+                  disabled={subBundles <= SUB_MIN_BUNDLES}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-cream-300 text-lg font-bold text-walnut transition-colors hover:border-ember disabled:opacity-40"
                 >
-                  <span className="text-sm font-bold text-walnut">{s.name}</span>
-                  <span className="text-lg font-extrabold text-ember">{s.priceLabel}</span>
-                  <span className="text-xs text-walnut-400">{s.description}</span>
+                  −
                 </button>
-              ))}
+                <span className="w-8 text-center text-xl font-extrabold text-walnut" aria-live="polite">{subBundles}</span>
+                <button
+                  type="button"
+                  aria-label="More bundles"
+                  onClick={() => setSubBundles((n) => clampBundles(n + 1))}
+                  disabled={subBundles >= SUB_MAX_BUNDLES}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-cream-300 text-lg font-bold text-walnut transition-colors hover:border-ember disabled:opacity-40"
+                >
+                  +
+                </button>
+              </div>
+              <div className="leading-tight">
+                <span className="block text-lg font-extrabold text-ember">{`$${subMonthly}/mo`}</span>
+                <span className="block text-xs text-walnut-400">
+                  {`$${SUB_PER_BUNDLE}/bundle · save vs $15 one-time`}
+                </span>
+              </div>
             </div>
+            <p className="mt-1 text-xs text-walnut-300">{`Choose ${SUB_MIN_BUNDLES}–${SUB_MAX_BUNDLES} bundles a month.`}</p>
             <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl border border-cream-300 bg-cream-100 p-3">
               <input
                 type="checkbox"
@@ -851,7 +866,7 @@ function Order() {
               {isSubscription ? 'Monthly price' : 'Estimated total'}
             </span>
             <span className="text-2xl font-extrabold text-ember">
-              {isSubscription ? (selectedSub?.priceLabel || '—') : `$${finalTotalNum}`}
+              {isSubscription ? `$${subMonthly}/mo` : `$${finalTotalNum}`}
             </span>
           </div>
           {!isSubscription && (

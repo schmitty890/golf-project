@@ -1,7 +1,14 @@
 // Builders that turn an Order document into { subject, html, text } emails.
 // Kept dependency-free and server-local (no client imports).
 
+import { subscriptionMonthly, bundlesFromPlan } from '../data/catalog.js';
+
 const BUSINESS = () => process.env.BUSINESS_NAME || 'VOLW Firewood';
+
+// Bundle count for a subscription order (new field, falling back to the legacy plan string).
+function subBundles(order) {
+  return order.subscriptionBundles || bundlesFromPlan(order.subscriptionPlan);
+}
 
 // 'YYYY-MM-DD' -> 'Sat, Jun 6' (parsed from parts to stay in local time).
 function fmtDate(s) {
@@ -23,11 +30,10 @@ function fmtTime(t) {
   return `${hr}:${String(m || 0).padStart(2, '0')} ${period}`;
 }
 
-const SUB_LABELS = { '2bundle': '2 bundles / month', '3bundle': '3 bundles / month' };
-
 function describeOrder(order) {
   if (order.orderType === 'subscription') {
-    return `${SUB_LABELS[order.subscriptionPlan] || order.subscriptionPlan || 'Monthly'} subscription`;
+    const n = subBundles(order);
+    return `${n ? `${n} bundles / month` : 'Monthly'} subscription`;
   }
   if (order.items && order.items.length) {
     return order.items.map((i) => `${i.quantity} × ${i.name}`).join(', ');
@@ -54,9 +60,13 @@ function fulfillmentText(order) {
   return `Delivery${addr ? ` to ${addr}` : ''}`;
 }
 
-// Total from the cart items + delivery + rush − discount. Null for subscriptions (recurring price
-// isn't stored on the order).
+// Total from the cart items + delivery + rush − discount. For subscriptions, the recurring monthly
+// price (locked at signup). Null if nothing to total.
 export function orderTotal(order) {
+  if (order.orderType === 'subscription') {
+    const monthly = order.subscriptionMonthly || subscriptionMonthly(subBundles(order));
+    return monthly ? { subtotal: monthly, delivery: 0, total: monthly, monthly: true } : null;
+  }
   const itemsSub = (order.items || [])
     .reduce((s, i) => s + (i.quantity || 0) * (i.unitPrice || 0), 0);
   if (!itemsSub) return null;
@@ -77,7 +87,7 @@ function summaryLines(order) {
   if (t) {
     if (t.delivery) lines.push(['Delivery', `$${t.delivery}`]);
     if (order.discount) lines.push(['Discount', `${order.promoCode} (−$${order.discount})`]);
-    lines.push(['Estimated total', `$${t.total}`]);
+    lines.push([t.monthly ? 'Monthly total' : 'Estimated total', `$${t.total}${t.monthly ? '/mo' : ''}`]);
   }
   return lines;
 }

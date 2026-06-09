@@ -7,7 +7,7 @@ import {
   STATUS_STEPS, statusLabel, normalizeStatus, paymentStatusClasses, paymentLabel,
 } from '../utils/orderDisplay';
 import business from '../data/business';
-import { getSubscription } from '../data/pricing';
+import { subscriptionMonthly, bundlesFromPlan } from '../data/pricing';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -53,7 +53,7 @@ function TrackOrder() {
   // Still-unpaid orders get another Venmo pay link here (hidden once the owner marks it paid).
   const handle = (order.venmoHandle || '').replace(/^@/, '');
   const amount = order.orderType === 'subscription'
-    ? (getSubscription(order.subscriptionPlan)?.price || '')
+    ? (order.subscriptionMonthly || subscriptionMonthly(order.subscriptionBundles || bundlesFromPlan(order.subscriptionPlan)) || '')
     : (order.total || '');
   const venmoNote = `${business.name} firewood order`;
   const venmoUrl = handle
