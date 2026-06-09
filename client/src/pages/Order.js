@@ -14,6 +14,7 @@ import {
   products, DELIVERY_FEE, TIME_WINDOWS, SUBSCRIPTION_MIN_MONTHS,
   subscriptionMonthly, clampBundles, bundlesFromPlan,
   SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
+  SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
@@ -53,6 +54,8 @@ function Order() {
   });
   const [fulfillment, setFulfillment] = useState(reorder?.fulfillment === 'delivery' ? 'delivery' : 'pickup');
   const [agreedSub, setAgreedSub] = useState(false);
+  // Subscription preferred week of the month ('1'..'4' or 'any'); default to the flexible option.
+  const [subWeek, setSubWeek] = useState(reorder?.subscriptionWeek || 'any');
 
   const [preferredDate, setPreferredDate] = useState(prefill?.preferredDate || '');
   // preferredTimes is [{from,to}]; we track the `from` ids. The prune effect below
@@ -290,7 +293,13 @@ function Order() {
     };
     if (isSubscription) {
       return {
-        ...base, orderType: 'subscription', subscriptionBundles: subBundles, agreedToTerms: agreedSub,
+        ...base,
+        orderType: 'subscription',
+        subscriptionBundles: subBundles,
+        subscriptionWeek: subWeek,
+        agreedToTerms: agreedSub,
+        preferredDate: '',
+        preferredTimes: [],
       };
     }
     return {
@@ -314,11 +323,12 @@ function Order() {
       setError(`Please agree to the ${SUBSCRIPTION_MIN_MONTHS}-month commitment to subscribe.`);
       return;
     }
-    if (!preferredDate || !dateIsOpen(preferredDate)) {
+    // Subscriptions pick a week of the month (always set); one-time orders need a date + window.
+    if (!isSubscription && (!preferredDate || !dateIsOpen(preferredDate))) {
       setError('Please choose an available date.');
       return;
     }
-    if (windowFroms.length === 0) {
+    if (!isSubscription && windowFroms.length === 0) {
       setError('Please choose at least one pickup/delivery time window.');
       return;
     }
@@ -399,7 +409,9 @@ function Order() {
       : cart.map((c) => `${c.count}× ${c.name}`).join(', ');
     const summaryRows = [
       ['Order', orderLabel],
-      ['When', `${formatDayLabel(preferredDate)}${windowsLabel ? ` · ${windowsLabel}` : ''}`],
+      ['When', isSubscription
+        ? `${subscriptionWeekLabel(subWeek)} each month`
+        : `${formatDayLabel(preferredDate)}${windowsLabel ? ` · ${windowsLabel}` : ''}`],
       ['How', isPickup ? 'Curb pickup' : 'Delivery'],
       ...(needsAddress ? [['Address', addressLine]] : []),
       ...(isPickup && address.neighborhood ? [['Neighborhood', address.neighborhood]] : []),
@@ -655,76 +667,105 @@ function Order() {
           </div>
         )}
 
-        {/* Preferred date */}
-        <div>
-          <span className={labelClass}>
-            {isSubscription ? 'First delivery date' : 'Pickup / delivery date'}
-          </span>
-
-          {rushEnabled && leadDays > 0 && (
-            <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-xl border border-cream-300 bg-cream-100 p-3">
-              <input
-                type="checkbox"
-                checked={rushRequested}
-                onChange={(e) => setRushRequested(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
-              />
-              <span className="text-sm text-walnut">
-                <span className="font-semibold">In a pinch? Request a rush order.</span>
-                {` Unlocks sooner dates for a ${rushPercent}% rush charge — subject to availability.`}
-              </span>
-            </label>
-          )}
-
-          {leadDays > 0 && (
-            <p className="mt-2 text-xs font-semibold text-walnut">
-              {`Please order at least ${leadDays} day${leadDays === 1 ? '' : 's'} ahead — the earliest date is ${formatDayLabel(earliest)}.`}
-              {rushEnabled ? ' Need it sooner? Request a rush order above.' : ''}
-            </p>
-          )}
-          <div className="mt-2">
-            <MonthCalendar getDayState={getDayState} onSelectDate={setPreferredDate} />
-          </div>
-          <p className="mt-1 text-xs text-walnut-300">
-            {preferredDate
-              ? `Selected: ${formatDayLabel(preferredDate)}${isRush ? ' · rush order' : ''}. Greyed dates are unavailable.`
-              : 'Pick a date, then choose a time window below. Greyed dates are unavailable.'}
-          </p>
-        </div>
-
-        {/* Time windows */}
-        <div>
-          <span className={labelClass}>Pickup / delivery windows</span>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {TIME_WINDOWS.map((w) => {
-              const active = windowFroms.includes(w.from);
-              const open = availableFroms.has(w.from);
-              return (
+        {/* Subscription: preferred week of the month (we deliver within that week) */}
+        {isSubscription && (
+          <div>
+            <span className={labelClass}>Which week each month?</span>
+            <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {SUBSCRIPTION_WEEKS.map((w) => (
                 <button
                   type="button"
-                  key={w.from}
-                  onClick={() => toggleWindow(w.from)}
-                  disabled={!open}
-                  className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
-                    // eslint-disable-next-line no-nested-ternary
-                    !open
-                      ? 'cursor-not-allowed border-cream-300 bg-cream-100 text-walnut-200'
-                      : active
-                        ? 'border-ember bg-ember text-white'
-                        : 'border-cream-300 bg-white text-walnut hover:border-ember'
+                  key={w.value}
+                  onClick={() => setSubWeek(w.value)}
+                  className={`flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left transition-colors ${
+                    subWeek === w.value
+                      ? 'border-ember bg-cream-100 ring-2 ring-ember/30'
+                      : 'border-cream-300 bg-white hover:border-ember'
                   }`}
                 >
-                  {w.label}
+                  <span className="text-sm font-bold text-walnut">{w.label}</span>
+                  <span className="text-xs text-walnut-400">{w.range}</span>
                 </button>
-              );
-            })}
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-walnut-300">
+              We deliver sometime during your chosen week — we’ll confirm the day with you.
+            </p>
           </div>
-          <p className="mt-1 text-xs text-walnut-300">
-            {!preferredDate
-              ? 'Choose a date above to see available times.'
-              : 'Pick one or more times that work — we’ll fulfill within one of them.'}
-          </p>
-        </div>
+        )}
+
+        {/* One-time: specific date */}
+        {!isSubscription && (
+          <div>
+            <span className={labelClass}>Pickup / delivery date</span>
+
+            {rushEnabled && leadDays > 0 && (
+              <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-xl border border-cream-300 bg-cream-100 p-3">
+                <input
+                  type="checkbox"
+                  checked={rushRequested}
+                  onChange={(e) => setRushRequested(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+                />
+                <span className="text-sm text-walnut">
+                  <span className="font-semibold">In a pinch? Request a rush order.</span>
+                  {` Unlocks sooner dates for a ${rushPercent}% rush charge — subject to availability.`}
+                </span>
+              </label>
+            )}
+
+            {leadDays > 0 && (
+              <p className="mt-2 text-xs font-semibold text-walnut">
+                {`Please order at least ${leadDays} day${leadDays === 1 ? '' : 's'} ahead — the earliest date is ${formatDayLabel(earliest)}.`}
+                {rushEnabled ? ' Need it sooner? Request a rush order above.' : ''}
+              </p>
+            )}
+            <div className="mt-2">
+              <MonthCalendar getDayState={getDayState} onSelectDate={setPreferredDate} />
+            </div>
+            <p className="mt-1 text-xs text-walnut-300">
+              {preferredDate
+                ? `Selected: ${formatDayLabel(preferredDate)}${isRush ? ' · rush order' : ''}. Greyed dates are unavailable.`
+                : 'Pick a date, then choose a time window below. Greyed dates are unavailable.'}
+            </p>
+          </div>
+        )}
+
+        {/* Time windows (one-time only) */}
+        {!isSubscription && (
+          <div>
+            <span className={labelClass}>Pickup / delivery windows</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {TIME_WINDOWS.map((w) => {
+                const active = windowFroms.includes(w.from);
+                const open = availableFroms.has(w.from);
+                return (
+                  <button
+                    type="button"
+                    key={w.from}
+                    onClick={() => toggleWindow(w.from)}
+                    disabled={!open}
+                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                      // eslint-disable-next-line no-nested-ternary
+                      !open
+                        ? 'cursor-not-allowed border-cream-300 bg-cream-100 text-walnut-200'
+                        : active
+                          ? 'border-ember bg-ember text-white'
+                          : 'border-cream-300 bg-white text-walnut hover:border-ember'
+                    }`}
+                  >
+                    {w.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-xs text-walnut-300">
+              {!preferredDate
+                ? 'Choose a date above to see available times.'
+                : 'Pick one or more times that work — we’ll fulfill within one of them.'}
+            </p>
+          </div>
+        )}
 
         {/* Pickup info or delivery address */}
         {isPickup ? (

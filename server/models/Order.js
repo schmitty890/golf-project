@@ -18,6 +18,8 @@ const orderSchema = new mongoose.Schema({
   // Subscription size + monthly price (dollars), locked in at signup.
   subscriptionBundles: { type: Number, default: 0 },
   subscriptionMonthly: { type: Number, default: 0 },
+  // Subscription preferred delivery week of the month ('1'..'4' or 'any'); '' for one-time.
+  subscriptionWeek: { type: String, default: '' },
   // Subscription minimum commitment: term length, when it ends, and when the customer agreed.
   commitmentMonths: { type: Number, default: 0 },
   commitmentEndsAt: { type: Date, default: null },

@@ -1,7 +1,7 @@
 // Builders that turn an Order document into { subject, html, text } emails.
 // Kept dependency-free and server-local (no client imports).
 
-import { subscriptionMonthly, bundlesFromPlan } from '../data/catalog.js';
+import { subscriptionMonthly, bundlesFromPlan, subscriptionWeekLabel } from '../data/catalog.js';
 
 const BUSINESS = () => process.env.BUSINESS_NAME || 'VOLW Firewood';
 
@@ -76,10 +76,18 @@ export function orderTotal(order) {
   return { subtotal: itemsSub, delivery, total };
 }
 
+function whenText(order) {
+  // Subscriptions: a preferred week of the month, not a specific date.
+  if (order.orderType === 'subscription' && order.subscriptionWeek) {
+    return `${subscriptionWeekLabel(order.subscriptionWeek)} each month`;
+  }
+  return [fmtDate(order.preferredDate), windowsText(order)].filter(Boolean).join(' · ');
+}
+
 function summaryLines(order) {
   const lines = [
     ['Order', describeOrder(order)],
-    ['When', [fmtDate(order.preferredDate), windowsText(order)].filter(Boolean).join(' · ')],
+    ['When', whenText(order)],
     ['How', fulfillmentText(order)],
   ];
   if (order.rush) lines.push(['Rush', `Yes (+${order.rushPercent || 0}%) — subject to availability`]);
