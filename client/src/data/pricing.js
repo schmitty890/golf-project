@@ -46,6 +46,23 @@ export const clampBundles = (n) => Math.min(
   Math.max(SUB_MIN_BUNDLES, Math.round(Number(n) || SUB_MIN_BUNDLES)),
 );
 
+// Subscriptions pick a preferred WEEK of the month (not a fixed date) so the owner has a window
+// to deliver around travel. Values mirrored server-side in server/data/catalog.js — keep in sync.
+export const SUBSCRIPTION_WEEKS = [
+  { value: '1', label: 'Week 1', range: '1st–7th' },
+  { value: '2', label: 'Week 2', range: '8th–14th' },
+  { value: '3', label: 'Week 3', range: '15th–21st' },
+  { value: '4', label: 'Week 4', range: '22nd–end' },
+  { value: 'any', label: 'Any week', range: 'most flexible' },
+];
+
+// Human label for a stored subscriptionWeek value, e.g. 'Week 2 (8th–14th)' or 'Any week'.
+export const subscriptionWeekLabel = (v) => {
+  const w = SUBSCRIPTION_WEEKS.find((x) => x.value === String(v));
+  if (!w) return '';
+  return w.value === 'any' ? 'Any week' : `${w.label} (${w.range})`;
+};
+
 // Preset 1-hour pickup/delivery windows. Customers pick one or more; we set the wood out for
 // that window. Stored on the order as from/to 'HH:MM' (`from` doubles as the unique id).
 export const TIME_WINDOWS = [

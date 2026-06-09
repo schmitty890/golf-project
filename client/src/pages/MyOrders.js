@@ -28,6 +28,7 @@ function buildReorder(order) {
     items: (order.items || []).map((i) => ({ name: i.name, quantity: i.quantity })),
     subscriptionPlan: order.subscriptionPlan,
     subscriptionBundles: order.subscriptionBundles,
+    subscriptionWeek: order.subscriptionWeek,
     fulfillment: order.fulfillment,
     deliveryAddress: order.deliveryAddress || {},
   };

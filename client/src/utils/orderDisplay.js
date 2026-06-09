@@ -1,6 +1,6 @@
 // Human-readable description of an order's contents and status styling.
 
-import { bundlesFromPlan } from '../data/pricing';
+import { bundlesFromPlan, subscriptionWeekLabel } from '../data/pricing';
 
 export function describeOrder(order) {
   if (order.orderType === 'subscription') {
@@ -58,6 +58,10 @@ function formatWindow(w) {
 // Customer's chosen date + time window(s), e.g. "Sat, Jun 6 · 5:00 PM – 6:00 PM, 6:00 PM – 7:00 PM"
 // Falls back to the legacy single window, then to legacy preferred day(s).
 export function formatPreferredSchedule(order) {
+  // Subscriptions: a preferred week of the month (not a specific date).
+  if (order.orderType === 'subscription' && order.subscriptionWeek) {
+    return `${subscriptionWeekLabel(order.subscriptionWeek)} each month`;
+  }
   // New orders: one or more windows; older orders: a single preferredTime.
   const windowList = (order.preferredTimes && order.preferredTimes.length)
     ? order.preferredTimes

@@ -21,6 +21,18 @@ export const subscriptionMonthly = (n) => SUB_PER_BUNDLE * Math.round(Number(n) 
 // Legacy plan strings ('2bundle'/'3bundle') -> bundle count.
 export const bundlesFromPlan = (plan) => parseInt(plan, 10) || 0;
 
+// Subscriptions pick a preferred WEEK of the month (not a fixed date). KEEP IN SYNC with
+// SUBSCRIPTION_WEEKS in client/src/data/pricing.js.
+export const SUBSCRIPTION_WEEK_VALUES = ['1', '2', '3', '4', 'any'];
+const SUB_WEEK_LABELS = {
+  1: 'Week 1 (1st–7th)',
+  2: 'Week 2 (8th–14th)',
+  3: 'Week 3 (15th–21st)',
+  4: 'Week 4 (22nd–end)',
+  any: 'Any week',
+};
+export const subscriptionWeekLabel = (v) => SUB_WEEK_LABELS[v] || '';
+
 // Compute the authoritative charge in cents for a one-time order, from the stored cart + delivery +
 // rush − validated discount. Throws if an item isn't in the catalog (don't charge unknown prices).
 export function computeChargeCents(order) {

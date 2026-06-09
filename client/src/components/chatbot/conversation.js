@@ -20,7 +20,7 @@
 // stays in sync with the rest of the site.
 
 import {
-  products, DELIVERY_FEE, subscriptionMonthly,
+  products, DELIVERY_FEE, subscriptionMonthly, SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
 } from '../../data/pricing';
 import faqs from '../../data/faqs';
 import business from '../../data/business';
@@ -38,6 +38,7 @@ export function buildOrderNavState(draft) {
     reorder: {
       orderType: draft.orderType,
       subscriptionBundles: draft.subscriptionBundles,
+      subscriptionWeek: draft.subscriptionWeek,
       fulfillment: draft.fulfillment,
       items: (draft.items || []).map((it) => ({ name: it.name, quantity: it.quantity })),
     },
@@ -141,10 +142,22 @@ export const nodes = {
       label: `${n} bundles / month — $${subscriptionMonthly(n)}/mo`,
       value: n,
       set: (draft, value) => ({ subscriptionBundles: value }),
-      next: 'date_optional',
+      next: 'sub_week',
     })).concat([
-      { label: "I'll choose the size on the order page", next: 'date_optional' },
+      { label: "I'll choose the size on the order page", next: 'sub_week' },
     ]),
+  },
+
+  sub_week: {
+    id: 'sub_week',
+    kind: 'choices',
+    message: 'Which week of the month works best for delivery? (We deliver within that week.)',
+    options: () => SUBSCRIPTION_WEEKS.map((w) => ({
+      label: w.value === 'any' ? 'Any week (most flexible)' : `${w.label} (${w.range})`,
+      value: w.value,
+      set: (draft, value) => ({ subscriptionWeek: value }),
+      next: 'contact_or_review',
+    })),
   },
 
   date_optional: {
@@ -258,6 +271,7 @@ export const nodes = {
         lines.push(d.subscriptionBundles
           ? `• Subscription: ${d.subscriptionBundles} bundles / month ($${subscriptionMonthly(d.subscriptionBundles)}/mo)`
           : '• Subscription (choose size on the order page)');
+        if (d.subscriptionWeek) lines.push(`• Delivery week: ${subscriptionWeekLabel(d.subscriptionWeek)}`);
       } else {
         const how = d.fulfillment === 'delivery' ? `Delivery (+$${DELIVERY_FEE})` : 'Pickup';
         lines.push(`• One-time — ${how}`);

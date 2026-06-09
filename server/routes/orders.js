@@ -19,6 +19,7 @@ import {
 import { stripeEnabled, createOneTimeCheckout } from '../utils/stripe.js';
 import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
+  SUBSCRIPTION_WEEK_VALUES,
 } from '../data/catalog.js';
 
 const router = express.Router();
@@ -145,7 +146,7 @@ const optionalAuth = (req, res, next) => {
 router.post('/', optionalAuth, async (req, res) => {
   try {
     const {
-      orderType, items, subscriptionBundles, deliveryFee,
+      orderType, items, subscriptionBundles, subscriptionWeek, deliveryFee,
       contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
       rush, code, subtotal, agreedToTerms, paymentMethod,
     } = req.body;
@@ -181,13 +182,26 @@ router.post('/', optionalAuth, async (req, res) => {
       return res.status(400).json({ error: 'Delivery street address is required' });
     }
 
-    // Validate the requested date + time windows against admin availability/lead-time.
+    // Scheduling. One-time orders pick a specific date + time window (validated against
+    // availability/lead-time). Subscriptions instead pick a preferred WEEK of the month, so the
+    // owner fulfills within that week — no specific date/lead-time check.
     const settings = await Settings.findOne({ key: 'availability' });
-    const sched = validateSchedule({ preferredDate, preferredTimes, rush }, settings);
-    if (sched.error) {
-      return res.status(400).json({ error: sched.error });
+    let windows = [];
+    let isRush = false;
+    let rushPercent = 0;
+    let subWeek = '';
+    if (orderType === 'subscription') {
+      subWeek = String(subscriptionWeek || 'any');
+      if (!SUBSCRIPTION_WEEK_VALUES.includes(subWeek)) {
+        return res.status(400).json({ error: 'Please choose a delivery week' });
+      }
+    } else {
+      const sched = validateSchedule({ preferredDate, preferredTimes, rush }, settings);
+      if (sched.error) {
+        return res.status(400).json({ error: sched.error });
+      }
+      ({ windows, isRush, rushPercent } = sched);
     }
-    const { windows, isRush, rushPercent } = sched;
 
     // Apply a promo OR a neighbor's referral code (re-validated; owner honors final total).
     let promoCode = '';
@@ -228,12 +242,13 @@ router.post('/', optionalAuth, async (req, res) => {
       subscriptionPlan: orderType === 'subscription' ? `${subBundles}bundle` : '',
       subscriptionBundles: orderType === 'subscription' ? subBundles : 0,
       subscriptionMonthly: orderType === 'subscription' ? subscriptionMonthly(subBundles) : 0,
+      subscriptionWeek: orderType === 'subscription' ? subWeek : '',
       commitmentMonths: orderType === 'subscription' ? SUBSCRIPTION_MIN_MONTHS : 0,
       commitmentEndsAt: orderType === 'subscription' ? addMonths(new Date(), SUBSCRIPTION_MIN_MONTHS) : null,
       agreedToTermsAt: orderType === 'subscription' ? new Date() : null,
       contact,
       deliveryAddress: deliveryAddress || {},
-      preferredDate,
+      preferredDate: orderType === 'onetime' ? preferredDate : '',
       preferredTimes: windows.map((w) => ({ from: w.from || '', to: w.to || '' })),
       rush: isRush,
       rushPercent: isRush ? rushPercent : 0,
@@ -358,6 +373,8 @@ router.get('/track/:token', async (req, res) => {
       orderType: order.orderType,
       items: order.items,
       subscriptionPlan: order.subscriptionPlan,
+      subscriptionBundles: order.subscriptionBundles,
+      subscriptionWeek: order.subscriptionWeek,
       preferredDate: order.preferredDate,
       preferredTimes: order.preferredTimes,
       schedule: order.schedule,
