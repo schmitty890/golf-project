@@ -45,7 +45,7 @@ function ChatWidget() {
       {open && <ChatPanel onClose={() => setOpen(false)} />}
 
       {showNudge && !open && (
-        <div className="fixed bottom-[5.5rem] right-5 z-50">
+        <div className="fixed bottom-[7rem] right-4 z-50">
           <div className="relative">
             <button
               type="button"

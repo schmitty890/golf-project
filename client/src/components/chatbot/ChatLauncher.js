@@ -2,8 +2,8 @@ import PropTypes from 'prop-types';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import Woody from './Woody';
 
-// The floating mascot launcher, lower-right, site-wide. Woody when closed; an X
-// to close when open.
+// The floating mascot launcher, lower-right, site-wide. The full Woody sticker
+// when closed; a small round X button to close when open.
 function ChatLauncher({ open, onToggle }) {
   return (
     <button
@@ -11,11 +11,13 @@ function ChatLauncher({ open, onToggle }) {
       onClick={onToggle}
       aria-label={open ? 'Close chat' : 'Chat with Woody'}
       aria-expanded={open}
-      className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-ember text-white shadow-lg transition-colors hover:bg-ember-600 focus:outline-none focus:ring-2 focus:ring-ember/30"
+      className={open
+        ? 'fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-ember text-white shadow-lg transition-colors hover:bg-ember-600 focus:outline-none focus:ring-2 focus:ring-ember/30'
+        : 'fixed bottom-4 right-4 z-50 rounded-full transition-transform focus:outline-none focus:ring-2 focus:ring-ember/40 motion-safe:hover:scale-105'}
     >
       {open
-        ? <XMarkIcon className="h-7 w-7" aria-hidden="true" />
-        : <Woody className="h-9 w-9 motion-safe:animate-woody-bob" />}
+        ? <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+        : <Woody className="h-20 w-20 drop-shadow-xl motion-safe:animate-woody-bob" />}
     </button>
   );
 }
