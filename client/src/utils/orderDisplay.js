@@ -1,10 +1,11 @@
 // Human-readable description of an order's contents and status styling.
 
-const SUB_LABELS = { '2bundle': '2 bundles / month', '3bundle': '3 bundles / month' };
+import { bundlesFromPlan } from '../data/pricing';
 
 export function describeOrder(order) {
   if (order.orderType === 'subscription') {
-    return `${SUB_LABELS[order.subscriptionPlan] || order.subscriptionPlan || 'Monthly'} subscription`;
+    const n = order.subscriptionBundles || bundlesFromPlan(order.subscriptionPlan);
+    return `${n ? `${n} bundles / month` : 'Monthly'} subscription`;
   }
   if (order.items && order.items.length) {
     return order.items.map((i) => `${i.quantity}× ${i.name}`).join(', ');

@@ -27,6 +27,7 @@ function buildReorder(order) {
     orderType: order.orderType === 'subscription' ? 'subscription' : 'onetime',
     items: (order.items || []).map((i) => ({ name: i.name, quantity: i.quantity })),
     subscriptionPlan: order.subscriptionPlan,
+    subscriptionBundles: order.subscriptionBundles,
     fulfillment: order.fulfillment,
     deliveryAddress: order.deliveryAddress || {},
   };
