@@ -1,5 +1,7 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
-import { useState, useContext, useEffect } from 'react';
+import {
+  useState, useContext, useEffect, useRef,
+} from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
@@ -88,6 +90,7 @@ function Order() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const errorRef = useRef(null);
 
   const isSubscription = mode === 'subscription';
   // Subscriptions are always delivered; one-time orders choose pickup vs delivery.
@@ -264,6 +267,12 @@ function Order() {
   useEffect(() => {
     if (submitted || returnStatus) window.scrollTo(0, 0);
   }, [submitted, returnStatus]);
+
+  // The error banner sits at the top of the form; scroll it into view so a failed
+  // submit (e.g. an empty cart) isn't missed when the button is far below.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
 
   const buildPayload = () => {
     const base = {
@@ -489,7 +498,7 @@ function Order() {
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-8">
         {error && (
-          <div className="rounded-md bg-red-50 p-4 text-sm text-red-800">{error}</div>
+          <div ref={errorRef} role="alert" className="rounded-md bg-red-50 p-4 text-sm text-red-800">{error}</div>
         )}
 
         {/* One-time vs subscription */}
