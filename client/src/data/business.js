@@ -21,11 +21,11 @@ const business = {
   // Real photos: drop image files in client/public/photos/ and list them here, e.g.
   // { src: '/photos/bundle.jpg', alt: 'A VOLW firewood bundle' }. Empty = gallery hidden.
   galleryPhotos: [],
-  // Delivery map shown in the Service Area section. Save the image at
-  // client/public/delivery-map.png — it appears automatically (and hides gracefully
-  // if the file isn't there yet). Set to null to hide. Edit the caption freely.
+  // Delivery map shown in the Service Area section. The image lives in client/public/
+  // (here: volwmap.jpg) — it appears automatically and hides gracefully if missing.
+  // Set to null to hide. Edit the caption freely.
   deliveryMap: {
-    src: '/delivery-map.png',
+    src: '/volwmap.jpg',
     alt: 'Map of The Vineyards on Lake Wylie — our delivery area',
     caption: 'Our current delivery area. New homes under construction are included — a few outlying streets may be outside our route, so if you’re not sure about yours, just ask.',
   },
