@@ -14,13 +14,6 @@ import {
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-// A subscription is locked in until its minimum commitment ends.
-function withinCommitment(order) {
-  return order.orderType === 'subscription'
-    && order.commitmentEndsAt
-    && new Date(order.commitmentEndsAt) > new Date();
-}
-
 // Build an "Order again" prefill payload from a past order (cart model).
 function buildReorder(order) {
   return {
@@ -53,6 +46,18 @@ function MyOrders() {
       setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, ...res.data } : o)));
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to cancel order');
+    }
+  };
+
+  // Open the Stripe Customer Portal so a subscriber can update payment / cancel themselves.
+  const openPortal = async (id) => {
+    try {
+      const res = await axios.post(`${API_URL}/api/orders/${id}/billing-portal`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data.url) window.location = res.data.url;
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not open subscription management');
     }
   };
 
@@ -186,7 +191,16 @@ function MyOrders() {
               >
                 Order again
               </button>
-              {['pending', 'confirmed'].includes(order.status) && (
+              {order.orderType === 'subscription' && order.stripeCustomerId && (
+                <button
+                  type="button"
+                  onClick={() => openPortal(order._id)}
+                  className="rounded-lg border border-ember px-3 py-1.5 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
+                >
+                  Manage subscription
+                </button>
+              )}
+              {order.orderType !== 'subscription' && ['pending', 'confirmed'].includes(order.status) && (
                 <>
                   <button
                     type="button"
@@ -195,19 +209,13 @@ function MyOrders() {
                   >
                     Reschedule
                   </button>
-                  {withinCommitment(order) ? (
-                    <span className="self-center text-xs text-walnut-400">
-                      {`${order.commitmentMonths || 3}-month minimum — contact us to change your subscription.`}
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => cancelOrder(order._id)}
-                      className="rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
-                    >
-                      Cancel
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => cancelOrder(order._id)}
+                    className="rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                  >
+                    Cancel
+                  </button>
                 </>
               )}
             </div>

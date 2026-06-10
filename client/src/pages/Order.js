@@ -11,7 +11,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import business from '../data/business';
 import {
-  products, DELIVERY_FEE, TIME_WINDOWS, SUBSCRIPTION_MIN_MONTHS,
+  products, DELIVERY_FEE, TIME_WINDOWS,
   subscriptionMonthly, clampBundles, bundlesFromPlan,
   SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
   SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
@@ -142,6 +142,11 @@ function Order() {
       .then((res) => setFirstOrderEligible(Boolean(res.data.eligible)))
       .catch(() => setFirstOrderEligible(false));
   }, [token]);
+
+  // Subscriptions require card auto-pay; if Stripe is off, never sit in subscription mode.
+  useEffect(() => {
+    if (!cardEnabled && mode === 'subscription') setMode('onetime');
+  }, [cardEnabled, mode]);
 
   // --- Cart ---
   const setProductQty = (id, n) => setQty((prev) => ({ ...prev, [id]: Math.max(0, n) }));
@@ -298,6 +303,7 @@ function Order() {
         subscriptionBundles: subBundles,
         subscriptionWeek: subWeek,
         agreedToTerms: agreedSub,
+        paymentMethod: 'card',
         preferredDate: '',
         preferredTimes: [],
       };
@@ -320,7 +326,7 @@ function Order() {
       return;
     }
     if (isSubscription && !agreedSub) {
-      setError(`Please agree to the ${SUBSCRIPTION_MIN_MONTHS}-month commitment to subscribe.`);
+      setError('Please authorize the monthly subscription to continue.');
       return;
     }
     // Subscriptions pick a week of the month (always set); one-time orders need a date + window.
@@ -516,11 +522,14 @@ function Order() {
           <div ref={errorRef} role="alert" className="rounded-md bg-red-50 p-4 text-sm text-red-800">{error}</div>
         )}
 
-        {/* One-time vs subscription */}
+        {/* One-time vs subscription (subscriptions are card auto-pay → only when Stripe is on) */}
         <div>
           <span className={labelClass}>What would you like?</span>
-          <div className="mt-2 grid grid-cols-2 gap-3">
-            {[{ id: 'onetime', label: 'One-time order' }, { id: 'subscription', label: 'Subscription' }].map((m) => (
+          <div className={`mt-2 grid gap-3 ${cardEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {[
+              { id: 'onetime', label: 'One-time order' },
+              ...(cardEnabled ? [{ id: 'subscription', label: 'Monthly subscription' }] : []),
+            ].map((m) => (
               <button
                 key={m.id}
                 type="button"
@@ -661,7 +670,7 @@ function Order() {
                 className="mt-0.5 h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
               />
               <span className="text-sm text-walnut">
-                {`I agree to the ${SUBSCRIPTION_MIN_MONTHS}-month minimum commitment, then it continues month-to-month — cancel anytime after.`}
+                {`I authorize $${subMonthly}/mo to my card for ${subBundles} bundles, delivered monthly — cancel anytime.`}
               </span>
             </label>
           </div>
@@ -954,7 +963,7 @@ function Order() {
           {/* eslint-disable-next-line no-nested-ternary */}
           {submitting
             ? 'Submitting…'
-            : (!isSubscription && cardEnabled && payMethod === 'card' ? 'Continue to payment →' : 'Submit Order')}
+            : ((isSubscription || (cardEnabled && payMethod === 'card')) ? 'Continue to payment →' : 'Submit Order')}
         </button>
       </form>
     </div>

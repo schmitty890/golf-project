@@ -43,4 +43,41 @@ export async function createOneTimeCheckout(order, amountCents, opts) {
   });
 }
 
-export default { stripeEnabled, createOneTimeCheckout };
+// Create a hosted Checkout Session for a recurring monthly subscription. The card is saved and
+// auto-charged each month by Stripe. `monthlyCents` is the server-authoritative monthly amount.
+export async function createSubscriptionCheckout(order, monthlyCents, opts) {
+  const { successUrl, cancelUrl } = opts;
+  const stripe = getStripe();
+  if (!stripe) return null;
+  return stripe.checkout.sessions.create({
+    mode: 'subscription',
+    line_items: [{
+      quantity: 1,
+      price_data: {
+        currency: 'usd',
+        unit_amount: monthlyCents,
+        recurring: { interval: 'month' },
+        product_data: {
+          name: `${process.env.BUSINESS_NAME || 'VOLW Firewood'} subscription`,
+          description: `${order.subscriptionBundles} bundles / month, delivered`,
+        },
+      },
+    }],
+    // eslint-disable-next-line no-underscore-dangle
+    metadata: { orderId: String(order._id) },
+    customer_email: order.contact?.email || undefined,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+  });
+}
+
+// Create a Stripe Customer Portal session so a subscriber can manage/cancel their plan themselves.
+export async function createBillingPortalSession(customerId, returnUrl) {
+  const stripe = getStripe();
+  if (!stripe || !customerId) return null;
+  return stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
+}
+
+export default {
+  stripeEnabled, createOneTimeCheckout, createSubscriptionCheckout, createBillingPortalSession,
+};

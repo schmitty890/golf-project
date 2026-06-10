@@ -59,6 +59,9 @@ const orderSchema = new mongoose.Schema({
   stripeSessionId: { type: String, default: '' },
   stripePaymentIntentId: { type: String, default: '' },
   stripeCustomerId: { type: String, default: '' },
+  // Recurring subscriptions: the Stripe subscription id + its lifecycle state.
+  stripeSubscriptionId: { type: String, default: '' },
+  subscriptionStatus: { type: String, enum: ['', 'active', 'past_due', 'canceled'], default: '' },
   // Promo code applied at checkout + the dollar discount recorded (owner honors final total).
   promoCode: { type: String, default: '' },
   discount: { type: Number, default: 0 },
