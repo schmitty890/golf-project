@@ -19,7 +19,7 @@ function ChatLauncher({ open, onToggle }) {
         <XMarkIcon className="h-6 w-6" aria-hidden="true" />
       ) : (
         <span className="flex flex-col items-center gap-1">
-          <Woody className="h-20 w-20 drop-shadow-xl motion-safe:animate-woody-bob" />
+          <Woody className="h-14 w-14 drop-shadow-xl motion-safe:animate-woody-bob sm:h-20 sm:w-20" />
           <span className="rounded-full border border-ember bg-cream px-3 py-1 text-xs font-bold text-walnut shadow">
             Chat with us
           </span>

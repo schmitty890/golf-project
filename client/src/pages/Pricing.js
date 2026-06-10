@@ -78,7 +78,7 @@ function Pricing() {
         >
           Order now
         </Link>
-        <p className="mt-3 text-sm text-walnut-300">No payment online — we confirm and arrange Venmo with you.</p>
+        <p className="mt-3 text-sm text-walnut-300">Quick, secure checkout — pay by card or Venmo.</p>
       </section>
     </div>
   );

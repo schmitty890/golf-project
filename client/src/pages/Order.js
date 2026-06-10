@@ -497,6 +497,19 @@ function Order() {
     );
   }
 
+  // Subheader payment note, matched to how this order actually pays.
+  const payNote = (() => {
+    if (isSubscription) return 'Set up secure card billing at checkout — billed monthly, cancel anytime.';
+    if (cardEnabled) return 'Pay by card or Venmo at checkout — your choice.';
+    return 'Pay with Venmo right after you order.';
+  })();
+  // Note under the order-total box.
+  const totalNote = (() => {
+    if (isSubscription) return 'Billed to your card monthly — entered securely at checkout. Cancel anytime.';
+    if (cardEnabled && payMethod === 'card') return "You'll pay securely by card on the next step.";
+    return "Estimate only — no payment now. We'll confirm the final total with you.";
+  })();
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-extrabold tracking-tight text-walnut">Order Firewood</h1>
@@ -504,7 +517,7 @@ function Order() {
         Hand-split, ready-to-burn bundles in
         {' '}
         {business.serviceArea}
-        . No payment now — we&apos;ll confirm and arrange Venmo with you.
+        {`. ${payNote}`}
       </p>
 
       {!token && (
@@ -948,11 +961,7 @@ function Order() {
               )}
             </div>
           )}
-          <p className="mt-2 text-xs text-walnut-300">
-            {!isSubscription && cardEnabled && payMethod === 'card'
-              ? "You'll pay securely by card on the next step."
-              : "Estimate only — no payment now. We'll confirm the final total with you."}
-          </p>
+          <p className="mt-2 text-xs text-walnut-300">{totalNote}</p>
         </div>
 
         <button

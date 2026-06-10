@@ -206,11 +206,13 @@ function Testimonials() {
       .catch(() => setReviews([]));
   }, []);
 
-  const items = reviews.length > 0
-    ? reviews.map((r) => ({
+  // Only show reviews that actually have text — a rating-only entry renders a blank card.
+  const realItems = reviews
+    .map((r) => ({
       name: r.name, text: r.comment, detail: r.location, rating: r.rating,
     }))
-    : fallbackItems;
+    .filter((r) => r.text && r.text.trim());
+  const items = realItems.length > 0 ? realItems : fallbackItems;
 
   if (items.length === 0) return null;
 
