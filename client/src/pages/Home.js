@@ -151,9 +151,11 @@ function WhyVolw() {
 }
 
 function ServiceArea() {
+  const [mapError, setMapError] = useState(false);
+  const map = business.deliveryMap;
   return (
     <section id="service-area" className="bg-cream py-16 sm:py-20">
-      <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
         <MapPinIcon className="mx-auto h-10 w-10 text-ember" aria-hidden="true" />
         <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-walnut">Service Area</h2>
         <p className="mt-4 text-lg text-walnut-400">
@@ -163,6 +165,22 @@ function ServiceArea() {
           {' '}
           exclusively.
         </p>
+        {map && !mapError && (
+          <figure className="mt-8">
+            <img
+              src={`${process.env.PUBLIC_URL}${map.src}`}
+              alt={map.alt}
+              loading="lazy"
+              onError={() => setMapError(true)}
+              className="w-full rounded-2xl border border-cream-300 shadow-sm"
+            />
+            {map.caption && (
+              <figcaption className="mx-auto mt-3 max-w-3xl text-sm text-walnut-300">
+                {map.caption}
+              </figcaption>
+            )}
+          </figure>
+        )}
       </div>
     </section>
   );
