@@ -14,6 +14,11 @@ import {
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
+// Pre-filled, editable cancellation message emailed to the customer (e.g. out-of-area orders).
+const DEFAULT_CANCEL_REASON = "We're sorry — we can't fulfill this order. Your address is outside "
+  + 'our current delivery area (we serve The Vineyards on Lake Wylie only). You haven’t been '
+  + 'charged. If you think this is a mistake, just reply to this email.';
+
 function AdminOrders() {
   const { token } = useContext(AuthContext);
   const [orders, setOrders] = useState([]);
@@ -22,6 +27,7 @@ function AdminOrders() {
   const [filter, setFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [scheduleState, setScheduleState] = useState({});
+  const [cancel, setCancel] = useState(null); // { id, reason } while cancelling
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -73,6 +79,22 @@ function AdminOrders() {
   };
 
   const setSchedState = (id, val) => setScheduleState((prev) => ({ ...prev, [id]: val }));
+
+  // Cancelling opens a reason panel (the reason is emailed to the customer).
+  const confirmCancel = async () => {
+    if (!cancel) return;
+    try {
+      const res = await axios.patch(
+        `${API_URL}/api/orders/${cancel.id}`,
+        { status: 'cancelled', cancelReason: cancel.reason },
+        authHeaders,
+      );
+      setOrders((prev) => prev.map((o) => (o._id === cancel.id ? { ...o, ...res.data } : o)));
+      setCancel(null);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to cancel order');
+    }
+  };
 
   const saveSchedule = async (id) => {
     const order = orders.find((o) => o._id === id);
@@ -221,7 +243,9 @@ function AdminOrders() {
                 </span>
                 <select
                   value={normalizeStatus(order.status)}
-                  onChange={(e) => updateStatus(order._id, e.target.value)}
+                  onChange={(e) => (e.target.value === 'cancelled'
+                    ? setCancel({ id: order._id, reason: DEFAULT_CANCEL_REASON })
+                    : updateStatus(order._id, e.target.value))}
                   aria-label="Update status"
                   className="rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
                 >
@@ -256,6 +280,41 @@ function AdminOrders() {
                 </button>
               </div>
             </div>
+
+            {/* Cancel panel — editable reason emailed to the customer */}
+            {cancel?.id === order._id && (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3">
+                <label htmlFor={`cancel-${order._id}`} className="text-sm font-semibold text-red-800">
+                  Cancel this order — message emailed to the customer:
+                </label>
+                <textarea
+                  id={`cancel-${order._id}`}
+                  value={cancel.reason}
+                  onChange={(e) => setCancel((c) => ({ ...c, reason: e.target.value }))}
+                  rows={3}
+                  className="mt-2 block w-full rounded-md border border-cream-300 bg-white px-3 py-2 text-sm text-walnut focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30"
+                />
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={confirmCancel}
+                    className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700"
+                  >
+                    Cancel order & email customer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCancel(null)}
+                    className="rounded-md border border-cream-300 px-3 py-1.5 text-sm font-semibold text-walnut hover:border-ember"
+                  >
+                    Back
+                  </button>
+                  {!order.contact?.email && (
+                    <span className="text-xs text-red-700">No email on file — order cancels, no email sent.</span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Schedule editor */}
             <div className="mt-4 border-t border-cream-300 pt-3">
