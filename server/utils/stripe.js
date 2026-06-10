@@ -78,6 +78,18 @@ export async function createBillingPortalSession(customerId, returnUrl) {
   return stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
 }
 
+// Cancel a subscription immediately (used when the owner cancels a recurring order) so no further
+// charges occur. Safe no-op if Stripe isn't configured or there's no subscription id.
+export async function cancelSubscription(subscriptionId) {
+  const stripe = getStripe();
+  if (!stripe || !subscriptionId) return null;
+  return stripe.subscriptions.cancel(subscriptionId);
+}
+
 export default {
-  stripeEnabled, createOneTimeCheckout, createSubscriptionCheckout, createBillingPortalSession,
+  stripeEnabled,
+  createOneTimeCheckout,
+  createSubscriptionCheckout,
+  createBillingPortalSession,
+  cancelSubscription,
 };

@@ -55,6 +55,8 @@ const orderSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ['unpaid', 'paid'], default: 'unpaid' },
   // When the order was marked paid (null = not yet).
   paidAt: { type: Date, default: null },
+  // Why an order was cancelled (shown to the owner; emailed to the customer).
+  cancelReason: { type: String, default: '' },
   // Stripe references (empty unless paid by card).
   stripeSessionId: { type: String, default: '' },
   stripePaymentIntentId: { type: String, default: '' },

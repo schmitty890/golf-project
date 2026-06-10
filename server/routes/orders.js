@@ -10,7 +10,7 @@ import { sendMail } from '../utils/mailer.js';
 import {
   customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
   orderCancelledOwnerEmail, orderRescheduledOwnerEmail, paymentReceivedEmail,
-  referralRewardEmail, readyEmail, orderTotal,
+  referralRewardEmail, readyEmail, orderTotal, orderCancelledCustomerEmail,
 } from '../utils/orderEmails.js';
 import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
@@ -18,6 +18,7 @@ import {
 } from './promos.js';
 import {
   stripeEnabled, createOneTimeCheckout, createSubscriptionCheckout, createBillingPortalSession,
+  cancelSubscription,
 } from '../utils/stripe.js';
 import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
@@ -509,7 +510,7 @@ router.get('/:id', auth, async (req, res) => {
 router.patch('/:id', auth, requireAdmin, async (req, res) => {
   try {
     const {
-      status, adminNotes, schedule, paymentStatus,
+      status, adminNotes, schedule, paymentStatus, cancelReason,
     } = req.body;
     const order = await Order.findById(req.params.id);
     if (!order) {
@@ -524,6 +525,18 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       }
       order.statusHistory.push({ status, at: new Date() });
       order.status = status;
+      if (status === 'cancelled') {
+        order.cancelReason = (cancelReason || '').trim();
+        // Stop any recurring charges on a cancelled subscription.
+        if (order.stripeSubscriptionId && order.subscriptionStatus !== 'canceled') {
+          try {
+            await cancelSubscription(order.stripeSubscriptionId);
+            order.subscriptionStatus = 'canceled';
+          } catch (subErr) {
+            console.error('Stripe subscription cancel error:', subErr.message);
+          }
+        }
+      }
     }
     const prevPayment = order.paymentStatus;
     if (paymentStatus !== undefined) {
@@ -557,6 +570,8 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
         email = readyEmail(order, settings?.pickupAddress || DEFAULT_PICKUP_ADDRESS);
       } else if (order.status === 'completed') {
         email = deliveredEmail(order);
+      } else if (order.status === 'cancelled') {
+        email = orderCancelledCustomerEmail(order, order.cancelReason);
       }
       if (email) sendMail({ to: customerEmail, ...email });
     }

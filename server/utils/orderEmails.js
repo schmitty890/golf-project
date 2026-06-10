@@ -284,6 +284,23 @@ export function contactFormEmail({
   return { subject, html, text };
 }
 
+export function orderCancelledCustomerEmail(order, reason = '') {
+  const name = order.contact?.name ? `Hi ${order.contact.name.split(' ')[0]},` : 'Hi,';
+  const why = (reason || '').trim()
+    || "We're sorry, but we're unable to fulfill this order.";
+  const payLine = order.paymentStatus === 'paid'
+    ? 'Any payment you made will be refunded.'
+    : "You haven't been charged.";
+  const lines = summaryLines(order);
+  const subject = `Your firewood order was cancelled — ${BUSINESS()}`;
+  const body = `<p>${name}</p><p>${why}</p><p>${payLine}</p>`
+    + `${linesToHtml(lines)}`
+    + '<p style="margin-top:16px;color:#8a7f78;font-size:13px">If you think this is a mistake, just reply to this email and we\'ll sort it out.</p>';
+  const html = wrap('Order cancelled', body);
+  const text = `${name}\n\n${why}\n${payLine}\n\n${linesToText(lines)}\n\nIf you think this is a mistake, just reply to this email.`;
+  return { subject, html, text };
+}
+
 export function deliveredEmail(order) {
   const site = process.env.SITE_URL;
   const fb = site ? `<p><a href="${site}" style="color:#b5471f">Leave a quick review</a> — it helps your neighbors.</p>` : '';
