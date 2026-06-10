@@ -19,6 +19,7 @@ import AdminSchedule from './pages/admin/AdminSchedule';
 import AdminAvailability from './pages/admin/AdminAvailability';
 import AdminFeedback from './pages/admin/AdminFeedback';
 import AdminPromos from './pages/admin/AdminPromos';
+import AdminCustomers from './pages/admin/AdminCustomers';
 
 function App() {
   return (
@@ -66,6 +67,14 @@ function App() {
             element={(
               <RequireAuth adminOnly>
                 <SidebarLayout><AdminOrders /></SidebarLayout>
+              </RequireAuth>
+            )}
+          />
+          <Route
+            path="/admin/customers"
+            element={(
+              <RequireAuth adminOnly>
+                <SidebarLayout><AdminCustomers /></SidebarLayout>
               </RequireAuth>
             )}
           />
