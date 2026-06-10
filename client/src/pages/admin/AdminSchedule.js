@@ -20,11 +20,28 @@ const windowLabel = (from, to) => {
   return w ? w.label : `${from}–${to}`;
 };
 
+// Sort deliveries into a sensible loop: by section, then street, then time window.
+const byRoute = (a, b) => {
+  const na = a.deliveryAddress?.neighborhood || '';
+  const nb = b.deliveryAddress?.neighborhood || '';
+  if (na !== nb) return na.localeCompare(nb);
+  const sa = a.deliveryAddress?.street || '';
+  const sb = b.deliveryAddress?.street || '';
+  if (sa !== sb) return sa.localeCompare(sb);
+  return effectiveStart(a).localeCompare(effectiveStart(b));
+};
+
+const addressText = (o) => {
+  const a = o.deliveryAddress || {};
+  return [a.street, a.unit, a.neighborhood].filter(Boolean).join(', ');
+};
+
 function AdminSchedule() {
   const { token } = useContext(AuthContext);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState('');
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -64,6 +81,24 @@ function AdminSchedule() {
 
   const markDelivered = (id) => patch(id, { status: 'delivered' });
 
+  // Copy a day's delivery stops (in route order) to the clipboard for phone nav / notes.
+  const copyStops = (date, deliveries) => {
+    const lines = deliveries.map((o, i) => {
+      const win = isConfirmedWindow(o)
+        ? formatSchedule({ from: o.schedule.from, to: o.schedule.to })
+        : 'window TBD';
+      return `${i + 1}. ${o.contact?.name || 'Customer'} — ${addressText(o) || 'no address'} (${win})`;
+    });
+    const text = `${relativeDayLabel(date)} — deliveries:\n${lines.join('\n')}`;
+    try {
+      navigator.clipboard.writeText(text);
+      setCopied(date);
+      setTimeout(() => setCopied((c) => (c === date ? '' : c)), 2000);
+    } catch {
+      /* clipboard unavailable — ignore */
+    }
+  };
+
   // Upcoming, active orders grouped by the date they happen, sorted by time.
   const today = todayStr();
   const active = orders
@@ -82,12 +117,85 @@ function AdminSchedule() {
     else groups.push({ date, items: [o] });
   });
 
+  const renderCard = (order) => {
+    const isPickup = order.fulfillment === 'pickup';
+    const confirmed = isConfirmedWindow(order);
+    return (
+      <li key={order._id} className="rounded-lg border border-cream-300 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            {confirmed ? (
+              <p className="text-lg font-extrabold text-walnut">
+                {formatSchedule({ from: order.schedule.from, to: order.schedule.to })}
+              </p>
+            ) : (
+              <p className="text-sm font-semibold text-amber-700">Pick a window to confirm</p>
+            )}
+
+            <p className="mt-1 text-sm text-walnut">
+              <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-semibold ${isPickup ? 'bg-cream-300 text-walnut' : 'bg-blue-100 text-blue-800'}`}>
+                {isPickup ? 'Curb pickup' : 'Deliver'}
+              </span>
+              {describeOrder(order)}
+              {order.rush && (
+                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">RUSH</span>
+              )}
+            </p>
+
+            {!isPickup && order.deliveryAddress?.street && (
+              <p className="mt-1 flex items-center gap-1 text-sm text-walnut-400">
+                <MapPinIcon className="h-4 w-4 shrink-0" />
+                {order.deliveryAddress.street}
+                {order.deliveryAddress.unit ? `, ${order.deliveryAddress.unit}` : ''}
+                {order.deliveryAddress.neighborhood ? ` · ${order.deliveryAddress.neighborhood}` : ''}
+              </p>
+            )}
+
+            <p className="mt-1 flex items-center gap-1 text-sm text-walnut-400">
+              <span className="font-semibold text-walnut">{order.contact?.name}</span>
+              {order.contact?.phone && (
+                <a href={`tel:${order.contact.phone}`} className="ml-1 flex items-center gap-1 text-ember hover:underline">
+                  <PhoneIcon className="h-4 w-4" />
+                  {order.contact.phone}
+                </a>
+              )}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => markDelivered(order._id)}
+            className="shrink-0 rounded-lg border border-cream-300 px-3 py-1.5 text-sm font-semibold text-walnut hover:border-ember"
+          >
+            Mark done
+          </button>
+        </div>
+
+        {!confirmed && (order.preferredTimes || []).length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-walnut-300">Confirm:</span>
+            {order.preferredTimes.map((w) => (
+              <button
+                type="button"
+                key={w.from}
+                onClick={() => confirmWindow(order, w)}
+                className="rounded-lg border border-ember bg-white px-3 py-1.5 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
+              >
+                {windowLabel(w.from, w.to)}
+              </button>
+            ))}
+          </div>
+        )}
+      </li>
+    );
+  };
+
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-bold text-walnut">Schedule</h1>
       <p className="mt-1 text-sm text-walnut-400">
-        What to set out or deliver, by day and time window. Confirm a window with one tap;
-        mark done once it&apos;s picked up or delivered.
+        Your delivery day, by date — deliveries grouped in route order, pickups separate.
+        Confirm a window with one tap; mark done once it&apos;s picked up or delivered.
       </p>
 
       {loading && <p className="mt-8 text-walnut-400">Loading…</p>}
@@ -97,90 +205,50 @@ function AdminSchedule() {
         <p className="mt-12 text-center text-walnut-400">Nothing scheduled — you&apos;re all caught up.</p>
       )}
 
-      {groups.map((group) => (
-        <section key={group.date} className="mt-8">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-ember">
-            {relativeDayLabel(group.date)}
-          </h2>
-          <ul className="mt-3 space-y-3">
-            {group.items.map((order) => {
-              const isPickup = order.fulfillment === 'pickup';
-              const confirmed = isConfirmedWindow(order);
-              return (
-                <li key={order._id} className="rounded-lg border border-cream-300 bg-white p-4 shadow-sm">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      {/* Window */}
-                      {confirmed ? (
-                        <p className="text-lg font-extrabold text-walnut">
-                          {formatSchedule({ from: order.schedule.from, to: order.schedule.to })}
-                        </p>
-                      ) : (
-                        <p className="text-sm font-semibold text-amber-700">Pick a window to confirm</p>
-                      )}
+      {groups.map((group) => {
+        const deliveries = group.items.filter((o) => o.fulfillment !== 'pickup').sort(byRoute);
+        const pickups = group.items.filter((o) => o.fulfillment === 'pickup');
+        const streets = new Set(deliveries.map((o) => o.deliveryAddress?.street || '').filter(Boolean)).size;
+        const summary = [
+          deliveries.length ? `${deliveries.length} deliver${deliveries.length === 1 ? 'y' : 'ies'}` : '',
+          deliveries.length && streets ? `${streets} street${streets === 1 ? '' : 's'}` : '',
+          pickups.length ? `${pickups.length} pickup${pickups.length === 1 ? '' : 's'}` : '',
+        ].filter(Boolean).join(' · ');
 
-                      <p className="mt-1 text-sm text-walnut">
-                        <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-semibold ${isPickup ? 'bg-cream-300 text-walnut' : 'bg-blue-100 text-blue-800'}`}>
-                          {isPickup ? 'Curb pickup' : 'Deliver'}
-                        </span>
-                        {describeOrder(order)}
-                        {order.rush && (
-                          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">RUSH</span>
-                        )}
-                      </p>
+        return (
+          <section key={group.date} className="mt-8">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-ember">
+                {relativeDayLabel(group.date)}
+              </h2>
+              {deliveries.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => copyStops(group.date, deliveries)}
+                  className="rounded-lg border border-cream-300 px-3 py-1 text-xs font-semibold text-walnut hover:border-ember"
+                >
+                  {copied === group.date ? 'Copied!' : 'Copy stops'}
+                </button>
+              )}
+            </div>
+            {summary && <p className="mt-1 text-xs text-walnut-400">{summary}</p>}
 
-                      {/* Address / pickup */}
-                      {!isPickup && order.deliveryAddress?.street && (
-                        <p className="mt-1 flex items-center gap-1 text-sm text-walnut-400">
-                          <MapPinIcon className="h-4 w-4 shrink-0" />
-                          {order.deliveryAddress.street}
-                          {order.deliveryAddress.unit ? `, ${order.deliveryAddress.unit}` : ''}
-                          {order.deliveryAddress.neighborhood ? ` · ${order.deliveryAddress.neighborhood}` : ''}
-                        </p>
-                      )}
+            {deliveries.length > 0 && (
+              <>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-walnut-300">Deliveries (route order)</p>
+                <ul className="mt-2 space-y-3">{deliveries.map(renderCard)}</ul>
+              </>
+            )}
 
-                      <p className="mt-1 flex items-center gap-1 text-sm text-walnut-400">
-                        <span className="font-semibold text-walnut">{order.contact?.name}</span>
-                        {order.contact?.phone && (
-                          <a href={`tel:${order.contact.phone}`} className="ml-1 flex items-center gap-1 text-ember hover:underline">
-                            <PhoneIcon className="h-4 w-4" />
-                            {order.contact.phone}
-                          </a>
-                        )}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => markDelivered(order._id)}
-                      className="shrink-0 rounded-lg border border-cream-300 px-3 py-1.5 text-sm font-semibold text-walnut hover:border-ember"
-                    >
-                      Mark done
-                    </button>
-                  </div>
-
-                  {/* One-click confirm chips from the customer's preferred windows */}
-                  {!confirmed && (order.preferredTimes || []).length > 0 && (
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-semibold text-walnut-300">Confirm:</span>
-                      {order.preferredTimes.map((w) => (
-                        <button
-                          type="button"
-                          key={w.from}
-                          onClick={() => confirmWindow(order, w)}
-                          className="rounded-lg border border-ember bg-white px-3 py-1.5 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
-                        >
-                          {windowLabel(w.from, w.to)}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
+            {pickups.length > 0 && (
+              <>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-walnut-300">Pickups</p>
+                <ul className="mt-2 space-y-3">{pickups.map(renderCard)}</ul>
+              </>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }
