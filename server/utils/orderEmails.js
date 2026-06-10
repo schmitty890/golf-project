@@ -124,19 +124,6 @@ function venmoBlock(order) {
   return `Pay ${amount} via Venmo to @${handle.replace(/^@/, '')} — the amount is pre-filled in the link. Add your name in the note so we can match your order. Please pay now — we set out or deliver once your payment arrives.`;
 }
 
-// Cash-on-delivery/pickup message (fulfillment-aware).
-function cashBlock(order) {
-  const t = orderTotal(order);
-  const amount = t ? `$${t.total}` : 'your order total';
-  const when = order.fulfillment === 'pickup' ? 'at pickup' : 'when we drop it off';
-  return `Have ${amount} in cash ready ${when} — we'll collect it then. No need to pay online.`;
-}
-
-// The right "how to pay" message for this order's payment method.
-function paymentBlock(order) {
-  return order.paymentMethod === 'cash' ? cashBlock(order) : venmoBlock(order);
-}
-
 // Minimal branded HTML wrapper.
 function wrap(title, bodyHtml) {
   return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#3b2f2a">
@@ -159,7 +146,7 @@ function linesToText(lines) {
 
 export function customerConfirmationEmail(order, pickupInstructions = '') {
   const lines = summaryLines(order);
-  const venmo = paymentBlock(order);
+  const venmo = venmoBlock(order);
   const pickup = order.fulfillment === 'pickup' && pickupInstructions ? pickupInstructions : '';
   const m = order.commitmentMonths || 0;
   const commitmentText = m > 0
@@ -235,7 +222,7 @@ export function reminderEmail(order, pickupInstructions = '') {
   const note = isPickup
     ? (pickupInstructions || "We'll have your bundles out for your window.")
     : "We'll deliver within your window.";
-  const venmo = paymentBlock(order);
+  const venmo = venmoBlock(order);
   const subject = `Reminder: your firewood is set for tomorrow — ${when}`;
   const body = `<p>Quick reminder — your ${isPickup ? 'pickup' : 'delivery'} is tomorrow:</p>
     ${linesToHtml([['When', when], ['How', fulfillmentText(order)], ['Order', describeOrder(order)]])}
