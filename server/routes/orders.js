@@ -255,8 +255,11 @@ router.post('/', optionalAuth, async (req, res) => {
       promoCode,
       discount,
       referredBy,
-      // Card is only offered for one-time orders in Phase 1; everything else stays Venmo.
-      paymentMethod: (paymentMethod === 'card' && orderType === 'onetime' && stripeEnabled()) ? 'card' : 'venmo',
+      // Card (Stripe) and cash are one-time only; everything else stays Venmo.
+      // eslint-disable-next-line no-nested-ternary
+      paymentMethod: (paymentMethod === 'card' && orderType === 'onetime' && stripeEnabled())
+        ? 'card'
+        : (paymentMethod === 'cash' && orderType === 'onetime') ? 'cash' : 'venmo',
       user: req.userId || null,
       status: 'received',
       statusHistory: [{ status: 'received', at: new Date() }],
@@ -378,6 +381,7 @@ router.get('/track/:token', async (req, res) => {
       preferredDate: order.preferredDate,
       preferredTimes: order.preferredTimes,
       schedule: order.schedule,
+      paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
       rush: order.rush,
       createdAt: order.createdAt,

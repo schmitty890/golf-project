@@ -59,7 +59,10 @@ function TrackOrder() {
   const venmoUrl = handle
     ? `https://venmo.com/${handle}?txn=pay${amount ? `&amount=${amount}` : ''}&note=${encodeURIComponent(venmoNote)}`
     : '';
-  const showPay = order.paymentStatus !== 'paid' && !cancelled && venmoUrl;
+  const isCash = order.paymentMethod === 'cash';
+  const unpaid = order.paymentStatus !== 'paid' && !cancelled;
+  const showPay = unpaid && venmoUrl && !isCash;
+  const showCash = unpaid && isCash;
 
   return (
     <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
@@ -96,6 +99,17 @@ function TrackOrder() {
               Already sent your Venmo? It can take us a little while to confirm and update this — we
               mark payments by hand, so thanks for your patience.
             </p>
+          </div>
+        )}
+
+        {showCash && (
+          <div className="mt-4 border-t border-cream-300 pt-4">
+            <p className="text-sm font-semibold text-walnut">
+              {amount ? `Have $${amount} in cash ready ` : 'Have your cash ready '}
+              {order.fulfillment === 'pickup' ? 'at pickup' : 'when we drop it off'}
+              .
+            </p>
+            <p className="mt-1 text-xs text-walnut-400">We’ll collect it then — no need to pay online.</p>
           </div>
         )}
       </div>
