@@ -1,2 +1,5 @@
 node_modules/
 server/uploads/
+
+# macOS folder metadata
+.DS_Store
