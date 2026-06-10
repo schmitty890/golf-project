@@ -16,7 +16,9 @@ import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
   discountLabel, mintReferralReward, firstOrderConfig,
 } from './promos.js';
-import { stripeEnabled, createOneTimeCheckout } from '../utils/stripe.js';
+import {
+  stripeEnabled, createOneTimeCheckout, createSubscriptionCheckout, createBillingPortalSession,
+} from '../utils/stripe.js';
 import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
   SUBSCRIPTION_WEEK_VALUES,
@@ -43,14 +45,9 @@ const addDaysStr = (s, n) => {
   return `${d.getFullYear()}-${mm}-${dd}`;
 };
 
-// Minimum subscription commitment before it goes month-to-month (authoritative; keep in sync
-// with SUBSCRIPTION_MIN_MONTHS in client/src/data/pricing.js).
+// Legacy subscription commitment months — only referenced by the in-app cancel route for old
+// orders. New subscriptions cancel anytime via the Stripe Customer Portal.
 const SUBSCRIPTION_MIN_MONTHS = 3;
-const addMonths = (date, n) => {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() + n);
-  return d;
-};
 
 // Validate a requested date + time windows against admin availability/lead-time rules.
 // Returns { error } on failure, or { windows, isRush, rushPercent } on success.
@@ -175,7 +172,11 @@ router.post('/', optionalAuth, async (req, res) => {
       });
     }
     if (orderType === 'subscription' && agreedToTerms !== true) {
-      return res.status(400).json({ error: `Please agree to the ${SUBSCRIPTION_MIN_MONTHS}-month commitment to subscribe.` });
+      return res.status(400).json({ error: 'Please authorize the monthly subscription to continue.' });
+    }
+    // Subscriptions bill automatically by card (Stripe), so they require Stripe to be enabled.
+    if (orderType === 'subscription' && !stripeEnabled()) {
+      return res.status(400).json({ error: 'Subscriptions need card payment — coming soon.' });
     }
     // Delivery orders need an address; pickup orders don't.
     if (fulfillment !== 'pickup' && !deliveryAddress?.street) {
@@ -234,6 +235,11 @@ router.post('/', optionalAuth, async (req, res) => {
       }
     }
 
+    // Subscriptions always bill by card (auto-pay). One-time: card when requested + Stripe on, else Venmo.
+    let resolvedPayment = 'venmo';
+    if (orderType === 'subscription') resolvedPayment = 'card';
+    else if (paymentMethod === 'card' && stripeEnabled()) resolvedPayment = 'card';
+
     const order = new Order({
       orderType,
       fulfillment: fulfillment === 'pickup' ? 'pickup' : 'delivery',
@@ -243,8 +249,9 @@ router.post('/', optionalAuth, async (req, res) => {
       subscriptionBundles: orderType === 'subscription' ? subBundles : 0,
       subscriptionMonthly: orderType === 'subscription' ? subscriptionMonthly(subBundles) : 0,
       subscriptionWeek: orderType === 'subscription' ? subWeek : '',
-      commitmentMonths: orderType === 'subscription' ? SUBSCRIPTION_MIN_MONTHS : 0,
-      commitmentEndsAt: orderType === 'subscription' ? addMonths(new Date(), SUBSCRIPTION_MIN_MONTHS) : null,
+      // Cancel anytime (Stripe portal) — no minimum commitment.
+      commitmentMonths: 0,
+      commitmentEndsAt: null,
       agreedToTermsAt: orderType === 'subscription' ? new Date() : null,
       contact,
       deliveryAddress: deliveryAddress || {},
@@ -255,8 +262,7 @@ router.post('/', optionalAuth, async (req, res) => {
       promoCode,
       discount,
       referredBy,
-      // Card is only offered for one-time orders in Phase 1; everything else stays Venmo.
-      paymentMethod: (paymentMethod === 'card' && orderType === 'onetime' && stripeEnabled()) ? 'card' : 'venmo',
+      paymentMethod: resolvedPayment,
       user: req.userId || null,
       status: 'received',
       statusHistory: [{ status: 'received', at: new Date() }],
@@ -264,29 +270,35 @@ router.post('/', optionalAuth, async (req, res) => {
     });
     await order.save();
 
-    // Card path: create a hosted Stripe Checkout Session for the server-authoritative amount and
-    // return its URL so the client can redirect. Falls through to the Venmo response on any issue.
+    // Card path: create a hosted Stripe Checkout Session and return its URL so the client can
+    // redirect. One-time → a one-off charge; subscription → recurring monthly (card on file).
     let stripeCheckoutUrl = '';
     if (order.paymentMethod === 'card') {
       try {
-        const amountCents = computeChargeCents(order);
-        if (amountCents >= 50) {
-          const base = process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
-          const description = (order.items || []).map((i) => `${i.quantity}× ${i.name}`).join(', ');
-          const session = await createOneTimeCheckout(order, amountCents, {
-            successUrl: `${base}/order?status=paid&track=${order.trackingToken}`,
-            cancelUrl: `${base}/order?status=cancelled`,
-            description,
-          });
-          if (session?.url) {
-            order.stripeSessionId = session.id;
-            await order.save();
-            stripeCheckoutUrl = session.url;
+        const base = process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
+        const successUrl = `${base}/order?status=paid&track=${order.trackingToken}`;
+        const cancelUrl = `${base}/order?status=cancelled`;
+        let session = null;
+        if (order.orderType === 'subscription') {
+          const monthlyCents = Math.round((order.subscriptionMonthly || 0) * 100);
+          if (monthlyCents >= 50) {
+            session = await createSubscriptionCheckout(order, monthlyCents, { successUrl, cancelUrl });
           }
+        } else {
+          const amountCents = computeChargeCents(order);
+          if (amountCents >= 50) {
+            const description = (order.items || []).map((i) => `${i.quantity}× ${i.name}`).join(', ');
+            session = await createOneTimeCheckout(order, amountCents, { successUrl, cancelUrl, description });
+          }
+        }
+        if (session?.url) {
+          order.stripeSessionId = session.id;
+          await order.save();
+          stripeCheckoutUrl = session.url;
         }
       } catch (stripeErr) {
         console.error('Stripe checkout error:', stripeErr.message);
-        // Leave the order as-is (unpaid); client falls back to the Venmo screen.
+        // Leave the order as-is (unpaid); client falls back to the standard confirmation screen.
       }
     }
 
@@ -693,6 +705,27 @@ router.delete('/:id', auth, requireAdmin, async (req, res) => {
     return res.json({ message: 'Order deleted' });
   } catch (error) {
     console.error('Delete order error:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Subscriber self-service: open the Stripe Customer Portal to manage/cancel a subscription.
+router.post('/:id/billing-portal', auth, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (String(order.user || '') !== String(req.userId)) {
+      return res.status(403).json({ error: 'Not your order' });
+    }
+    if (!order.stripeCustomerId) {
+      return res.status(400).json({ error: 'No subscription on file for this order' });
+    }
+    const base = process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
+    const session = await createBillingPortalSession(order.stripeCustomerId, `${base}/my-orders`);
+    if (!session?.url) return res.status(503).json({ error: 'Billing portal unavailable' });
+    return res.json({ url: session.url });
+  } catch (error) {
+    console.error('Billing portal error:', error);
     return res.status(500).json({ error: 'Server error' });
   }
 });
