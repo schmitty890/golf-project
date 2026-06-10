@@ -150,6 +150,12 @@ function Order() {
     .map((p) => ({ ...p, count: qty[p.id] }));
   const itemsSub = cart.reduce((s, c) => s + c.price * c.count, 0);
   const subMonthly = subscriptionMonthly(subBundles);
+  // The payment method actually sent for a one-time order (card only when Stripe is on).
+  const chosenPayMethod = (() => {
+    if (cardEnabled && payMethod === 'card') return 'card';
+    if (payMethod === 'cash') return 'cash';
+    return 'venmo';
+  })();
   const deliveryFee = (!isSubscription && fulfillment === 'delivery') ? DELIVERY_FEE : 0;
 
   // --- Date / windows / rush ---
@@ -307,7 +313,7 @@ function Order() {
       orderType: 'onetime',
       items: cart.map((c) => ({ name: c.name, quantity: c.count, unitPrice: c.price })),
       deliveryFee,
-      paymentMethod: cardEnabled && payMethod === 'card' ? 'card' : 'venmo',
+      paymentMethod: chosenPayMethod,
     };
   };
 
@@ -402,6 +408,7 @@ function Order() {
     const venmoUrl = handle
       ? `https://venmo.com/${handle}?txn=pay${amountNum ? `&amount=${amountNum}` : ''}&note=${encodeURIComponent(venmoNote)}`
       : '';
+    const isCash = !isSubscription && payMethod === 'cash';
     const windowsLabel = selectedWindows.map((w) => w.label).join(', ');
     const addressLine = [address.street, address.unit, address.neighborhood].filter(Boolean).join(', ');
     const orderLabel = isSubscription
@@ -445,7 +452,7 @@ function Order() {
               : 'We’ll deliver within your window.'}
           </p>
 
-          {venmoUrl && (
+          {venmoUrl && !isCash && (
             <a
               href={venmoUrl}
               target="_blank"
@@ -457,9 +464,9 @@ function Order() {
             </a>
           )}
           <p className="mt-2 rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-            Please send your Venmo now — the button above is pre-filled with your total. We set out
-            or deliver your order only once payment comes through, so paying right away keeps it on
-            schedule.
+            {isCash
+              ? `Have $${amountNum} in cash ready ${isPickup ? 'at pickup' : 'when we drop it off'} — we’ll collect it then. No need to pay online.`
+              : 'Please send your Venmo now — the button above is pre-filled with your total. We set out or deliver your order only once payment comes through, so paying right away keeps it on schedule.'}
           </p>
         </div>
 
@@ -863,18 +870,20 @@ function Order() {
         )}
 
         {/* Payment method (one-time only; card shown when Stripe is enabled) */}
-        {!isSubscription && cardEnabled && (
+        {!isSubscription && (
           <div>
             <span className={labelClass}>How would you like to pay?</span>
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setPayMethod('card')}
-                className={`rounded-xl border p-4 text-left transition-colors ${payMethod === 'card' ? 'border-ember bg-cream-100 ring-2 ring-ember/30' : 'border-cream-300 bg-white hover:border-ember'}`}
-              >
-                <span className="block text-sm font-bold text-walnut">Pay by card</span>
-                <span className="block text-xs text-walnut-400">Secure checkout now</span>
-              </button>
+            <div className={`mt-2 grid gap-3 ${cardEnabled ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+              {cardEnabled && (
+                <button
+                  type="button"
+                  onClick={() => setPayMethod('card')}
+                  className={`rounded-xl border p-4 text-left transition-colors ${payMethod === 'card' ? 'border-ember bg-cream-100 ring-2 ring-ember/30' : 'border-cream-300 bg-white hover:border-ember'}`}
+                >
+                  <span className="block text-sm font-bold text-walnut">Pay by card</span>
+                  <span className="block text-xs text-walnut-400">Secure checkout now</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setPayMethod('venmo')}
@@ -882,6 +891,14 @@ function Order() {
               >
                 <span className="block text-sm font-bold text-walnut">Pay with Venmo</span>
                 <span className="block text-xs text-walnut-400">After you order</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayMethod('cash')}
+                className={`rounded-xl border p-4 text-left transition-colors ${payMethod === 'cash' ? 'border-ember bg-cream-100 ring-2 ring-ember/30' : 'border-cream-300 bg-white hover:border-ember'}`}
+              >
+                <span className="block text-sm font-bold text-walnut">{`Cash on ${isPickup ? 'pickup' : 'delivery'}`}</span>
+                <span className="block text-xs text-walnut-400">Have it ready when we arrive</span>
               </button>
             </div>
           </div>
