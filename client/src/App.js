@@ -5,6 +5,7 @@ import PublicLayout from './components/layout/PublicLayout';
 import SidebarLayout from './components/layout/SidebarLayout';
 import RequireAuth from './components/RequireAuth';
 import ScrollToTop from './components/ScrollToTop';
+import AnalyticsTracker from './components/AnalyticsTracker';
 import ChatWidget from './components/chatbot/ChatWidget';
 import Home from './pages/Home';
 import Order from './pages/Order';
@@ -26,6 +27,7 @@ function App() {
     <Router>
       <AuthProvider>
         <ScrollToTop />
+        <AnalyticsTracker />
         <Routes>
           {/* Public marketing site */}
           <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
