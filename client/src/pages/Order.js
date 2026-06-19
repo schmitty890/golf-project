@@ -20,6 +20,7 @@ import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
 import neighborhoods from '../data/neighborhoods';
 import { todayStr, formatDayLabel, addDays } from '../utils/dates';
+import { trackEvent } from '../utils/analytics';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -277,6 +278,22 @@ function Order() {
   // to the top when one appears — otherwise the page stays where the form was scrolled.
   useEffect(() => {
     if (submitted || returnStatus) window.scrollTo(0, 0);
+  }, [submitted, returnStatus]);
+
+  // Fire a GA4 conversion when an order completes. Card payments confirm on the Stripe return
+  // (purchase); Venmo orders are placed-but-unpaid at submit time (generate_lead). No-op unless
+  // analytics is on. The cart is gone after the Stripe redirect, so 'purchase' carries no value.
+  useEffect(() => {
+    if (returnStatus === 'paid') {
+      trackEvent('purchase', { transaction_id: trackToken || undefined, currency: 'USD' });
+    } else if (submitted) {
+      trackEvent('generate_lead', {
+        currency: 'USD',
+        value: isSubscription ? subMonthly : finalTotalNum,
+        order_type: mode,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitted, returnStatus]);
 
   // The error banner sits at the top of the form; scroll it into view so a failed
