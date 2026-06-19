@@ -54,7 +54,6 @@ function windowsText(order) {
 }
 
 function fulfillmentText(order) {
-  if (order.fulfillment === 'pickup') return 'Curb pickup';
   const a = order.deliveryAddress || {};
   const addr = [a.street, a.unit, a.neighborhood].filter(Boolean).join(', ');
   return `Delivery${addr ? ` to ${addr}` : ''}`;
@@ -155,10 +154,9 @@ function linesToText(lines) {
   return lines.map(([k, v]) => `${k}: ${v}`).join('\n');
 }
 
-export function customerConfirmationEmail(order, pickupInstructions = '') {
+export function customerConfirmationEmail(order) {
   const lines = summaryLines(order);
   const venmo = paymentLine(order);
-  const pickup = order.fulfillment === 'pickup' && pickupInstructions ? pickupInstructions : '';
   const m = order.commitmentMonths || 0;
   const commitmentText = m > 0
     ? `${m}-month minimum: this subscription runs ${m} months, then continues month-to-month — cancel anytime after.`
@@ -166,8 +164,8 @@ export function customerConfirmationEmail(order, pickupInstructions = '') {
   const subject = `We got your order — ${BUSINESS()}`;
   const intro = "Thanks for your order! Here's what we have. We'll confirm your time window shortly.";
   const commitmentHtml = commitmentText ? `<p style="margin-top:16px;color:#8a7f78;font-size:13px"><strong>${commitmentText}</strong></p>` : '';
-  const html = wrap('Order received', `<p>${intro}</p>${linesToHtml(lines)}${commitmentHtml}${pickup ? `<p style="margin-top:16px">${pickup}</p>` : ''}${venmo ? `<p style="margin-top:16px">${venmo}</p>` : ''}${trackBlockHtml(order)}`);
-  const text = `${intro}\n\n${linesToText(lines)}${commitmentText ? `\n\n${commitmentText}` : ''}${pickup ? `\n\n${pickup}` : ''}${venmo ? `\n\n${venmo}` : ''}${trackBlockText(order)}`;
+  const html = wrap('Order received', `<p>${intro}</p>${linesToHtml(lines)}${commitmentHtml}${venmo ? `<p style="margin-top:16px">${venmo}</p>` : ''}${trackBlockHtml(order)}`);
+  const text = `${intro}\n\n${linesToText(lines)}${commitmentText ? `\n\n${commitmentText}` : ''}${venmo ? `\n\n${venmo}` : ''}${trackBlockText(order)}`;
   return { subject, html, text };
 }
 
@@ -198,28 +196,22 @@ export function orderRescheduledOwnerEmail(order) {
   return { subject, html, text };
 }
 
-export function windowConfirmedEmail(order, pickupInstructions = '') {
+export function windowConfirmedEmail(order) {
   const when = [fmtDate(order.schedule?.date || order.preferredDate), windowsText(order)].filter(Boolean).join(' · ');
   const how = fulfillmentText(order);
-  const isPickup = order.fulfillment === 'pickup';
-  const note = isPickup
-    ? (pickupInstructions || "We'll have your bundles out for that window — grab them anytime within it.")
-    : "We'll deliver within that window.";
+  const note = "We'll deliver within that window.";
   const subject = `You're booked — ${when}`;
-  const body = `<p>Your ${isPickup ? 'pickup' : 'delivery'} is confirmed:</p>
+  const body = `<p>Your delivery is confirmed:</p>
     ${linesToHtml([['When', when], ['How', how], ['Order', describeOrder(order)]])}
     <p style="margin-top:12px">${note}</p>${trackBlockHtml(order)}`;
   const html = wrap('Window confirmed', body);
-  const text = `Your ${isPickup ? 'pickup' : 'delivery'} is confirmed.\n\nWhen: ${when}\nHow: ${how}\nOrder: ${describeOrder(order)}\n\n${note}${trackBlockText(order)}`;
+  const text = `Your delivery is confirmed.\n\nWhen: ${when}\nHow: ${how}\nOrder: ${describeOrder(order)}\n\n${note}${trackBlockText(order)}`;
   return { subject, html, text };
 }
 
-export function readyEmail(order, pickupInstructions = '') {
-  const isPickup = order.fulfillment === 'pickup';
-  const headline = isPickup ? 'Ready for pickup!' : 'Out for delivery!';
-  const note = isPickup
-    ? (pickupInstructions || 'Your bundles are set out — grab them during your window.')
-    : "Your firewood is on the way — we'll deliver within your window.";
+export function readyEmail(order) {
+  const headline = 'Out for delivery!';
+  const note = "Your firewood is on the way — we'll deliver within your window.";
   const body = `<p>${note}</p>
     ${linesToHtml([['Order', describeOrder(order)], ['How', fulfillmentText(order)]])}${trackBlockHtml(order)}`;
   const html = wrap(headline, body);
@@ -227,37 +219,27 @@ export function readyEmail(order, pickupInstructions = '') {
   return { subject: `${BUSINESS()} — ${headline}`, html, text };
 }
 
-export function reminderEmail(order, pickupInstructions = '') {
+export function reminderEmail(order) {
   const when = [fmtDate(order.schedule?.date), windowsText(order)].filter(Boolean).join(' · ');
-  const isPickup = order.fulfillment === 'pickup';
-  const note = isPickup
-    ? (pickupInstructions || "We'll have your bundles out for your window.")
-    : "We'll deliver within your window.";
+  const note = "We'll deliver within your window.";
   const venmo = paymentLine(order);
   const subject = `Reminder: your firewood is set for tomorrow — ${when}`;
-  const body = `<p>Quick reminder — your ${isPickup ? 'pickup' : 'delivery'} is tomorrow:</p>
+  const body = `<p>Quick reminder — your delivery is tomorrow:</p>
     ${linesToHtml([['When', when], ['How', fulfillmentText(order)], ['Order', describeOrder(order)]])}
     <p style="margin-top:12px">${note}</p>
     ${venmo ? `<p style="margin-top:12px">${venmo}</p>` : ''}`;
   const html = wrap('See you tomorrow!', body);
-  const text = `Reminder — your ${isPickup ? 'pickup' : 'delivery'} is tomorrow.\n\nWhen: ${when}\nOrder: ${describeOrder(order)}\n\n${note}${venmo ? `\n\n${venmo}` : ''}`;
+  const text = `Reminder — your delivery is tomorrow.\n\nWhen: ${when}\nOrder: ${describeOrder(order)}\n\n${note}${venmo ? `\n\n${venmo}` : ''}`;
   return { subject, html, text };
 }
 
-export function paymentReceivedEmail(order, pickupAddress = '') {
+export function paymentReceivedEmail(order) {
   const t = orderTotal(order);
   const amount = t ? `$${t.total}` : 'your order';
   const subject = `Payment received — ${BUSINESS()}`;
   const intro = `Thanks! We've marked ${describeOrder(order)} as paid (${amount}).`;
-  // Now that they've paid, pickup customers get the address.
-  const pickup = order.fulfillment === 'pickup' && pickupAddress
-    ? `<p style="margin-top:16px"><strong>Where to pick up:</strong> ${pickupAddress}</p>`
-    : '';
-  const pickupText = order.fulfillment === 'pickup' && pickupAddress
-    ? `\n\nWhere to pick up: ${pickupAddress}`
-    : '';
-  const html = wrap('Payment received', `<p>${intro}</p>${linesToHtml(summaryLines(order))}${pickup}`);
-  const text = `${intro}\n\n${linesToText(summaryLines(order))}${pickupText}`;
+  const html = wrap('Payment received', `<p>${intro}</p>${linesToHtml(summaryLines(order))}`);
+  const text = `${intro}\n\n${linesToText(summaryLines(order))}`;
   return { subject, html, text };
 }
 
@@ -305,7 +287,7 @@ export function deliveredEmail(order) {
   const site = process.env.SITE_URL;
   const fb = site ? `<p><a href="${site}" style="color:#b5471f">Leave a quick review</a> — it helps your neighbors.</p>` : '';
   const subject = `Thanks from ${BUSINESS()}!`;
-  const html = wrap('All done — thank you!', `<p>Your firewood is ${order.fulfillment === 'pickup' ? 'picked up' : 'delivered'}. Thanks for supporting a local neighbor!</p>${fb}`);
-  const text = `Your firewood is ${order.fulfillment === 'pickup' ? 'picked up' : 'delivered'}. Thanks!${site ? `\n\nLeave a review: ${site}` : ''}`;
+  const html = wrap('All done — thank you!', `<p>Your firewood is delivered. Thanks for supporting a local neighbor!</p>${fb}`);
+  const text = `Your firewood is delivered. Thanks!${site ? `\n\nLeave a review: ${site}` : ''}`;
   return { subject, html, text };
 }

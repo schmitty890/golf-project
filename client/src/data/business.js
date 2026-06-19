@@ -14,7 +14,7 @@ const business = {
   // Settings.firstOrderDiscount (the real discount, applied server-side to a signed-in customer's
   // first order). Set launchOffer to null to hide the bar.
   launchOffer: {
-    text: 'New neighbors: $15 off your first order — 3 bundles delivered for just $30.',
+    text: 'New neighbors: $15 off your first order — 3 bundles delivered for just $25.',
     cta: 'Order now',
     href: '/order',
   },

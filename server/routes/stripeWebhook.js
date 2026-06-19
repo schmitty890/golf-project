@@ -2,7 +2,6 @@
 // signature verification needs the raw request body. Marks an order paid on checkout completion.
 import Stripe from 'stripe';
 import Order from '../models/Order.js';
-import Settings, { DEFAULT_PICKUP_ADDRESS } from '../models/Settings.js';
 import { sendMail } from '../utils/mailer.js';
 import { paymentReceivedEmail } from '../utils/orderEmails.js';
 
@@ -37,9 +36,7 @@ export default async function stripeWebhook(req, res) {
         }
         await order.save();
         if (order.contact?.email) {
-          const settings = await Settings.findOne({ key: 'availability' });
-          const pickupAddress = settings?.pickupAddress || DEFAULT_PICKUP_ADDRESS;
-          sendMail({ to: order.contact.email, ...paymentReceivedEmail(order, pickupAddress) });
+          sendMail({ to: order.contact.email, ...paymentReceivedEmail(order) });
         }
       }
     } else if (event.type === 'invoice.payment_succeeded') {

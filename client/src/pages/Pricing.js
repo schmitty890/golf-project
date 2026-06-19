@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
-  products, DELIVERY_FEE,
+  products,
   subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
 } from '../data/pricing';
 import business from '../data/business';
@@ -16,10 +16,7 @@ function Pricing() {
             Hand-split, ready-to-burn hardwood for
             {' '}
             {business.serviceArea}
-            . Pickup is free; delivery is a flat $
-            {DELIVERY_FEE}
-            {' '}
-            per order.
+            . Free delivery, right to your door.
           </p>
         </div>
       </section>
@@ -39,7 +36,10 @@ function Pricing() {
           ))}
         </div>
         <p className="mt-6 text-center text-sm text-walnut-300">
-          {`Delivery to your driveway: flat $${DELIVERY_FEE} per order. Pickup is free.`}
+          Free delivery to your driveway, here in
+          {' '}
+          {business.serviceArea}
+          .
         </p>
       </section>
 

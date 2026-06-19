@@ -217,16 +217,10 @@ function AdminOrders() {
                   </p>
                 )}
                 <p className="text-sm text-walnut-400">
-                  {order.fulfillment === 'pickup' ? (
-                    `Pickup${order.deliveryAddress?.neighborhood ? ` · ${order.deliveryAddress.neighborhood}` : ''} — coordinate spot & time`
-                  ) : (
-                    <>
-                      {order.deliveryAddress?.street}
-                      {order.deliveryAddress?.unit ? `, ${order.deliveryAddress.unit}` : ''}
-                      {order.deliveryAddress?.neighborhood ? ` · ${order.deliveryAddress.neighborhood}` : ''}
-                      {order.deliveryAddress?.notes ? ` — ${order.deliveryAddress.notes}` : ''}
-                    </>
-                  )}
+                  {order.deliveryAddress?.street}
+                  {order.deliveryAddress?.unit ? `, ${order.deliveryAddress.unit}` : ''}
+                  {order.deliveryAddress?.neighborhood ? ` · ${order.deliveryAddress.neighborhood}` : ''}
+                  {order.deliveryAddress?.notes ? ` — ${order.deliveryAddress.notes}` : ''}
                 </p>
                 {formatPreferredSchedule(order) && (
                   <p className="text-sm font-semibold text-walnut">

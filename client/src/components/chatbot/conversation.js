@@ -20,7 +20,7 @@
 // stays in sync with the rest of the site.
 
 import {
-  products, DELIVERY_FEE, subscriptionMonthly, SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
+  products, subscriptionMonthly, SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
 } from '../../data/pricing';
 import faqs from '../../data/faqs';
 import business from '../../data/business';
@@ -39,7 +39,6 @@ export function buildOrderNavState(draft) {
       orderType: draft.orderType,
       subscriptionBundles: draft.subscriptionBundles,
       subscriptionWeek: draft.subscriptionWeek,
-      fulfillment: draft.fulfillment,
       items: (draft.items || []).map((it) => ({ name: it.name, quantity: it.quantity })),
     },
     prefill: {
@@ -75,30 +74,12 @@ export const nodes = {
       {
         label: 'One-time order',
         set: () => ({ orderType: 'onetime' }),
-        next: 'fulfillment',
+        next: 'product_pick',
       },
       {
         label: 'Monthly subscription',
-        set: () => ({ orderType: 'subscription', fulfillment: 'delivery' }),
+        set: () => ({ orderType: 'subscription' }),
         next: 'sub_plan',
-      },
-    ],
-  },
-
-  fulfillment: {
-    id: 'fulfillment',
-    kind: 'choices',
-    message: 'Pickup or delivery?',
-    options: [
-      {
-        label: 'Pickup (free)',
-        set: () => ({ fulfillment: 'pickup' }),
-        next: 'product_pick',
-      },
-      {
-        label: `Delivery (+$${DELIVERY_FEE})`,
-        set: () => ({ fulfillment: 'delivery' }),
-        next: 'product_pick',
       },
     ],
   },
@@ -273,8 +254,7 @@ export const nodes = {
           : '• Subscription (choose size on the order page)');
         if (d.subscriptionWeek) lines.push(`• Delivery week: ${subscriptionWeekLabel(d.subscriptionWeek)}`);
       } else {
-        const how = d.fulfillment === 'delivery' ? `Delivery (+$${DELIVERY_FEE})` : 'Pickup';
-        lines.push(`• One-time — ${how}`);
+        lines.push('• One-time order — free delivery');
         (d.items || []).forEach((it) => lines.push(`• ${it.quantity}× ${it.name}`));
       }
       if (d.preferredDate) lines.push(`• Preferred day: ${relativeDayLabel(d.preferredDate)}`);

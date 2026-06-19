@@ -15,8 +15,9 @@ export function describeOrder(order) {
   return 'Order';
 }
 
-export function fulfillmentLabel(order) {
-  return order.fulfillment === 'pickup' ? 'Pickup' : 'Delivery';
+// Every order is delivered (the site is delivery-only).
+export function fulfillmentLabel() {
+  return 'Delivery';
 }
 
 const DAY_LABELS = {
@@ -124,22 +125,21 @@ export function normalizeStatus(status) {
   return status || 'received';
 }
 
-// Human label for a status, fulfillment-aware for the ready/completed stages.
-export function statusLabel(status, fulfillment) {
+// Human label for a status (delivery-only site).
+export function statusLabel(status) {
   const s = normalizeStatus(status);
-  const isPickup = fulfillment === 'pickup';
   switch (s) {
     case 'received': return 'Order received';
     case 'confirmed': return 'Confirmed';
-    case 'ready': return isPickup ? 'Ready for pickup' : 'Out for delivery';
-    case 'completed': return isPickup ? 'Picked up' : 'Delivered';
+    case 'ready': return 'Out for delivery';
+    case 'completed': return 'Delivered';
     case 'cancelled': return 'Cancelled';
     default: return s.charAt(0).toUpperCase() + s.slice(1);
   }
 }
 
-export function statusEventLabel(status, fulfillment) {
-  return statusLabel(status, fulfillment);
+export function statusEventLabel(status) {
+  return statusLabel(status);
 }
 
 // Timestamped status history; falls back to a single synthesized entry for older orders.

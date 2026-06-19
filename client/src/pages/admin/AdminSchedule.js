@@ -118,7 +118,6 @@ function AdminSchedule() {
   });
 
   const renderCard = (order) => {
-    const isPickup = order.fulfillment === 'pickup';
     const confirmed = isConfirmedWindow(order);
     return (
       <li key={order._id} className="rounded-lg border border-cream-300 bg-white p-4 shadow-sm">
@@ -133,16 +132,13 @@ function AdminSchedule() {
             )}
 
             <p className="mt-1 text-sm text-walnut">
-              <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-semibold ${isPickup ? 'bg-cream-300 text-walnut' : 'bg-blue-100 text-blue-800'}`}>
-                {isPickup ? 'Curb pickup' : 'Deliver'}
-              </span>
               {describeOrder(order)}
               {order.rush && (
                 <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">RUSH</span>
               )}
             </p>
 
-            {!isPickup && order.deliveryAddress?.street && (
+            {order.deliveryAddress?.street && (
               <p className="mt-1 flex items-center gap-1 text-sm text-walnut-400">
                 <MapPinIcon className="h-4 w-4 shrink-0" />
                 {order.deliveryAddress.street}
@@ -194,8 +190,8 @@ function AdminSchedule() {
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-bold text-walnut">Schedule</h1>
       <p className="mt-1 text-sm text-walnut-400">
-        Your delivery day, by date — deliveries grouped in route order, pickups separate.
-        Confirm a window with one tap; mark done once it&apos;s picked up or delivered.
+        Your delivery day, by date — stops in route order.
+        Confirm a window with one tap; mark done once it&apos;s delivered.
       </p>
 
       {loading && <p className="mt-8 text-walnut-400">Loading…</p>}
@@ -206,13 +202,11 @@ function AdminSchedule() {
       )}
 
       {groups.map((group) => {
-        const deliveries = group.items.filter((o) => o.fulfillment !== 'pickup').sort(byRoute);
-        const pickups = group.items.filter((o) => o.fulfillment === 'pickup');
+        const deliveries = group.items.slice().sort(byRoute);
         const streets = new Set(deliveries.map((o) => o.deliveryAddress?.street || '').filter(Boolean)).size;
         const summary = [
           deliveries.length ? `${deliveries.length} deliver${deliveries.length === 1 ? 'y' : 'ies'}` : '',
           deliveries.length && streets ? `${streets} street${streets === 1 ? '' : 's'}` : '',
-          pickups.length ? `${pickups.length} pickup${pickups.length === 1 ? '' : 's'}` : '',
         ].filter(Boolean).join(' · ');
 
         return (
@@ -237,13 +231,6 @@ function AdminSchedule() {
               <>
                 <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-walnut-300">Deliveries (route order)</p>
                 <ul className="mt-2 space-y-3">{deliveries.map(renderCard)}</ul>
-              </>
-            )}
-
-            {pickups.length > 0 && (
-              <>
-                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-walnut-300">Pickups</p>
-                <ul className="mt-2 space-y-3">{pickups.map(renderCard)}</ul>
               </>
             )}
           </section>
