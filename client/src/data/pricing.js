@@ -28,6 +28,14 @@ export const products = [
 
 export const getProduct = (id) => products.find((p) => p.id === id);
 
+// Minimum bundles in a cart for the first-order discount to apply — stops a single $15 bundle
+// from being fully covered by a $15 deal. Mirrored server-side in server/data/catalog.js.
+export const FIRST_ORDER_MIN_BUNDLES = 3;
+
+// Total bundles in a cart of { bundles?, count } items (a Standard Bundle counts as 1).
+export const cartBundleCount = (items) => (items || [])
+  .reduce((n, i) => n + (i.bundles || 1) * (i.count || 0), 0);
+
 // Recurring monthly subscriptions (always delivered): any size 2–10 bundles/month at a flat
 // per-bundle price. The savings story is vs one-time singles ($15 each).
 // NOTE: mirrored server-side in server/data/catalog.js (authority for stored price/emails) —

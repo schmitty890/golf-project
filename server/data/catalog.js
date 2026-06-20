@@ -12,6 +12,25 @@ export const PRODUCT_PRICES = {
   '3-Bundle Pack': 40,
 };
 
+// How many bundles each product represents (for the first-order minimum). KEEP IN SYNC with the
+// `bundles` field in client/src/data/pricing.js.
+export const PRODUCT_BUNDLES = {
+  'Standard Bundle': 1,
+  '3-Bundle Pack': 3,
+};
+
+// Minimum bundles for the first-order discount to apply. KEEP IN SYNC with
+// FIRST_ORDER_MIN_BUNDLES in client/src/data/pricing.js.
+export const FIRST_ORDER_MIN_BUNDLES = 3;
+
+// Total bundles in an order's items[] ({ name, quantity }); unknown names count as 1 bundle.
+export function orderBundleCount(items) {
+  return (items || []).reduce(
+    (n, i) => n + (PRODUCT_BUNDLES[i.name] || 1) * (Number(i.quantity) || 0),
+    0,
+  );
+}
+
 // Subscriptions: any size from SUB_MIN_BUNDLES..SUB_MAX_BUNDLES bundles/month at a flat
 // per-bundle price (the savings story is vs one-time singles at $15). KEEP IN SYNC with the
 // matching block in client/src/data/pricing.js.
