@@ -95,7 +95,7 @@ function About() {
 
 const steps = [
   { name: 'Place your order', description: 'Choose your bundles or a subscription — at least a day ahead (or request a rush order for sooner).', icon: ShoppingCartIcon },
-  { name: 'Free delivery', description: 'Pick a date and a 1-hour window — we deliver your bundles right to your door, free.', icon: TruckIcon },
+  { name: 'Free delivery', description: 'Pick a date and the times you’d prefer — we deliver your bundles right to your door, free.', icon: TruckIcon },
   { name: 'You enjoy', description: 'Light it up and enjoy a cozy fire — no hassle.', icon: FireIcon },
 ];
 

@@ -6,7 +6,7 @@ const faqs = [
   },
   {
     q: 'Do you deliver?',
-    a: 'Yes — every order is delivered right to your door, free, here in The Vineyards. Just pick a day and a 1-hour window at checkout.',
+    a: 'Yes — every order is delivered right to your door, free, here in The Vineyards. At checkout, pick a day and select the hours you’d prefer — we’ll do our best to deliver within that time.',
   },
   {
     q: 'How do I pay?',

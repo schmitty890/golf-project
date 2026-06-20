@@ -434,7 +434,7 @@ function Order() {
         <div className="text-center">
           <CheckCircleIcon className="mx-auto h-16 w-16 text-ember" aria-hidden="true" />
           <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-walnut">Order received!</h1>
-          <p className="mt-2 text-walnut-400">Thanks! Here are your details — we&apos;ll confirm your time window shortly.</p>
+          <p className="mt-2 text-walnut-400">Thanks! Here are your details — we&apos;ll confirm timing with you shortly.</p>
         </div>
 
         <div className="mt-8 rounded-2xl border border-cream-300 bg-cream-100 p-6 text-left">
@@ -448,7 +448,7 @@ function Order() {
           </dl>
 
           <p className="mt-4 rounded-lg bg-white p-3 text-sm text-walnut">
-            We’ll deliver within your window.
+            We’ll do our best to deliver within your preferred time.
           </p>
 
           {venmoUrl && (
@@ -721,7 +721,7 @@ function Order() {
         {/* Time windows (one-time only) */}
         {!isSubscription && (
           <div>
-            <span className={labelClass}>Delivery windows</span>
+            <span className={labelClass}>Preferred delivery times</span>
             <div className="mt-2 flex flex-wrap gap-2">
               {TIME_WINDOWS.map((w) => {
                 const active = windowFroms.includes(w.from);

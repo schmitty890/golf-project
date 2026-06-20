@@ -199,7 +199,7 @@ export function orderRescheduledOwnerEmail(order) {
 export function windowConfirmedEmail(order) {
   const when = [fmtDate(order.schedule?.date || order.preferredDate), windowsText(order)].filter(Boolean).join(' · ');
   const how = fulfillmentText(order);
-  const note = "We'll deliver within that window.";
+  const note = "We'll do our best to deliver within that window.";
   const subject = `You're booked — ${when}`;
   const body = `<p>Your delivery is confirmed:</p>
     ${linesToHtml([['When', when], ['How', how], ['Order', describeOrder(order)]])}
@@ -211,7 +211,7 @@ export function windowConfirmedEmail(order) {
 
 export function readyEmail(order) {
   const headline = 'Out for delivery!';
-  const note = "Your firewood is on the way — we'll deliver within your window.";
+  const note = "Your firewood is on the way — we'll get it to you as close to your preferred time as we can.";
   const body = `<p>${note}</p>
     ${linesToHtml([['Order', describeOrder(order)], ['How', fulfillmentText(order)]])}${trackBlockHtml(order)}`;
   const html = wrap(headline, body);
@@ -221,7 +221,7 @@ export function readyEmail(order) {
 
 export function reminderEmail(order) {
   const when = [fmtDate(order.schedule?.date), windowsText(order)].filter(Boolean).join(' · ');
-  const note = "We'll deliver within your window.";
+  const note = "We'll do our best to deliver within your preferred time.";
   const venmo = paymentLine(order);
   const subject = `Reminder: your firewood is set for tomorrow — ${when}`;
   const body = `<p>Quick reminder — your delivery is tomorrow:</p>
