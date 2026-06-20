@@ -13,6 +13,7 @@ import {
   subscriptionMonthly, clampBundles, bundlesFromPlan,
   SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
   SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
+  FIRST_ORDER_MIN_BUNDLES, cartBundleCount,
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
@@ -145,6 +146,7 @@ function Order() {
     .filter((p) => (qty[p.id] || 0) > 0)
     .map((p) => ({ ...p, count: qty[p.id] }));
   const itemsSub = cart.reduce((s, c) => s + c.price * c.count, 0);
+  const cartBundles = cartBundleCount(cart);
   const subMonthly = subscriptionMonthly(subBundles);
 
   // --- Date / windows / rush ---
@@ -198,8 +200,11 @@ function Order() {
   const subtotalNum = itemsSub + rushSurcharge; // pre-discount (delivery is free)
   // A promo/referral code wins; otherwise a signed-in first-timer gets the first-order deal.
   const codeDiscount = (!isSubscription && discountInfo?.discount) || 0;
+  // First-order deal only applies to a qualifying first order (min bundles) so a single $15
+  // bundle can't be fully covered by the $15 deal. Mirrored server-side in routes/orders.js.
+  const foQualifies = cartBundles >= FIRST_ORDER_MIN_BUNDLES;
   const foEnabled = !isSubscription && !appliedCode && Boolean(token)
-    && firstOrderEligible && firstOrderCfg?.enabled;
+    && firstOrderEligible && firstOrderCfg?.enabled && foQualifies;
   const foRaw = firstOrderCfg && firstOrderCfg.type === 'percent'
     ? Math.round(subtotalNum * ((firstOrderCfg.value || 0) / 100))
     : (firstOrderCfg?.value || 0);
@@ -860,10 +865,23 @@ function Order() {
             <span className="font-semibold text-ember">New here?</span>
             {' '}
             {firstOrderCfg.type === 'percent'
-              ? `Sign in to claim ${firstOrderCfg.value}% off your first order.`
-              : `Sign in to claim $${firstOrderCfg.value} off your first order.`}
+              ? `Sign in to claim ${firstOrderCfg.value}% off your first order of ${FIRST_ORDER_MIN_BUNDLES}+ bundles.`
+              : `Sign in to claim $${firstOrderCfg.value} off your first order of ${FIRST_ORDER_MIN_BUNDLES}+ bundles.`}
             {' '}
             <Link to="/register" className="font-semibold text-ember underline">Create an account →</Link>
+          </div>
+        )}
+
+        {/* First-order deal: signed-in & eligible, but the cart isn't big enough yet */}
+        {!isSubscription && token && firstOrderEligible && firstOrderCfg?.enabled
+          && !appliedCode && cart.length > 0 && !foQualifies && (
+          <div className="rounded-xl border border-ember/30 bg-ember/5 p-4 text-sm text-walnut">
+            <span className="font-semibold text-ember">Almost there!</span>
+            {' '}
+            {`Add ${FIRST_ORDER_MIN_BUNDLES - cartBundles} more bundle${FIRST_ORDER_MIN_BUNDLES - cartBundles === 1 ? '' : 's'} `}
+            {firstOrderCfg.type === 'percent'
+              ? `to get ${firstOrderCfg.value}% off your first order.`
+              : `to get $${firstOrderCfg.value} off your first order.`}
           </div>
         )}
 

@@ -22,7 +22,7 @@ import {
 } from '../utils/stripe.js';
 import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
-  SUBSCRIPTION_WEEK_VALUES,
+  SUBSCRIPTION_WEEK_VALUES, orderBundleCount, FIRST_ORDER_MIN_BUNDLES,
 } from '../data/catalog.js';
 
 const router = express.Router();
@@ -227,10 +227,12 @@ router.post('/', optionalAuth, async (req, res) => {
     }
 
     // First-order deal: auto-apply for a signed-in customer's first one-time order, when no code was
-    // used. Server-authoritative (re-checks order history), so a stale client can't claim it twice.
+    // used. Server-authoritative (re-checks order history + the bundle minimum), so a stale client
+    // can't claim it twice or on a too-small order (e.g. one $15 bundle covered by a $15 deal).
     if (!promoCode && !discount && orderType === 'onetime' && req.userId) {
       const fc = firstOrderConfig(settings);
-      if (fc.enabled && !(await Order.exists({ user: req.userId }))) {
+      const enoughBundles = orderBundleCount(cart) >= FIRST_ORDER_MIN_BUNDLES;
+      if (fc.enabled && enoughBundles && !(await Order.exists({ user: req.userId }))) {
         discount = discountAmount(fc.type, fc.value, subtotal);
         if (discount > 0) promoCode = 'FIRST-ORDER';
       }
