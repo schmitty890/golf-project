@@ -3,8 +3,8 @@
 // NOTE: product prices + DELIVERY_FEE are mirrored server-side in server/data/catalog.js (the
 // authority for real Stripe charges). Keep the two in sync when prices change.
 
-// Flat delivery fee per order (pickup is free).
-export const DELIVERY_FEE = 5;
+// Delivery is free for everyone. Kept as a constant (0) so any fee math stays explicit.
+export const DELIVERY_FEE = 0;
 
 // Minimum subscription commitment (months) before it goes month-to-month.
 export const SUBSCRIPTION_MIN_MONTHS = 3;
@@ -63,8 +63,8 @@ export const subscriptionWeekLabel = (v) => {
   return w.value === 'any' ? 'Any week' : `${w.label} (${w.range})`;
 };
 
-// Preset 1-hour pickup/delivery windows. Customers pick one or more; we set the wood out for
-// that window. Stored on the order as from/to 'HH:MM' (`from` doubles as the unique id).
+// Preset 1-hour delivery windows. Customers pick one or more; we deliver within that window.
+// Stored on the order as from/to 'HH:MM' (`from` doubles as the unique id).
 export const TIME_WINDOWS = [
   { label: '10–11 AM', from: '10:00', to: '11:00' },
   { label: '11 AM–12 PM', from: '11:00', to: '12:00' },

@@ -2,7 +2,8 @@
 // KEEP IN SYNC with client/src/data/pricing.js (products + DELIVERY_FEE). The client copy is for
 // display; this copy is the source of truth for money, so a tampered client can't change the price.
 
-export const DELIVERY_FEE = 5;
+// Delivery is free. Kept as a constant (used in charge math) so totals stay explicit.
+export const DELIVERY_FEE = 0;
 
 // Authoritative à-la-carte product prices (dollars each), keyed by the exact product name the
 // client sends in order.items[].name.

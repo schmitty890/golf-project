@@ -5,13 +5,11 @@ import {
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import {
-  TruckIcon, BuildingStorefrontIcon, PlusIcon, MinusIcon,
-} from '@heroicons/react/24/outline';
+import { PlusIcon, MinusIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import business from '../data/business';
 import {
-  products, DELIVERY_FEE, TIME_WINDOWS,
+  products, TIME_WINDOWS,
   subscriptionMonthly, clampBundles, bundlesFromPlan,
   SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
   SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
@@ -36,7 +34,7 @@ function Order() {
   const prefill = location.state?.prefill || null;
   const [searchParams] = useSearchParams();
 
-  // Reorder prefill: map past item names back to product ids; pick mode + fulfillment.
+  // Reorder prefill: map past item names back to product ids and pick the mode.
   const initialQty = (() => {
     const q = {};
     (reorder?.items || []).forEach((it) => {
@@ -53,7 +51,6 @@ function Order() {
     if (reorder?.subscriptionPlan) return clampBundles(bundlesFromPlan(reorder.subscriptionPlan));
     return SUB_MIN_BUNDLES;
   });
-  const [fulfillment, setFulfillment] = useState(reorder?.fulfillment === 'delivery' ? 'delivery' : 'pickup');
   const [agreedSub, setAgreedSub] = useState(false);
   // Subscription preferred week of the month ('1'..'4' or 'any'); default to the flexible option.
   const [subWeek, setSubWeek] = useState(reorder?.subscriptionWeek || 'any');
@@ -69,7 +66,6 @@ function Order() {
   const [rushEnabled, setRushEnabled] = useState(true);
   const [rushPercent, setRushPercent] = useState(25);
   const [rushRequested, setRushRequested] = useState(false);
-  const [pickupInstructions, setPickupInstructions] = useState('');
   const [venmoHandle, setVenmoHandle] = useState('');
   const [cardEnabled, setCardEnabled] = useState(false);
   const [payMethod, setPayMethod] = useState('venmo'); // 'card' | 'venmo'
@@ -100,9 +96,6 @@ function Order() {
   const errorRef = useRef(null);
 
   const isSubscription = mode === 'subscription';
-  // Subscriptions are always delivered; one-time orders choose pickup vs delivery.
-  const isPickup = !isSubscription && fulfillment === 'pickup';
-  const needsAddress = !isPickup;
 
   // Prefill contact info for logged-in users.
   useEffect(() => {
@@ -123,9 +116,6 @@ function Order() {
         if (res.data.leadDays !== undefined) setLeadDays(res.data.leadDays);
         if (res.data.rushEnabled !== undefined) setRushEnabled(res.data.rushEnabled);
         if (res.data.rushPercent !== undefined) setRushPercent(res.data.rushPercent);
-        if (res.data.pickupInstructions !== undefined) {
-          setPickupInstructions(res.data.pickupInstructions);
-        }
         if (res.data.venmoHandle !== undefined) setVenmoHandle(res.data.venmoHandle);
         if (res.data.firstOrderDiscount) setFirstOrderCfg(res.data.firstOrderDiscount);
         if (res.data.cardEnabled) {
@@ -156,7 +146,6 @@ function Order() {
     .map((p) => ({ ...p, count: qty[p.id] }));
   const itemsSub = cart.reduce((s, c) => s + c.price * c.count, 0);
   const subMonthly = subscriptionMonthly(subBundles);
-  const deliveryFee = (!isSubscription && fulfillment === 'delivery') ? DELIVERY_FEE : 0;
 
   // --- Date / windows / rush ---
   const today = todayStr();
@@ -206,7 +195,7 @@ function Order() {
 
   // --- Totals (one-time orders; subscriptions show the recurring tier price) ---
   const rushSurcharge = isRush ? Math.round(itemsSub * (rushPercent / 100)) : 0;
-  const subtotalNum = itemsSub + rushSurcharge + deliveryFee; // pre-discount
+  const subtotalNum = itemsSub + rushSurcharge; // pre-discount (delivery is free)
   // A promo/referral code wins; otherwise a signed-in first-timer gets the first-order deal.
   const codeDiscount = (!isSubscription && discountInfo?.discount) || 0;
   const foEnabled = !isSubscription && !appliedCode && Boolean(token)
@@ -304,9 +293,8 @@ function Order() {
 
   const buildPayload = () => {
     const base = {
-      fulfillment: isPickup ? 'pickup' : 'delivery',
       contact,
-      deliveryAddress: needsAddress ? address : { neighborhood: address.neighborhood },
+      deliveryAddress: address,
       preferredDate,
       preferredTimes: selectedWindows.map((w) => ({ from: w.from, to: w.to })),
       rush: isRush,
@@ -329,7 +317,6 @@ function Order() {
       ...base,
       orderType: 'onetime',
       items: cart.map((c) => ({ name: c.name, quantity: c.count, unitPrice: c.price })),
-      deliveryFee,
       paymentMethod: cardEnabled && payMethod === 'card' ? 'card' : 'venmo',
     };
   };
@@ -352,10 +339,10 @@ function Order() {
       return;
     }
     if (!isSubscription && windowFroms.length === 0) {
-      setError('Please choose at least one pickup/delivery time window.');
+      setError('Please choose at least one delivery time window.');
       return;
     }
-    if (needsAddress && !address.street.trim()) {
+    if (!address.street.trim()) {
       setError('Please enter a delivery address.');
       return;
     }
@@ -435,11 +422,9 @@ function Order() {
       ['When', isSubscription
         ? `${subscriptionWeekLabel(subWeek)} each month`
         : `${formatDayLabel(preferredDate)}${windowsLabel ? ` · ${windowsLabel}` : ''}`],
-      ['How', isPickup ? 'Curb pickup' : 'Delivery'],
-      ...(needsAddress ? [['Address', addressLine]] : []),
-      ...(isPickup && address.neighborhood ? [['Neighborhood', address.neighborhood]] : []),
+      ['How', 'Delivery'],
+      ['Address', addressLine],
       ...(isRush ? [['Rush', `Yes (+${rushPercent}%)`]] : []),
-      ...(deliveryFee ? [['Delivery', `$${deliveryFee}`]] : []),
       ...(discount > 0 ? [[discountRowLabel, `−$${discount}`]] : []),
       [isSubscription ? 'Price' : 'Estimated total', isSubscription ? `$${subMonthly}/mo` : `$${finalTotalNum}`],
     ].filter(([, v]) => v);
@@ -463,9 +448,7 @@ function Order() {
           </dl>
 
           <p className="mt-4 rounded-lg bg-white p-3 text-sm text-walnut">
-            {isPickup
-              ? (pickupInstructions || 'We’ll set your bundles out for your window.')
-              : 'We’ll deliver within your window.'}
+            We’ll deliver within your window.
           </p>
 
           {venmoUrl && (
@@ -480,9 +463,8 @@ function Order() {
             </a>
           )}
           <p className="mt-2 rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-            Please send your Venmo now — the button above is pre-filled with your total. We set out
-            or deliver your order only once payment comes through, so paying right away keeps it on
-            schedule.
+            Please send your Venmo now — the button above is pre-filled with your total. We deliver
+            your order only once payment comes through, so paying right away keeps it on schedule.
           </p>
         </div>
 
@@ -578,84 +560,50 @@ function Order() {
 
         {/* One-time: product cart */}
         {!isSubscription && (
-          <>
-            <div>
-              <span className={labelClass}>Add items</span>
-              <div className="mt-2 space-y-3">
-                {products.map((p) => {
-                  const count = qty[p.id] || 0;
-                  return (
-                    <div
-                      key={p.id}
-                      className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors ${
-                        count > 0 ? 'border-ember bg-cream-100' : 'border-cream-300 bg-white'
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-walnut">
-                          {p.name}
-                          <span className="ml-2 font-extrabold text-ember">{`$${p.price}`}</span>
-                        </p>
-                        <p className="text-xs text-walnut-400">{p.description}</p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <button
-                          type="button"
-                          aria-label={`Remove one ${p.name}`}
-                          onClick={() => setProductQty(p.id, count - 1)}
-                          disabled={count === 0}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-cream-300 text-walnut hover:border-ember disabled:opacity-40"
-                        >
-                          <MinusIcon className="h-4 w-4" />
-                        </button>
-                        <span className="w-6 text-center text-sm font-bold text-walnut">{count}</span>
-                        <button
-                          type="button"
-                          aria-label={`Add one ${p.name}`}
-                          onClick={() => setProductQty(p.id, count + 1)}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-cream-300 text-walnut hover:border-ember"
-                        >
-                          <PlusIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Pickup or delivery */}
-            <div>
-              <span className={labelClass}>Pickup or delivery?</span>
-              <div className="mt-2 grid grid-cols-2 gap-3">
-                {[
-                  {
-                    id: 'pickup', label: 'Pickup', note: 'Free', Icon: BuildingStorefrontIcon,
-                  },
-                  {
-                    id: 'delivery', label: 'Delivery', note: `+ $${DELIVERY_FEE}`, Icon: TruckIcon,
-                  },
-                ].map(({
-                  id, label, note, Icon,
-                }) => (
-                  <button
-                    type="button"
-                    key={id}
-                    onClick={() => setFulfillment(id)}
-                    className={`flex flex-col items-start gap-1 rounded-xl border p-4 text-left transition-colors ${
-                      fulfillment === id
-                        ? 'border-ember bg-cream-100 ring-2 ring-ember/30'
-                        : 'border-cream-300 bg-white hover:border-ember'
+          <div>
+            <span className={labelClass}>Add items</span>
+            <div className="mt-2 space-y-3">
+              {products.map((p) => {
+                const count = qty[p.id] || 0;
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors ${
+                      count > 0 ? 'border-ember bg-cream-100' : 'border-cream-300 bg-white'
                     }`}
                   >
-                    <Icon className="h-6 w-6 text-ember" aria-hidden="true" />
-                    <span className="text-sm font-bold text-walnut">{label}</span>
-                    <span className="text-xs font-semibold text-walnut-300">{note}</span>
-                  </button>
-                ))}
-              </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-walnut">
+                        {p.name}
+                        <span className="ml-2 font-extrabold text-ember">{`$${p.price}`}</span>
+                      </p>
+                      <p className="text-xs text-walnut-400">{p.description}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        aria-label={`Remove one ${p.name}`}
+                        onClick={() => setProductQty(p.id, count - 1)}
+                        disabled={count === 0}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-cream-300 text-walnut hover:border-ember disabled:opacity-40"
+                      >
+                        <MinusIcon className="h-4 w-4" />
+                      </button>
+                      <span className="w-6 text-center text-sm font-bold text-walnut">{count}</span>
+                      <button
+                        type="button"
+                        aria-label={`Add one ${p.name}`}
+                        onClick={() => setProductQty(p.id, count + 1)}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-cream-300 text-walnut hover:border-ember"
+                      >
+                        <PlusIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </>
+          </div>
         )}
 
         {/* Subscription: bundles-per-month quantity */}
@@ -736,7 +684,7 @@ function Order() {
         {/* One-time: specific date */}
         {!isSubscription && (
           <div>
-            <span className={labelClass}>Pickup / delivery date</span>
+            <span className={labelClass}>Delivery date</span>
 
             {rushEnabled && leadDays > 0 && (
               <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-xl border border-cream-300 bg-cream-100 p-3">
@@ -773,7 +721,7 @@ function Order() {
         {/* Time windows (one-time only) */}
         {!isSubscription && (
           <div>
-            <span className={labelClass}>Pickup / delivery windows</span>
+            <span className={labelClass}>Delivery windows</span>
             <div className="mt-2 flex flex-wrap gap-2">
               {TIME_WINDOWS.map((w) => {
                 const active = windowFroms.includes(w.from);
@@ -806,51 +754,31 @@ function Order() {
           </div>
         )}
 
-        {/* Pickup info or delivery address */}
-        {isPickup ? (
-          <div className="space-y-4">
-            <div className="rounded-md bg-cream-300/50 p-4">
-              <p className="text-base font-bold text-walnut">Curb pickup</p>
-              <p className="mt-1 text-sm text-walnut-400">
-                {pickupInstructions || 'We’ll set your bundles out for your window — grab them anytime within it.'}
-              </p>
-            </div>
-            <div>
-              <label htmlFor="pickup-neighborhood" className={labelClass}>Neighborhood (optional)</label>
-              <select id="pickup-neighborhood" value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} className={`mt-2 ${inputClass}`}>
-                <option value="">Select…</option>
-                {neighborhoods.map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </div>
+        {/* Delivery address */}
+        <fieldset className="space-y-4">
+          <legend className="text-base font-bold text-walnut">Delivery address</legend>
+          <div>
+            <label htmlFor="street" className={labelClass}>Street address</label>
+            <input id="street" type="text" required value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} className={`mt-2 ${inputClass}`} />
           </div>
-        ) : (
-          <fieldset className="space-y-4">
-            <legend className="text-base font-bold text-walnut">Delivery address</legend>
-            <div>
-              <label htmlFor="street" className={labelClass}>Street address</label>
-              <input id="street" type="text" required value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} className={`mt-2 ${inputClass}`} />
-            </div>
-            <div>
-              <label htmlFor="unit" className={labelClass}>Unit / apt (optional)</label>
-              <input id="unit" type="text" value={address.unit} onChange={(e) => setAddress({ ...address, unit: e.target.value })} className={`mt-2 ${inputClass}`} />
-            </div>
-            <div>
-              <label htmlFor="neighborhood" className={labelClass}>Neighborhood (optional)</label>
-              <select id="neighborhood" value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} className={`mt-2 ${inputClass}`}>
-                <option value="">Select…</option>
-                {neighborhoods.map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="notes" className={labelClass}>Delivery notes (optional)</label>
-              <textarea id="notes" rows={2} value={address.notes} onChange={(e) => setAddress({ ...address, notes: e.target.value })} className={`mt-2 ${inputClass}`} />
-            </div>
-          </fieldset>
-        )}
+          <div>
+            <label htmlFor="unit" className={labelClass}>Unit / apt (optional)</label>
+            <input id="unit" type="text" value={address.unit} onChange={(e) => setAddress({ ...address, unit: e.target.value })} className={`mt-2 ${inputClass}`} />
+          </div>
+          <div>
+            <label htmlFor="neighborhood" className={labelClass}>Neighborhood (optional)</label>
+            <select id="neighborhood" value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} className={`mt-2 ${inputClass}`}>
+              <option value="">Select…</option>
+              {neighborhoods.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="notes" className={labelClass}>Delivery notes (optional)</label>
+            <textarea id="notes" rows={2} value={address.notes} onChange={(e) => setAddress({ ...address, notes: e.target.value })} className={`mt-2 ${inputClass}`} />
+          </div>
+        </fieldset>
 
         {/* Contact */}
         <fieldset className="space-y-4">
@@ -958,12 +886,6 @@ function Order() {
                 </p>
               ))}
               {cart.length === 0 && <p>Add items above to see your total.</p>}
-              {deliveryFee > 0 && (
-                <p className="flex justify-between">
-                  <span>Delivery</span>
-                  <span>{`$${deliveryFee}`}</span>
-                </p>
-              )}
               {rushSurcharge > 0 && (
                 <p className="flex justify-between font-semibold text-amber-700">
                   <span>{`Rush +${rushPercent}%`}</span>

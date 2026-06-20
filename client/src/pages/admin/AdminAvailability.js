@@ -30,13 +30,10 @@ function AdminAvailability() {
   const [leadDays, setLeadDays] = useState(1);
   const [rushEnabled, setRushEnabled] = useState(true);
   const [rushPercent, setRushPercent] = useState(25);
-  const [pickupInstructions, setPickupInstructions] = useState('');
-  const [pickupAddress, setPickupAddress] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Send the token so the admin-only pickupAddress comes back.
       const res = await axios.get(`${API_URL}/api/settings/availability`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -44,12 +41,6 @@ function AdminAvailability() {
       if (res.data.leadDays !== undefined) setLeadDays(res.data.leadDays);
       if (res.data.rushEnabled !== undefined) setRushEnabled(res.data.rushEnabled);
       if (res.data.rushPercent !== undefined) setRushPercent(res.data.rushPercent);
-      if (res.data.pickupInstructions !== undefined) {
-        setPickupInstructions(res.data.pickupInstructions);
-      }
-      if (res.data.pickupAddress !== undefined) {
-        setPickupAddress(res.data.pickupAddress);
-      }
       setError('');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load availability');
@@ -88,8 +79,6 @@ function AdminAvailability() {
           leadDays: Number(leadDays) || 0,
           rushEnabled,
           rushPercent: Number(rushPercent) || 0,
-          pickupInstructions,
-          pickupAddress,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -209,32 +198,6 @@ function AdminAvailability() {
                 className="mt-1 w-24 rounded-lg border border-cream-300 px-3 py-2 text-sm text-walnut disabled:opacity-50"
               />
             </div>
-          </div>
-
-          <div className="mt-4">
-            <label htmlFor="pickup-instructions" className="block text-xs font-semibold text-walnut">
-              Pickup note (public — order form, success screen &amp; order email; no address)
-            </label>
-            <textarea
-              id="pickup-instructions"
-              rows={2}
-              value={pickupInstructions}
-              onChange={(e) => setPickupInstructions(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2 text-sm text-walnut"
-            />
-          </div>
-
-          <div className="mt-4">
-            <label htmlFor="pickup-address" className="block text-xs font-semibold text-walnut">
-              Pickup address &amp; details (private — shown only after you confirm an order)
-            </label>
-            <textarea
-              id="pickup-address"
-              rows={2}
-              value={pickupAddress}
-              onChange={(e) => setPickupAddress(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-cream-300 px-3 py-2 text-sm text-walnut"
-            />
           </div>
 
           <button

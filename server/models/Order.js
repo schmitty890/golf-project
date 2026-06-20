@@ -11,7 +11,7 @@ const orderSchema = new mongoose.Schema({
   orderType: { type: String, required: true },
   // Cart line items for one-time orders: { name, quantity, unitPrice }.
   items: { type: [orderItemSchema], default: [] },
-  // Flat delivery fee charged on this order (0 for pickup).
+  // Delivery fee charged on this order. Delivery is free, so this is always 0 (kept for back-compat).
   deliveryFee: { type: Number, default: 0 },
   // Subscription tier plan (legacy/back-compat string, e.g. '2bundle' / '5bundle').
   subscriptionPlan: { type: String, default: '' },
@@ -75,7 +75,8 @@ const orderSchema = new mongoose.Schema({
   },
   // When the "evening before" reminder email was sent (null = not yet). Idempotency guard.
   reminderSentAt: { type: Date, default: null },
-  // How the customer receives the order. Pickup orders don't need a delivery address.
+  // How the customer receives the order. The site is delivery-only; kept for back-compat with
+  // any legacy 'pickup' orders, but new orders are always 'delivery'.
   fulfillment: {
     type: String,
     enum: ['pickup', 'delivery'],

@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
-import Settings, { DEFAULT_PICKUP_ADDRESS } from '../models/Settings.js';
+import Settings from '../models/Settings.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 import { sendMail } from '../utils/mailer.js';
@@ -144,8 +144,8 @@ const optionalAuth = (req, res, next) => {
 router.post('/', optionalAuth, async (req, res) => {
   try {
     const {
-      orderType, items, subscriptionBundles, subscriptionWeek, deliveryFee,
-      contact, deliveryAddress, fulfillment, preferredDate, preferredTimes,
+      orderType, items, subscriptionBundles, subscriptionWeek,
+      contact, deliveryAddress, preferredDate, preferredTimes,
       rush, code, subtotal, agreedToTerms, paymentMethod,
     } = req.body;
 
@@ -179,8 +179,8 @@ router.post('/', optionalAuth, async (req, res) => {
     if (orderType === 'subscription' && !stripeEnabled()) {
       return res.status(400).json({ error: 'Subscriptions need card payment — coming soon.' });
     }
-    // Delivery orders need an address; pickup orders don't.
-    if (fulfillment !== 'pickup' && !deliveryAddress?.street) {
+    // Every order is delivered, so a street address is always required.
+    if (!deliveryAddress?.street) {
       return res.status(400).json({ error: 'Delivery street address is required' });
     }
 
@@ -243,9 +243,9 @@ router.post('/', optionalAuth, async (req, res) => {
 
     const order = new Order({
       orderType,
-      fulfillment: fulfillment === 'pickup' ? 'pickup' : 'delivery',
+      fulfillment: 'delivery',
       items: orderType === 'onetime' ? cart : [],
-      deliveryFee: fulfillment === 'pickup' ? 0 : Math.max(0, Number(deliveryFee) || 0),
+      deliveryFee: 0,
       subscriptionPlan: orderType === 'subscription' ? `${subBundles}bundle` : '',
       subscriptionBundles: orderType === 'subscription' ? subBundles : 0,
       subscriptionMonthly: orderType === 'subscription' ? subscriptionMonthly(subBundles) : 0,
@@ -312,7 +312,7 @@ router.post('/', optionalAuth, async (req, res) => {
           customerEmail = u?.email || '';
         }
         if (customerEmail) {
-          await sendMail({ to: customerEmail, ...customerConfirmationEmail(order, settings?.pickupInstructions) });
+          await sendMail({ to: customerEmail, ...customerConfirmationEmail(order) });
         }
         if (process.env.OWNER_EMAIL) {
           await sendMail({ to: process.env.OWNER_EMAIL, ...ownerAlertEmail(order) });
@@ -372,13 +372,6 @@ router.get('/track/:token', async (req, res) => {
     if (!token) return res.status(404).json({ error: 'Not found' });
     const order = await Order.findOne({ trackingToken: token });
     if (!order) return res.status(404).json({ error: 'Order not found' });
-    // Reveal the pickup address only once the order is confirmed (and it's a pickup order).
-    const confirmedStages = ['confirmed', 'ready', 'completed', 'delivered'];
-    let pickupAddress = '';
-    if (order.fulfillment === 'pickup' && confirmedStages.includes(order.status)) {
-      const settings = await Settings.findOne({ key: 'availability' });
-      pickupAddress = settings?.pickupAddress || DEFAULT_PICKUP_ADDRESS;
-    }
     return res.json({
       status: order.status,
       statusHistory: order.statusHistory,
@@ -397,7 +390,6 @@ router.get('/track/:token', async (req, res) => {
       customerName: (order.contact?.name || '').split(' ')[0],
       total: orderTotal(order)?.total ?? null,
       venmoHandle: process.env.VENMO_HANDLE || '',
-      pickupAddress,
     });
   } catch (error) {
     console.error('Track order error:', error);
@@ -563,11 +555,9 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
     if (customerEmail && order.status !== prevStatus) {
       let email = null;
       if (order.status === 'confirmed' && order.schedule?.from) {
-        const settings = await Settings.findOne({ key: 'availability' });
-        email = windowConfirmedEmail(order, settings?.pickupAddress || DEFAULT_PICKUP_ADDRESS);
+        email = windowConfirmedEmail(order);
       } else if (order.status === 'ready') {
-        const settings = await Settings.findOne({ key: 'availability' });
-        email = readyEmail(order, settings?.pickupAddress || DEFAULT_PICKUP_ADDRESS);
+        email = readyEmail(order);
       } else if (order.status === 'completed') {
         email = deliveredEmail(order);
       } else if (order.status === 'cancelled') {
@@ -576,11 +566,9 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       if (email) sendMail({ to: customerEmail, ...email });
     }
 
-    // Send a short receipt when the owner marks an order paid — pickup orders get the address now.
+    // Send a short receipt when the owner marks an order paid.
     if (customerEmail && order.paymentStatus === 'paid' && prevPayment !== 'paid') {
-      const s = await Settings.findOne({ key: 'availability' });
-      const addr = s?.pickupAddress || DEFAULT_PICKUP_ADDRESS;
-      sendMail({ to: customerEmail, ...paymentReceivedEmail(order, addr) });
+      sendMail({ to: customerEmail, ...paymentReceivedEmail(order) });
     }
 
     return res.json(order);

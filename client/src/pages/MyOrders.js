@@ -137,9 +137,7 @@ function MyOrders() {
                   {new Date(order.createdAt).toLocaleDateString()}
                   {' · '}
                   {fulfillmentLabel(order)}
-                  {order.fulfillment !== 'pickup' && order.deliveryAddress?.street
-                    ? ` · ${order.deliveryAddress.street}`
-                    : ''}
+                  {order.deliveryAddress?.street ? ` · ${order.deliveryAddress.street}` : ''}
                 </p>
                 {formatPreferredSchedule(order) && (
                   <p className="mt-1 text-sm text-walnut-400">
@@ -161,7 +159,7 @@ function MyOrders() {
             {formatSchedule(order.schedule) && (
               <p className="mt-3 flex items-center gap-2 rounded-md bg-cream-300/50 px-3 py-2 text-sm font-semibold text-walnut">
                 <ClockIcon className="h-5 w-5 shrink-0 text-ember" aria-hidden="true" />
-                {order.fulfillment === 'pickup' ? 'Ready for pickup:' : 'Delivery:'}
+                Delivery:
                 {' '}
                 {formatSchedule(order.schedule)}
               </p>

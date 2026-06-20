@@ -5,18 +5,14 @@ const faqs = [
     a: 'No — we deliver small bundles only, perfect for cozy backyard firepit fires.',
   },
   {
-    q: 'Can I pick up or get it delivered?',
-    a: 'Both. Pickup bundles are our lowest price; delivery brings them right to your door for a little more.',
-  },
-  {
-    q: 'Where do I pick up?',
-    a: 'Once your pickup order is confirmed, we’ll send the exact spot here in The Vineyards — just grab the bundle with your name on it during your window.',
+    q: 'Do you deliver?',
+    a: 'Yes — every order is delivered right to your door, free, here in The Vineyards. Just pick a day and a 1-hour window at checkout.',
   },
   {
     q: 'How do I pay?',
-    a: 'Pay with Venmo as soon as you order — we pre-fill the exact amount, so it’s one tap. We set out (or deliver) your firewood once your payment comes through, so paying right away keeps your order on schedule.',
+    a: 'Pay with Venmo as soon as you order — we pre-fill the exact amount, so it’s one tap. We deliver your firewood once your payment comes through, so paying right away keeps your order on schedule.',
     // Shown instead of `a` when card checkout (Stripe) is enabled in this environment.
-    aWithCard: 'Two easy ways: pay securely by card at checkout (confirmed instantly), or send it with Venmo — we pre-fill the exact amount. Pick whichever you prefer. We set out or deliver once your payment comes through.',
+    aWithCard: 'Two easy ways: pay securely by card at checkout (confirmed instantly), or send it with Venmo — we pre-fill the exact amount. Pick whichever you prefer. We deliver once your payment comes through.',
   },
   {
     q: 'What area do you serve?',

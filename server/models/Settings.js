@@ -1,9 +1,5 @@
 import mongoose from 'mongoose';
 
-// Default pickup address/details — emailed to PAYING pickup customers + shown post-confirmation.
-// Exported so the routes can fall back to it when the owner hasn't saved a custom address.
-export const DEFAULT_PICKUP_ADDRESS = 'Pickup is at 2019 Merida Street — your bundles are set out in the front doorway (there\'s a Ring camera on the door). Grab the bundle labeled with your name during your pickup window.';
-
 // Singleton site settings (keyed by `key`). Holds calendar-date availability exceptions.
 // `dateOverrides` maps 'YYYY-MM-DD' -> array of enabled time-window `from` times ('HH:MM').
 //   - a date absent from the map is fully open (all windows)
@@ -19,16 +15,6 @@ const settingsSchema = new mongoose.Schema({
   rushEnabled: { type: Boolean, default: true },
   // Percentage surcharge applied to rush (same-day / within-lead) orders.
   rushPercent: { type: Number, default: 25, min: 0 },
-  // Generic, public-safe pickup note (order form + success screen + on-order email). No address.
-  pickupInstructions: {
-    type: String,
-    default: 'Your bundles will be set out by the front-door Ring camera. During your window, grab the bundle labeled with your name.',
-  },
-  // Address + details, emailed to paying pickup customers + shown post-confirmation.
-  pickupAddress: {
-    type: String,
-    default: DEFAULT_PICKUP_ADDRESS,
-  },
   // Neighbor-referral discount for the NEW customer (referrer is rewarded manually).
   referralDiscount: {
     enabled: { type: Boolean, default: true },
@@ -36,7 +22,7 @@ const settingsSchema = new mongoose.Schema({
     value: { type: Number, default: 5, min: 0 },
   },
   // First-order deal: auto-applied for a signed-in customer's first one-time order (once per acct).
-  // Default $15 makes the 3-Bundle Pack ($40) + delivery ($5) come out to $30.
+  // Default $15 brings the 3-Bundle Pack ($40, free delivery) down to $25.
   firstOrderDiscount: {
     enabled: { type: Boolean, default: true },
     type: { type: String, enum: ['amount', 'percent'], default: 'amount' },
