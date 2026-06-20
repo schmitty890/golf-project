@@ -5,6 +5,7 @@ import Order from '../models/Order.js';
 import Settings from '../models/Settings.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
+import { phoneKey, streetKey } from '../utils/dedupe.js';
 
 const router = express.Router();
 
@@ -49,6 +50,20 @@ export function referralConfig(settings) {
 
 export function firstOrderConfig(settings) {
   return settings?.firstOrderDiscount || DEFAULT_FIRST_ORDER;
+}
+
+// True if any prior order shares this customer's account, phone, or street address — used to
+// block the first-order deal across multiple sign-ups (not just per account). Empty keys are
+// omitted so we never match every order with a blank key.
+export async function hasPriorOrder({ userId, phone, street }) {
+  const or = [];
+  if (userId) or.push({ user: userId });
+  const pk = phoneKey(phone);
+  if (pk) or.push({ phoneKey: pk });
+  const sk = streetKey(street);
+  if (sk) or.push({ streetKey: sk });
+  if (or.length === 0) return false;
+  return Boolean(await Order.exists({ $or: or }));
 }
 
 // Find the user who owns a referral code (optionally excluding the buyer, who can't refer self).
@@ -178,7 +193,13 @@ router.get('/first-order', auth, async (req, res) => {
   try {
     const settings = await Settings.findOne({ key: 'availability' });
     const fc = firstOrderConfig(settings);
-    const hasOrdered = await Order.exists({ user: req.userId });
+    // Factor in phone/address (passed once the customer has entered them) so the client's shown
+    // discount matches what the create route will actually apply.
+    const hasOrdered = await hasPriorOrder({
+      userId: req.userId,
+      phone: req.query.phone,
+      street: req.query.street,
+    });
     const eligible = Boolean(fc.enabled) && !hasOrdered;
     return res.json({
       eligible,

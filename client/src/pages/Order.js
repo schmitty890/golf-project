@@ -127,13 +127,21 @@ function Order() {
       .catch(() => setDateOverrides({}));
   }, []);
 
-  // First-order eligibility (signed-in customers only; server confirms no prior orders).
+  // First-order eligibility (signed-in customers only). The server checks no prior order by this
+  // account, phone, or address — so re-check (debounced) as the customer fills in phone/street,
+  // keeping the shown discount in sync with what the create route will actually apply.
   useEffect(() => {
-    if (!token) { setFirstOrderEligible(false); return; }
-    axios.get(`${API_URL}/api/promos/first-order`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => setFirstOrderEligible(Boolean(res.data.eligible)))
-      .catch(() => setFirstOrderEligible(false));
-  }, [token]);
+    if (!token) { setFirstOrderEligible(false); return undefined; }
+    const t = setTimeout(() => {
+      axios.get(`${API_URL}/api/promos/first-order`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { phone: contact.phone, street: address.street },
+      })
+        .then((res) => setFirstOrderEligible(Boolean(res.data.eligible)))
+        .catch(() => setFirstOrderEligible(false));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [token, contact.phone, address.street]);
 
   // Subscriptions require card auto-pay; if Stripe is off, never sit in subscription mode.
   useEffect(() => {
