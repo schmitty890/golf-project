@@ -191,7 +191,7 @@ export const nodes = {
             contact: {
               name: [c.user?.firstName, c.user?.lastName].filter(Boolean).join(' '),
               email: c.user?.email || '',
-              phone: '',
+              phone: c.user?.phone || '',
             },
           }),
           next: 'review_handoff',

@@ -4,8 +4,15 @@ import axios from 'axios';
 import { UserCircleIcon } from '@heroicons/react/24/solid';
 import { AuthContext } from '../context/AuthContext';
 import ReferralShare from '../components/ReferralShare';
+import neighborhoods from '../data/neighborhoods';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
+const fieldClass = 'block w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-base text-walnut placeholder:text-walnut-200 transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30';
+
+const EMPTY_ADDRESS = {
+  street: '', unit: '', neighborhood: '', notes: '',
+};
 
 function Account() {
   const {
@@ -16,6 +23,8 @@ function Account() {
   // Profile state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState(EMPTY_ADDRESS);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
 
@@ -40,6 +49,8 @@ function Account() {
     if (user) {
       setFirstName(user.firstName || '');
       setLastName(user.lastName || '');
+      setPhone(user.phone || '');
+      setAddress({ ...EMPTY_ADDRESS, ...(user.address || {}) });
     }
   }, [user]);
 
@@ -51,7 +62,9 @@ function Account() {
     try {
       await axios.put(
         `${API_URL}/api/auth/profile`,
-        { firstName, lastName },
+        {
+          firstName, lastName, phone, address,
+        },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       await refreshUser();
@@ -283,6 +296,69 @@ function Account() {
                 <p className="mt-1 text-sm/6 text-gray-500">
                   Email cannot be changed.
                 </p>
+              </div>
+
+              {/* Phone */}
+              <div className="sm:col-span-3">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="phone" className="block text-sm/6 font-medium text-gray-900">
+                  Phone
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={fieldClass}
+                  />
+                </div>
+                <p className="mt-1 text-sm/6 text-gray-500">
+                  Saved so we can auto-fill your next order.
+                </p>
+              </div>
+            </div>
+
+            {/* Saved delivery address */}
+            <h3 className="mt-8 text-sm/7 font-semibold text-gray-900">Default delivery address</h3>
+            <p className="mt-1 text-sm/6 text-gray-600">
+              We&apos;ll pre-fill this when you order. You can always change it at checkout.
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-6">
+              <div className="sm:col-span-4">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="street" className="block text-sm/6 font-medium text-gray-900">Street address</label>
+                <div className="mt-2">
+                  <input id="street" type="text" autoComplete="street-address" value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} className={fieldClass} />
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="unit" className="block text-sm/6 font-medium text-gray-900">Unit (optional)</label>
+                <div className="mt-2">
+                  <input id="unit" type="text" value={address.unit} onChange={(e) => setAddress({ ...address, unit: e.target.value })} className={fieldClass} />
+                </div>
+              </div>
+              <div className="sm:col-span-3">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="neighborhood" className="block text-sm/6 font-medium text-gray-900">Neighborhood (optional)</label>
+                <div className="mt-2">
+                  <select id="neighborhood" value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} className={fieldClass}>
+                    <option value="">Select…</option>
+                    {neighborhoods.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="sm:col-span-6">
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label htmlFor="notes" className="block text-sm/6 font-medium text-gray-900">Delivery notes (optional)</label>
+                <div className="mt-2">
+                  <textarea id="notes" rows={2} value={address.notes} onChange={(e) => setAddress({ ...address, notes: e.target.value })} className={fieldClass} />
+                </div>
               </div>
             </div>
 

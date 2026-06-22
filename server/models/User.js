@@ -29,6 +29,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  // Saved contact + default delivery address, used to auto-fill the order form on future orders.
+  // Address mirrors Order.deliveryAddress so prefill is a direct copy.
+  phone: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  address: {
+    street: { type: String, trim: true, default: '' },
+    unit: { type: String, trim: true, default: '' },
+    neighborhood: { type: String, trim: true, default: '' },
+    notes: { type: String, trim: true, default: '' },
+  },
   role: {
     type: String,
     enum: ['customer', 'admin'],
