@@ -5,7 +5,6 @@
 // owner joins the shared `admin` room and explicitly opens individual conversations to reply.
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import Settings from '../models/Settings.js';
 import Conversation from '../models/Conversation.js';
 import ChatMessage from '../models/ChatMessage.js';
 
@@ -29,14 +28,6 @@ async function getOrCreateConversation(socket) {
     convo = await Conversation.create(userId ? { user: userId } : { guestId });
   }
   return convo;
-}
-
-async function setChatAvailable(available) {
-  await Settings.findOneAndUpdate(
-    { key: 'availability' },
-    { $set: { 'chat.available': available } },
-    { upsert: true, setDefaultsOnInsert: true },
-  );
 }
 
 export default function initChat(io) {
@@ -98,11 +89,8 @@ export default function initChat(io) {
         io.to(ADMIN_ROOM).emit('chat:read', { conversationId });
       });
 
-      socket.on('disconnect', () => {
-        // When the last admin tab closes, flip availability off so the green dot can't lie.
-        const room = io.sockets.adapter.rooms.get(ADMIN_ROOM);
-        if (!room || room.size === 0) setChatAvailable(false).catch(() => {});
-      });
+      // Availability is fully manual (owner's toggle) — intentionally NOT cleared on disconnect, so
+      // a page refresh doesn't knock the owner offline.
       return;
     }
 
