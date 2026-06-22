@@ -1,157 +1,28 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
-import {
-  useState, useEffect, useContext, useRef, useCallback,
-} from 'react';
-import axios from 'axios';
-import { io } from 'socket.io-client';
-import { AuthContext } from '../../context/AuthContext';
+import { useState, useEffect, useRef } from 'react';
+import { useAdminChat } from '../../context/AdminChatContext';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 const inputClass = 'rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-walnut focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30';
 
-// A short beep via Web Audio — avoids bundling a sound asset.
-function playPing() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = 880;
-    gain.gain.value = 0.08;
-    osc.start();
-    osc.stop(ctx.currentTime + 0.15);
-    osc.onended = () => ctx.close();
-  } catch {
-    /* ignore */
-  }
-}
-
-function desktopNotify(title, body) {
-  try {
-    if (window.Notification && Notification.permission === 'granted') {
-      const n = new Notification(title, { body });
-      setTimeout(() => n.close(), 6000);
-    }
-  } catch {
-    /* ignore */
-  }
-}
-
+// Presentational chat dashboard — all socket/state lives in AdminChatContext so notifications work
+// app-wide. This page just renders the list/transcript and the availability toggle + reply input.
 function AdminChat() {
-  const { token } = useContext(AuthContext);
-  const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+  const {
+    conversations, selectedId, messages, available, error,
+    selectConversation, sendReply, toggleAvailable,
+  } = useAdminChat();
 
-  const [available, setAvailable] = useState(false);
-  const [conversations, setConversations] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
-  const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
-  const [error, setError] = useState('');
-
-  const socketRef = useRef(null);
-  const selectedIdRef = useRef(null);
   const endRef = useRef(null);
-  selectedIdRef.current = selectedId;
-
-  // Bump a conversation to the top of the list, updating its preview/unread.
-  const bumpConversation = useCallback((conversationId, patch) => {
-    setConversations((prev) => {
-      const idx = prev.findIndex((c) => c.id === conversationId);
-      if (idx === -1) return prev;
-      const updated = { ...prev[idx], ...patch };
-      return [updated, ...prev.filter((c) => c.id !== conversationId)];
-    });
-  }, []);
-
-  // Initial load: availability + conversation list, and ask for desktop-notification permission.
-  useEffect(() => {
-    axios.get(`${API_URL}/api/settings/availability`)
-      .then((res) => setAvailable(Boolean(res.data.chat?.available)))
-      .catch(() => {});
-    axios.get(`${API_URL}/api/chat/conversations`, authHeaders)
-      .then((res) => setConversations(res.data || []))
-      .catch((err) => setError(err.response?.data?.error || 'Failed to load conversations'));
-    try {
-      if (window.Notification && Notification.permission === 'default') Notification.requestPermission();
-    } catch { /* ignore */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Admin socket: receive new messages + pings.
-  useEffect(() => {
-    if (!token) return undefined;
-    const socket = io(API_URL, { auth: { token } });
-    socketRef.current = socket;
-
-    socket.on('chat:history', ({ conversationId, messages: msgs }) => {
-      if (conversationId === selectedIdRef.current) setMessages(msgs || []);
-    });
-    socket.on('chat:message', ({ conversationId, message }) => {
-      if (conversationId === selectedIdRef.current) {
-        setMessages((prev) => [...prev, message]);
-      }
-      if (message.from === 'customer') {
-        bumpConversation(conversationId, {
-          lastMessageText: message.text, lastMessageAt: message.createdAt,
-        });
-      }
-    });
-    socket.on('chat:notify', ({ conversationId, preview, customerName }) => {
-      if (conversationId !== selectedIdRef.current) {
-        setConversations((prev) => {
-          const exists = prev.find((c) => c.id === conversationId);
-          const base = exists || {
-            id: conversationId, customerName, isGuest: customerName === 'Guest', unreadForAdmin: 0,
-          };
-          const updated = {
-            ...base,
-            customerName: base.customerName || customerName,
-            lastMessageText: preview,
-            lastMessageAt: new Date().toISOString(),
-            unreadForAdmin: (base.unreadForAdmin || 0) + 1,
-          };
-          return [updated, ...prev.filter((c) => c.id !== conversationId)];
-        });
-        playPing();
-        desktopNotify(`New message from ${customerName}`, preview);
-      }
-    });
-    socket.on('chat:read', ({ conversationId }) => {
-      bumpConversation(conversationId, { unreadForAdmin: 0 });
-    });
-
-    return () => { socket.disconnect(); socketRef.current = null; };
-  }, [token, bumpConversation]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
 
-  const selectConversation = (id) => {
-    setSelectedId(id);
-    setMessages([]);
-    socketRef.current?.emit('admin:join', { conversationId: id });
-    bumpConversation(id, { unreadForAdmin: 0 });
-  };
-
-  const toggleAvailable = async () => {
-    const next = !available;
-    setAvailable(next);
-    try {
-      await axios.put(`${API_URL}/api/settings/availability`, { chat: { available: next } }, authHeaders);
-    } catch (err) {
-      setAvailable(!next);
-      setError(err.response?.data?.error || 'Failed to update availability');
-    }
-  };
-
-  const sendReply = (e) => {
+  const handleSend = (e) => {
     e.preventDefault();
-    if (!text.trim() || !selectedId) return;
-    socketRef.current?.emit('admin:send', { conversationId: selectedId, text });
+    if (!text.trim()) return;
+    sendReply(text);
     setText('');
   };
 
@@ -165,7 +36,7 @@ function AdminChat() {
           <input
             type="checkbox"
             checked={available}
-            onChange={toggleAvailable}
+            onChange={(e) => toggleAvailable(e.target.checked)}
             className="h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
           />
           <span className="flex items-center gap-1.5">
@@ -175,8 +46,8 @@ function AdminChat() {
         </label>
       </div>
       <p className="mt-1 text-sm text-walnut-400">
-        While available, customers see a green dot and can chat live. Closing this page turns you
-        offline automatically.
+        While available, customers see a green dot and can chat live. This stays on until you turn
+        it off — remember to switch it off when you&apos;re done.
       </p>
 
       {error && <p className="mt-4 rounded-md bg-red-50 px-4 py-2 text-sm text-red-800">{error}</p>}
@@ -236,7 +107,7 @@ function AdminChat() {
                 ))}
                 <div ref={endRef} />
               </div>
-              <form onSubmit={sendReply} className="flex gap-2 border-t border-cream-300 p-3">
+              <form onSubmit={handleSend} className="flex gap-2 border-t border-cream-300 p-3">
                 <input
                   type="text"
                   value={text}

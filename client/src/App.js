@@ -1,6 +1,8 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { AdminChatProvider } from './context/AdminChatContext';
+import AdminUnreadFab from './components/AdminUnreadFab';
 import PublicLayout from './components/layout/PublicLayout';
 import SidebarLayout from './components/layout/SidebarLayout';
 import RequireAuth from './components/RequireAuth';
@@ -28,102 +30,105 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <ScrollToTop />
-        <AnalyticsTracker />
-        <Routes>
-          {/* Public marketing site */}
-          <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
-          <Route path="/order" element={<PublicLayout><Order /></PublicLayout>} />
-          <Route path="/pricing" element={<PublicLayout><Pricing /></PublicLayout>} />
-          <Route path="/track/:token" element={<PublicLayout><TrackOrder /></PublicLayout>} />
+        <AdminChatProvider>
+          <ScrollToTop />
+          <AnalyticsTracker />
+          <Routes>
+            {/* Public marketing site */}
+            <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
+            <Route path="/order" element={<PublicLayout><Order /></PublicLayout>} />
+            <Route path="/pricing" element={<PublicLayout><Pricing /></PublicLayout>} />
+            <Route path="/track/:token" element={<PublicLayout><TrackOrder /></PublicLayout>} />
 
-          {/* Auth - standalone */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+            {/* Auth - standalone */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-          {/* Authenticated app - sidebar layout */}
-          <Route
-            path="/my-orders"
-            element={(
-              <RequireAuth>
-                <SidebarLayout><MyOrders /></SidebarLayout>
-              </RequireAuth>
+            {/* Authenticated app - sidebar layout */}
+            <Route
+              path="/my-orders"
+              element={(
+                <RequireAuth>
+                  <SidebarLayout><MyOrders /></SidebarLayout>
+                </RequireAuth>
             )}
-          />
-          <Route
-            path="/account"
-            element={(
-              <RequireAuth>
-                <SidebarLayout><Account /></SidebarLayout>
-              </RequireAuth>
+            />
+            <Route
+              path="/account"
+              element={(
+                <RequireAuth>
+                  <SidebarLayout><Account /></SidebarLayout>
+                </RequireAuth>
             )}
-          />
-          <Route
-            path="/admin/schedule"
-            element={(
-              <RequireAuth adminOnly>
-                <SidebarLayout><AdminSchedule /></SidebarLayout>
-              </RequireAuth>
+            />
+            <Route
+              path="/admin/schedule"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout><AdminSchedule /></SidebarLayout>
+                </RequireAuth>
             )}
-          />
-          <Route
-            path="/admin/orders"
-            element={(
-              <RequireAuth adminOnly>
-                <SidebarLayout><AdminOrders /></SidebarLayout>
-              </RequireAuth>
+            />
+            <Route
+              path="/admin/orders"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout><AdminOrders /></SidebarLayout>
+                </RequireAuth>
             )}
-          />
-          <Route
-            path="/admin/customers"
-            element={(
-              <RequireAuth adminOnly>
-                <SidebarLayout><AdminCustomers /></SidebarLayout>
-              </RequireAuth>
+            />
+            <Route
+              path="/admin/customers"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout><AdminCustomers /></SidebarLayout>
+                </RequireAuth>
             )}
-          />
-          <Route
-            path="/admin/availability"
-            element={(
-              <RequireAuth adminOnly>
-                <SidebarLayout><AdminAvailability /></SidebarLayout>
-              </RequireAuth>
+            />
+            <Route
+              path="/admin/availability"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout><AdminAvailability /></SidebarLayout>
+                </RequireAuth>
             )}
-          />
-          <Route
-            path="/admin/feedback"
-            element={(
-              <RequireAuth adminOnly>
-                <SidebarLayout><AdminFeedback /></SidebarLayout>
-              </RequireAuth>
+            />
+            <Route
+              path="/admin/feedback"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout><AdminFeedback /></SidebarLayout>
+                </RequireAuth>
             )}
-          />
-          <Route
-            path="/admin/promos"
-            element={(
-              <RequireAuth adminOnly>
-                <SidebarLayout><AdminPromos /></SidebarLayout>
-              </RequireAuth>
+            />
+            <Route
+              path="/admin/promos"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout><AdminPromos /></SidebarLayout>
+                </RequireAuth>
             )}
-          />
-          <Route
-            path="/admin/inventory"
-            element={(
-              <RequireAuth adminOnly>
-                <SidebarLayout><AdminInventory /></SidebarLayout>
-              </RequireAuth>
+            />
+            <Route
+              path="/admin/inventory"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout><AdminInventory /></SidebarLayout>
+                </RequireAuth>
             )}
-          />
-          <Route
-            path="/admin/chat"
-            element={(
-              <RequireAuth adminOnly>
-                <SidebarLayout><AdminChat /></SidebarLayout>
-              </RequireAuth>
+            />
+            <Route
+              path="/admin/chat"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout><AdminChat /></SidebarLayout>
+                </RequireAuth>
             )}
-          />
-        </Routes>
-        <ChatWidget />
+            />
+          </Routes>
+          <ChatWidget />
+          <AdminUnreadFab />
+        </AdminChatProvider>
       </AuthProvider>
     </Router>
   );
