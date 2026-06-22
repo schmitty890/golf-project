@@ -236,6 +236,8 @@ router.get('/me', auth, async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       profilePicture: user.profilePicture,
+      phone: user.phone,
+      address: user.address,
       role: user.role,
       createdAt: user.createdAt,
     });
@@ -272,7 +274,9 @@ router.get('/me', auth, async (req, res) => {
  */
 router.put('/profile', auth, async (req, res) => {
   try {
-    const { firstName, lastName } = req.body;
+    const {
+      firstName, lastName, phone, address,
+    } = req.body;
     const user = await User.findById(req.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -280,6 +284,13 @@ router.put('/profile', auth, async (req, res) => {
 
     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
+    if (phone !== undefined) user.phone = String(phone).trim();
+    if (address && typeof address === 'object') {
+      // Merge only the provided address fields so a partial update doesn't blank the rest.
+      ['street', 'unit', 'neighborhood', 'notes'].forEach((k) => {
+        if (address[k] !== undefined) user.address[k] = String(address[k]).trim();
+      });
+    }
     await user.save();
 
     return res.json({
@@ -289,6 +300,8 @@ router.put('/profile', auth, async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       profilePicture: user.profilePicture,
+      phone: user.phone,
+      address: user.address,
       role: user.role,
     });
   } catch (error) {

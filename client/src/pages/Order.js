@@ -29,7 +29,7 @@ const inputClass = 'block w-full rounded-xl border border-cream-300 bg-white px-
 const labelClass = 'block text-sm font-semibold text-walnut';
 
 function Order() {
-  const { user, token } = useContext(AuthContext);
+  const { user, token, refreshUser } = useContext(AuthContext);
   const location = useLocation();
   const reorder = location.state?.reorder || null;
   // The chatbot hands off a partial order via location.state.prefill (date/times/contact —
@@ -93,6 +93,8 @@ function Order() {
     street: '', unit: '', neighborhood: '', notes: '',
   });
 
+  // Logged-in customers can save the entered phone + address to their account for next time.
+  const [saveToAccount, setSaveToAccount] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -100,14 +102,23 @@ function Order() {
 
   const isSubscription = mode === 'subscription';
 
-  // Prefill contact info for logged-in users.
+  // Prefill contact + saved address for logged-in users. Only fills still-empty fields, so a
+  // reorder/chatbot value or anything the customer already typed is never clobbered.
   useEffect(() => {
     if (user) {
       setContact((prev) => ({
         name: prev.name || [user.firstName, user.lastName].filter(Boolean).join(' '),
-        phone: prev.phone,
+        phone: prev.phone || user.phone || '',
         email: prev.email || user.email || '',
       }));
+      if (user.address) {
+        setAddress((prev) => ({
+          street: prev.street || user.address.street || '',
+          unit: prev.unit || user.address.unit || '',
+          neighborhood: prev.neighborhood || user.address.neighborhood || '',
+          notes: prev.notes || user.address.notes || '',
+        }));
+      }
     }
   }, [user]);
 
@@ -357,6 +368,18 @@ function Order() {
     setSubmitting(true);
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      // Save the entered phone + address back to the account (fire-and-forget so it survives a
+      // Stripe redirect and never blocks the order). Done before the order POST for that reason.
+      if (token && saveToAccount) {
+        axios
+          .put(
+            `${API_URL}/api/auth/profile`,
+            { phone: contact.phone, address },
+            { headers },
+          )
+          .then(() => refreshUser())
+          .catch(() => {});
+      }
       const res = await axios.post(`${API_URL}/api/orders`, buildPayload(), { headers });
       if (res.data.stripeCheckoutUrl) {
         // Card order — hand off to Stripe Checkout (returns to /order?status=paid|cancelled).
@@ -808,6 +831,19 @@ function Order() {
             </div>
           </div>
         </fieldset>
+
+        {/* Save phone + address to the account for next time (logged-in only). */}
+        {token && (
+          <label className="flex items-center gap-2 text-sm text-walnut">
+            <input
+              type="checkbox"
+              checked={saveToAccount}
+              onChange={(e) => setSaveToAccount(e.target.checked)}
+              className="h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+            />
+            Save this phone &amp; address to my account for next time
+          </label>
+        )}
 
         {/* Promo / referral code (one-time only) */}
         {!isSubscription && (
