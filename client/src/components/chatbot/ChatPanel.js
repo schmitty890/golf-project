@@ -4,6 +4,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import ContactForm from '../ContactForm';
 import ChatMessage from './ChatMessage';
 import ChatChoices from './ChatChoices';
+import LiveChat from './LiveChat';
 import Woody from './Woody';
 import useChatMachine from './useChatMachine';
 
@@ -11,8 +12,8 @@ const inputClass = 'block w-full rounded-xl border border-cream-300 bg-white px-
 
 function ChatPanel({ onClose }) {
   const {
-    messages, node, options, inputConfig, inputError, contactMode,
-    choose, submitInput, exitContact,
+    messages, node, options, inputConfig, inputError, contactMode, liveMode,
+    choose, submitInput, exitContact, exitLive,
   } = useChatMachine({ onClose });
 
   const [text, setText] = useState('');
@@ -100,16 +101,22 @@ function ChatPanel({ onClose }) {
         </button>
       </header>
 
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
-        {messages.map((m) => (
-          <ChatMessage key={m.key} from={m.from} text={m.text} />
-        ))}
-        <div ref={logEndRef} />
-      </div>
+      {liveMode ? (
+        <LiveChat onExit={exitLive} />
+      ) : (
+        <>
+          <div className="flex-1 space-y-3 overflow-y-auto p-4">
+            {messages.map((m) => (
+              <ChatMessage key={m.key} from={m.from} text={m.text} />
+            ))}
+            <div ref={logEndRef} />
+          </div>
 
-      <div className="border-t border-cream-300 p-3">
-        {body}
-      </div>
+          <div className="border-t border-cream-300 p-3">
+            {body}
+          </div>
+        </>
+      )}
     </div>
   );
 }

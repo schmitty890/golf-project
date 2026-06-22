@@ -44,6 +44,12 @@ const settingsSchema = new mongoose.Schema({
     label: { type: String, default: 'Mixed seasoned hardwood' },
     note: { type: String, default: '' },
   },
+  // Live chat: whether the owner is available right now. Drives the customer-facing green "online"
+  // dot + the "Chat with us live" option. Set by the admin chat page; auto-cleared when the admin
+  // socket disconnects so the dot never lies.
+  chat: {
+    available: { type: Boolean, default: false },
+  },
 }, { timestamps: true, minimize: false });
 
 export default mongoose.model('Settings', settingsSchema);

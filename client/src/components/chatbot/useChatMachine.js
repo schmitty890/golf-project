@@ -24,13 +24,23 @@ export default function useChatMachine({ onClose } = {}) {
   // Whether Stripe card checkout is on — drives the card-aware "How do I pay?"
   // answer, same source the homepage + order page use.
   const [cardEnabled, setCardEnabled] = useState(false);
+  // Whether the owner is available for live chat right now — gates the "Chat with us live" option.
+  const [chatAvailable, setChatAvailable] = useState(false);
   useEffect(() => {
     axios.get(`${API_URL}/api/settings/availability`)
-      .then((res) => setCardEnabled(Boolean(res.data.cardEnabled)))
+      .then((res) => {
+        setCardEnabled(Boolean(res.data.cardEnabled));
+        setChatAvailable(Boolean(res.data.chat?.available));
+      })
       .catch(() => {});
   }, []);
 
-  const ctxOf = useCallback((draft) => ({ draft, user, cardEnabled }), [user, cardEnabled]);
+  const ctxOf = useCallback(
+    (draft) => ({
+      draft, user, cardEnabled, chatAvailable,
+    }),
+    [user, cardEnabled, chatAvailable],
+  );
 
   const [nodeId, setNodeId] = useState(START);
   const [draft, setDraft] = useState({});
@@ -39,6 +49,8 @@ export default function useChatMachine({ onClose } = {}) {
   ]);
   const [inputError, setInputError] = useState('');
   const [contactMode, setContactMode] = useState(false);
+  // Live-chat mode swaps the guided UI for a real-time socket transcript (see LiveChat).
+  const [liveMode, setLiveMode] = useState(false);
 
   // Key is derived from the previous message inside the updater so it stays pure
   // (StrictMode double-invokes updaters) and always monotonic / unique.
@@ -57,6 +69,7 @@ export default function useChatMachine({ onClose } = {}) {
     setNodeId(START);
     setInputError('');
     setContactMode(false);
+    setLiveMode(false);
     setMessages([{ key: 1, from: 'bot', text: resolve(nodes[START].message, ctxOf({})) }]);
   }, [ctxOf]);
 
@@ -67,6 +80,7 @@ export default function useChatMachine({ onClose } = {}) {
       return;
     }
     if (action === 'openContact') { setContactMode(true); return; }
+    if (action === 'startLiveChat') { setLiveMode(true); return; }
     if (action === 'emailUs') { window.location.href = `mailto:${business.email}`; return; }
     if (action === 'restart') { restart(); return; }
     if (action.startsWith('navigate:')) { navigate(action.slice('navigate:'.length)); }
@@ -96,6 +110,7 @@ export default function useChatMachine({ onClose } = {}) {
   }, [nodeId, draft, ctxOf, goTo, push]);
 
   const exitContact = useCallback(() => setContactMode(false), []);
+  const exitLive = useCallback(() => setLiveMode(false), []);
 
   const node = nodes[nodeId];
   const options = useMemo(
@@ -111,9 +126,11 @@ export default function useChatMachine({ onClose } = {}) {
     inputConfig,
     inputError,
     contactMode,
+    liveMode,
     choose,
     submitInput,
     exitContact,
+    exitLive,
     restart,
   };
 }

@@ -3,8 +3,9 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import Woody from './Woody';
 
 // The floating mascot launcher, lower-right, site-wide. The full Woody sticker
-// when closed; a small round X button to close when open.
-function ChatLauncher({ open, onToggle }) {
+// when closed; a small round X button to close when open. A green dot + "online"
+// label appears when the owner is available for live chat.
+function ChatLauncher({ open, online, onToggle }) {
   return (
     <button
       type="button"
@@ -18,10 +19,16 @@ function ChatLauncher({ open, onToggle }) {
       {open ? (
         <XMarkIcon className="h-6 w-6" aria-hidden="true" />
       ) : (
-        <span className="flex flex-col items-center gap-1">
+        <span className="relative flex flex-col items-center gap-1">
+          {online && (
+            <span className="absolute right-1 top-1 flex h-3.5 w-3.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-cream bg-green-500" />
+            </span>
+          )}
           <Woody className="h-14 w-14 drop-shadow-xl motion-safe:animate-woody-bob sm:h-20 sm:w-20" />
           <span className="rounded-full border border-ember bg-cream px-3 py-1 text-xs font-bold text-walnut shadow">
-            Chat with us
+            {online ? 'Chat with us · online' : 'Chat with us'}
           </span>
         </span>
       )}
@@ -31,7 +38,12 @@ function ChatLauncher({ open, onToggle }) {
 
 ChatLauncher.propTypes = {
   open: PropTypes.bool.isRequired,
+  online: PropTypes.bool,
   onToggle: PropTypes.func.isRequired,
+};
+
+ChatLauncher.defaultProps = {
+  online: false,
 };
 
 export default ChatLauncher;

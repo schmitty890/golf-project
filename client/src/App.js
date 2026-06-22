@@ -22,6 +22,7 @@ import AdminFeedback from './pages/admin/AdminFeedback';
 import AdminPromos from './pages/admin/AdminPromos';
 import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminInventory from './pages/admin/AdminInventory';
+import AdminChat from './pages/admin/AdminChat';
 
 function App() {
   return (
@@ -110,6 +111,14 @@ function App() {
             element={(
               <RequireAuth adminOnly>
                 <SidebarLayout><AdminInventory /></SidebarLayout>
+              </RequireAuth>
+            )}
+          />
+          <Route
+            path="/admin/chat"
+            element={(
+              <RequireAuth adminOnly>
+                <SidebarLayout><AdminChat /></SidebarLayout>
               </RequireAuth>
             )}
           />

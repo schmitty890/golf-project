@@ -11,6 +11,7 @@ import {
   TicketIcon,
   UserGroupIcon,
   ArchiveBoxIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import Logo from '../Logo';
 import { AuthContext } from '../../context/AuthContext';
@@ -31,6 +32,7 @@ function Sidebar({ collapsed = false }) {
     navigation.push({ name: 'Feedback', href: '/admin/feedback', icon: StarIcon });
     navigation.push({ name: 'Promo codes', href: '/admin/promos', icon: TicketIcon });
     navigation.push({ name: 'Inventory', href: '/admin/inventory', icon: ArchiveBoxIcon });
+    navigation.push({ name: 'Live chat', href: '/admin/chat', icon: ChatBubbleLeftRightIcon });
   }
 
   return (

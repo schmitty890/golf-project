@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import { createServer } from 'http';
+import { Server } from 'socket.io';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import authRouter from './routes/auth.js';
@@ -12,6 +13,8 @@ import contactRouter from './routes/contact.js';
 import customersRouter from './routes/customers.js';
 import inventoryRouter from './routes/inventory.js';
 import analyticsRouter from './routes/analytics.js';
+import chatRouter from './routes/chat.js';
+import initChat from './socket/chat.js';
 import { startReminderJob } from './jobs/reminders.js';
 import stripeWebhook from './routes/stripeWebhook.js';
 import { swaggerUi, specs } from './swagger.js';
@@ -21,6 +24,12 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 5001;
+
+// Live-chat realtime layer. CORS origin is the client app; '*' in dev when CLIENT_URL is unset.
+const io = new Server(httpServer, {
+  cors: { origin: process.env.CLIENT_URL || process.env.SITE_URL || '*' },
+});
+initChat(io);
 
 // Middleware
 app.use(cors());
@@ -51,6 +60,7 @@ app.use('/api/contact', contactRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/chat', chatRouter);
 
 // Start server
 httpServer.listen(PORT, () => {

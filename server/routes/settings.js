@@ -11,6 +11,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULT_REFERRAL = { enabled: true, type: 'amount', value: 5 };
 const DEFAULT_FIRST_ORDER = { enabled: true, type: 'amount', value: 15 };
 const DEFAULT_WOOD_TYPE = { label: 'Mixed seasoned hardwood', note: '' };
+const DEFAULT_CHAT = { available: false };
 const DEFAULTS = {
   leadDays: 1,
   rushEnabled: true,
@@ -38,6 +39,7 @@ router.get('/availability', async (req, res) => {
       referralDiscount: doc?.referralDiscount ?? DEFAULT_REFERRAL,
       firstOrderDiscount: doc?.firstOrderDiscount ?? DEFAULT_FIRST_ORDER,
       woodType: doc?.woodType ?? DEFAULT_WOOD_TYPE,
+      chat: doc?.chat ?? DEFAULT_CHAT,
       // A Venmo handle is public by design (it's how customers pay).
       venmoHandle: process.env.VENMO_HANDLE || '',
       // Whether card checkout (Stripe) is available — the client shows the card option only if so.
@@ -102,6 +104,9 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
         note: String(w.note ?? '').trim(),
       };
     }
+    if (req.body?.chat && typeof req.body.chat === 'object') {
+      update.chat = { available: Boolean(req.body.chat.available) };
+    }
 
     const doc = await Settings.findOneAndUpdate(
       { key: KEY },
@@ -116,6 +121,7 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
       referralDiscount: doc.referralDiscount,
       firstOrderDiscount: doc.firstOrderDiscount,
       woodType: doc.woodType,
+      chat: doc.chat,
     });
   } catch (error) {
     console.error('Update availability error:', error);
