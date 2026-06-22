@@ -28,6 +28,15 @@ const settingsSchema = new mongoose.Schema({
     type: { type: String, enum: ['amount', 'percent'], default: 'amount' },
     value: { type: Number, default: 15, min: 0 },
   },
+  // Prepared-bundle inventory. `bundlesPrepared` is the running ready-to-sell balance: the owner
+  // bumps it up when a batch is wrapped, and a paid order deducts from it automatically. May go
+  // negative (an "oversold / made fewer than recorded" signal the owner sees in admin). The public
+  // low-stock banner shows only when enabled AND the balance is at/below the threshold.
+  inventory: {
+    bundlesPrepared: { type: Number, default: 0 },
+    publicBannerEnabled: { type: Boolean, default: false },
+    lowStockThreshold: { type: Number, default: 15, min: 0 },
+  },
 }, { timestamps: true, minimize: false });
 
 export default mongoose.model('Settings', settingsSchema);

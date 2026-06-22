@@ -21,6 +21,7 @@ import AdminAvailability from './pages/admin/AdminAvailability';
 import AdminFeedback from './pages/admin/AdminFeedback';
 import AdminPromos from './pages/admin/AdminPromos';
 import AdminCustomers from './pages/admin/AdminCustomers';
+import AdminInventory from './pages/admin/AdminInventory';
 
 function App() {
   return (
@@ -101,6 +102,14 @@ function App() {
             element={(
               <RequireAuth adminOnly>
                 <SidebarLayout><AdminPromos /></SidebarLayout>
+              </RequireAuth>
+            )}
+          />
+          <Route
+            path="/admin/inventory"
+            element={(
+              <RequireAuth adminOnly>
+                <SidebarLayout><AdminInventory /></SidebarLayout>
               </RequireAuth>
             )}
           />

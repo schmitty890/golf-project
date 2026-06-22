@@ -24,6 +24,7 @@ import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
   SUBSCRIPTION_WEEK_VALUES, orderBundleCount, FIRST_ORDER_MIN_BUNDLES,
 } from '../data/catalog.js';
+import { applyOrderInventory, restoreOrderInventory } from '../utils/inventory.js';
 
 const router = express.Router();
 
@@ -551,6 +552,14 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       };
     }
     await order.save();
+
+    // Keep prepared-bundle stock in sync with the payment toggle (Venmo orders are marked paid by
+    // hand here). Deduct on unpaid→paid, restore on paid→unpaid. Idempotent + audited internally.
+    if (order.paymentStatus === 'paid' && prevPayment !== 'paid') {
+      await applyOrderInventory(order);
+    } else if (order.paymentStatus === 'unpaid' && prevPayment === 'paid') {
+      await restoreOrderInventory(order);
+    }
 
     // Notify the customer on key transitions (fire-and-forget).
     const customerEmail = order.contact?.email || '';

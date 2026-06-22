@@ -17,6 +17,7 @@ import {
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
+import LowStockBanner from '../components/LowStockBanner';
 import neighborhoods from '../data/neighborhoods';
 import { todayStr, formatDayLabel, addDays } from '../utils/dates';
 import { trackEvent } from '../utils/analytics';
@@ -523,6 +524,8 @@ function Order() {
         {business.serviceArea}
         {`. ${payNote}`}
       </p>
+
+      <LowStockBanner className="mt-4" cta={false} />
 
       {!token && (
         <p className="mt-4 rounded-md bg-cream-300/60 px-4 py-3 text-sm text-walnut">

@@ -15,6 +15,7 @@ import faqs from '../data/faqs';
 import ReviewsCarousel from '../components/ReviewsCarousel';
 import FeedbackModal from '../components/FeedbackModal';
 import ContactForm from '../components/ContactForm';
+import LowStockBanner from '../components/LowStockBanner';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -49,6 +50,8 @@ function Hero() {
           <p className="mt-6 max-w-xl text-lg text-cream-300">
             {business.tagline}
           </p>
+
+          <LowStockBanner className="mt-6 inline-block" />
 
           <div className="mt-10 flex flex-wrap gap-4">
             <Link

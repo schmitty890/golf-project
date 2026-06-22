@@ -55,6 +55,12 @@ const orderSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ['unpaid', 'paid'], default: 'unpaid' },
   // When the order was marked paid (null = not yet).
   paidAt: { type: Date, default: null },
+  // Inventory idempotency: true once this one-time order's bundles have been deducted from the
+  // prepared-stock count (so a webhook resend / paid-toggle can't double-deduct). Cleared if the
+  // order is flipped back to unpaid (which restores the bundles).
+  inventoryApplied: { type: Boolean, default: false },
+  // Subscriptions deduct once per paid invoice — the Stripe invoice ids already counted live here.
+  inventoryAppliedInvoices: { type: [String], default: [] },
   // Why an order was cancelled (shown to the owner; emailed to the customer).
   cancelReason: { type: String, default: '' },
   // Stripe references (empty unless paid by card).
