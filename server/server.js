@@ -10,6 +10,8 @@ import feedbackRouter from './routes/feedback.js';
 import promosRouter from './routes/promos.js';
 import contactRouter from './routes/contact.js';
 import customersRouter from './routes/customers.js';
+import inventoryRouter from './routes/inventory.js';
+import analyticsRouter from './routes/analytics.js';
 import { startReminderJob } from './jobs/reminders.js';
 import stripeWebhook from './routes/stripeWebhook.js';
 import { swaggerUi, specs } from './swagger.js';
@@ -47,6 +49,8 @@ app.use('/api/feedback', feedbackRouter);
 app.use('/api/promos', promosRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/customers', customersRouter);
+app.use('/api/inventory', inventoryRouter);
+app.use('/api/analytics', analyticsRouter);
 
 // Start server
 httpServer.listen(PORT, () => {

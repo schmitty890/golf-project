@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import Order from '../models/Order.js';
 import { sendMail } from '../utils/mailer.js';
 import { paymentReceivedEmail } from '../utils/orderEmails.js';
+import { applyOrderInventory } from '../utils/inventory.js';
 
 export default async function stripeWebhook(req, res) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -35,6 +36,11 @@ export default async function stripeWebhook(req, res) {
           order.subscriptionStatus = 'active';
         }
         await order.save();
+        // Deduct prepared stock for one-time orders here. Subscriptions are handled on
+        // invoice.payment_succeeded (which fires for month 1 too), so we don't deduct them here.
+        if (order.orderType !== 'subscription') {
+          await applyOrderInventory(order);
+        }
         if (order.contact?.email) {
           sendMail({ to: order.contact.email, ...paymentReceivedEmail(order) });
         }
@@ -49,6 +55,8 @@ export default async function stripeWebhook(req, res) {
           order.paidAt = new Date();
           order.subscriptionStatus = 'active';
           await order.save();
+          // Deduct this month's bundles, once per invoice id.
+          await applyOrderInventory(order, { invoiceId: event.data.object.id });
         }
       }
     } else if (event.type === 'customer.subscription.deleted') {
