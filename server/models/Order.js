@@ -139,10 +139,11 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Keep the dedupe match keys in sync with the contact phone + delivery street on every save.
-orderSchema.pre('save', function setMatchKeys(next) {
+// Synchronous hook (no `next`) — Mongoose 9 dropped callback-style middleware; a `next()` call here
+// throws "next is not a function" and fails every order save.
+orderSchema.pre('save', function setMatchKeys() {
   this.phoneKey = phoneKey(this.contact?.phone);
   this.streetKey = streetKey(this.deliveryAddress?.street);
-  next();
 });
 
 export default mongoose.model('Order', orderSchema);
