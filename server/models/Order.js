@@ -11,6 +11,9 @@ const orderSchema = new mongoose.Schema({
   orderType: { type: String, required: true },
   // Cart line items for one-time orders: { name, quantity, unitPrice }.
   items: { type: [orderItemSchema], default: [] },
+  // Snapshot of the current wood-type label at order time (so history/emails stay accurate when the
+  // site-wide label later changes). Empty for legacy orders placed before this existed.
+  woodType: { type: String, default: '' },
   // Delivery fee charged on this order. Delivery is free, so this is always 0 (kept for back-compat).
   deliveryFee: { type: Number, default: 0 },
   // Subscription tier plan (legacy/back-compat string, e.g. '2bundle' / '5bundle').

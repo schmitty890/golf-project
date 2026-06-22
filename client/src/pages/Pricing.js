@@ -4,6 +4,7 @@ import {
   subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
 } from '../data/pricing';
 import business from '../data/business';
+import WoodTypeBadge from '../components/WoodTypeBadge';
 
 function Pricing() {
   return (
@@ -18,6 +19,7 @@ function Pricing() {
             {business.serviceArea}
             . Free delivery, right to your door.
           </p>
+          <WoodTypeBadge className="mt-6" variant="light" />
         </div>
       </section>
 

@@ -37,6 +37,13 @@ const settingsSchema = new mongoose.Schema({
     publicBannerEnabled: { type: Boolean, default: false },
     lowStockThreshold: { type: Number, default: 15, min: 0 },
   },
+  // What we're currently selling. A single site-wide descriptor (mixed assortment for now; owner
+  // may later specialize to oak/cherry/pine). Shown to customers and snapshotted onto each order.
+  // `note` is an optional longer line (e.g. "A rotating assortment — oak, hickory, maple & more").
+  woodType: {
+    label: { type: String, default: 'Mixed seasoned hardwood' },
+    note: { type: String, default: '' },
+  },
 }, { timestamps: true, minimize: false });
 
 export default mongoose.model('Settings', settingsSchema);

@@ -18,6 +18,7 @@ import {
 import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
 import LowStockBanner from '../components/LowStockBanner';
+import WoodTypeBadge from '../components/WoodTypeBadge';
 import neighborhoods from '../data/neighborhoods';
 import { todayStr, formatDayLabel, addDays } from '../utils/dates';
 import { trackEvent } from '../utils/analytics';
@@ -570,6 +571,7 @@ function Order() {
         {!isSubscription && (
           <div>
             <span className={labelClass}>Add items</span>
+            <WoodTypeBadge className="mt-2" />
             <div className="mt-2 space-y-3">
               {products.map((p) => {
                 const count = qty[p.id] || 0;

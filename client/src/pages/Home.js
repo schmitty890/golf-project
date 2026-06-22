@@ -16,6 +16,7 @@ import ReviewsCarousel from '../components/ReviewsCarousel';
 import FeedbackModal from '../components/FeedbackModal';
 import ContactForm from '../components/ContactForm';
 import LowStockBanner from '../components/LowStockBanner';
+import WoodTypeBadge from '../components/WoodTypeBadge';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -86,6 +87,7 @@ function About() {
           — a neighbor supplying neighbors. We personally gather and hand-split the
           wood, then deliver clean, ready-to-burn campfire bundles right to your door.
         </p>
+        <WoodTypeBadge className="mt-6" />
         <p className="mt-4 text-lg text-walnut-400">
           We&apos;re built for last-minute backyard fires — small bundles delivered
           fast, not cords or bulk loads. Order from us and you&apos;re supporting

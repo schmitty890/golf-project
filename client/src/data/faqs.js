@@ -5,6 +5,14 @@ const faqs = [
     a: 'No — we deliver small bundles only, perfect for cozy backyard firepit fires.',
   },
   {
+    q: 'What kind of wood do you sell?',
+    a: 'For now, every bundle is a mixed assortment of seasoned hardwood — sourced right here in '
+      + 'Mecklenburg County from a variety of local sources. It lights easy and burns clean for '
+      + 'backyard firepit fires. We’re a small operation working to expand into specific wood types '
+      + 'down the road — so eventually you may be able to pick your wood when you order — but we’re '
+      + 'not there yet. For now, it’s a quality mix.',
+  },
+  {
     q: 'Do you deliver?',
     a: 'Yes — every order is delivered right to your door, free, here in The Vineyards. At checkout, pick a day and select the hours you’d prefer — we’ll do our best to deliver within that time.',
   },
