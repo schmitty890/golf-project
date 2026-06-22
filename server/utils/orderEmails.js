@@ -31,12 +31,13 @@ function fmtTime(t) {
 }
 
 function describeOrder(order) {
+  const wood = order.woodType ? ` · ${order.woodType}` : '';
   if (order.orderType === 'subscription') {
     const n = subBundles(order);
-    return `${n ? `${n} bundles / month` : 'Monthly'} subscription`;
+    return `${n ? `${n} bundles / month` : 'Monthly'} subscription${wood}`;
   }
   if (order.items && order.items.length) {
-    return order.items.map((i) => `${i.quantity} × ${i.name}`).join(', ');
+    return `${order.items.map((i) => `${i.quantity} × ${i.name}`).join(', ')}${wood}`;
   }
   // Legacy fallback.
   if (order.packName) return `${order.packName} (${order.bundleCount} bundles)`;

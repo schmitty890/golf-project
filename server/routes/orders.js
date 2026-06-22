@@ -248,6 +248,7 @@ router.post('/', optionalAuth, async (req, res) => {
       orderType,
       fulfillment: 'delivery',
       items: orderType === 'onetime' ? cart : [],
+      woodType: settings?.woodType?.label || '',
       deliveryFee: 0,
       subscriptionPlan: orderType === 'subscription' ? `${subBundles}bundle` : '',
       subscriptionBundles: orderType === 'subscription' ? subBundles : 0,

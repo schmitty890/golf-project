@@ -101,12 +101,15 @@ function AdminInventory() {
   const [setQty, setSetQty] = useState('');
   const [banner, setBanner] = useState({ publicBannerEnabled: false, lowStockThreshold: 15 });
   const [bannerSaved, setBannerSaved] = useState(false);
+  const [woodType, setWoodType] = useState({ label: '', note: '' });
+  const [woodSaved, setWoodSaved] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [inv, an] = await Promise.all([
+      const [inv, an, settings] = await Promise.all([
         axios.get(`${API_URL}/api/inventory`, authHeaders),
         axios.get(`${API_URL}/api/analytics/orders`, authHeaders),
+        axios.get(`${API_URL}/api/settings/availability`),
       ]);
       setInventory(inv.data.inventory);
       setLog(inv.data.log || []);
@@ -114,6 +117,7 @@ function AdminInventory() {
         publicBannerEnabled: inv.data.inventory.publicBannerEnabled,
         lowStockThreshold: inv.data.inventory.lowStockThreshold,
       });
+      setWoodType(settings.data.woodType || { label: '', note: '' });
       setAnalytics(an.data);
       setError('');
     } catch (err) {
@@ -170,6 +174,19 @@ function AdminInventory() {
       setTimeout(() => setBannerSaved(false), 2000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save banner settings');
+    }
+  };
+
+  const saveWoodType = async () => {
+    try {
+      const res = await axios.put(`${API_URL}/api/settings/availability`, {
+        woodType: { label: woodType.label, note: woodType.note },
+      }, authHeaders);
+      if (res.data.woodType) setWoodType(res.data.woodType);
+      setWoodSaved(true);
+      setTimeout(() => setWoodSaved(false), 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to save wood type');
     }
   };
 
@@ -255,6 +272,31 @@ function AdminInventory() {
             Save
           </button>
         </div>
+      </div>
+
+      {/* Current wood type */}
+      <div className={cardClass}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-walnut">Current wood type</h2>
+          {woodSaved && <span className="text-sm font-semibold text-green-700">Saved ✓</span>}
+        </div>
+        <p className="mt-1 text-xs text-walnut-400">
+          What you&apos;re selling right now. Shows on the site and is saved onto each new order.
+          Change it whenever your supply changes (e.g. &ldquo;Oak&rdquo; or &ldquo;Cherry&rdquo;).
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="wt-label" className="block text-xs font-semibold text-walnut">Label</label>
+            <input id="wt-label" value={woodType.label} onChange={(e) => setWoodType({ ...woodType, label: e.target.value })} placeholder="Mixed seasoned hardwood" className={`mt-1 w-full ${inputClass}`} />
+          </div>
+          <div>
+            <label htmlFor="wt-note" className="block text-xs font-semibold text-walnut">Note (optional)</label>
+            <input id="wt-note" value={woodType.note} onChange={(e) => setWoodType({ ...woodType, note: e.target.value })} placeholder="A rotating assortment — oak, hickory, maple & more" className={`mt-1 w-full ${inputClass}`} />
+          </div>
+        </div>
+        <button type="button" onClick={saveWoodType} className="mt-4 rounded-lg bg-ember px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600">
+          Save
+        </button>
       </div>
 
       {/* Analytics */}
