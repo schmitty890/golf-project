@@ -300,8 +300,14 @@ export const nodes = {
   talk_to_person: {
     id: 'talk_to_person',
     kind: 'choices',
-    message: "Happy to help! Leave us a message and we'll reply by email as soon as we can.",
-    options: [
+    message: (ctx) => (ctx.chatAvailable
+      ? "We're online right now — chat with us live, or leave a message."
+      : "Happy to help! Leave us a message and we'll reply by email as soon as we can."),
+    // The live option only appears when the owner has marked themselves available.
+    options: (ctx) => [
+      ...(ctx.chatAvailable
+        ? [{ label: '💬 Chat with us live now', action: 'startLiveChat' }]
+        : []),
       { label: 'Send us a message', action: 'openContact' },
       { label: `Email ${business.email}`, action: 'emailUs' },
       { label: '← Back to menu', next: 'greeting' },

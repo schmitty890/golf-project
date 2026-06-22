@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import axios from 'axios';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import ChatLauncher from './ChatLauncher';
 import ChatPanel from './ChatPanel';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 // Mounted once, site-wide (above <Routes> in App.js) so the conversation persists
 // across navigation — e.g. when the bot deep-links to /order.
@@ -14,7 +17,21 @@ const NUDGE_COOLDOWN_MS = 24 * 60 * 60 * 1000; // re-show a day after dismissal
 function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [showNudge, setShowNudge] = useState(false);
+  const [online, setOnline] = useState(false);
   const { pathname } = useLocation();
+
+  // Poll the owner's live-chat availability so the launcher's green dot stays current.
+  useEffect(() => {
+    let cancelled = false;
+    const fetchAvailability = () => {
+      axios.get(`${API_URL}/api/settings/availability`)
+        .then((res) => { if (!cancelled) setOnline(Boolean(res.data.chat?.available)); })
+        .catch(() => {});
+    };
+    fetchAvailability();
+    const id = setInterval(fetchAvailability, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   // Esc closes the panel.
   useEffect(() => {
@@ -76,7 +93,11 @@ function ChatWidget() {
         </div>
       )}
 
-      <ChatLauncher open={open} onToggle={() => (open ? setOpen(false) : openChat())} />
+      <ChatLauncher
+        open={open}
+        online={online}
+        onToggle={() => (open ? setOpen(false) : openChat())}
+      />
     </>
   );
 }
