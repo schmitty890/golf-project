@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { phoneKey, streetKey } from '../utils/dedupe.js';
 
 const orderItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -102,6 +103,10 @@ const orderSchema = new mongoose.Schema({
     neighborhood: { type: String, trim: true, default: '' },
     notes: { type: String, trim: true, default: '' },
   },
+  // Normalized match keys (derived in the pre-save hook below) so the first-order deal can be
+  // blocked by phone or address, not just account. See utils/dedupe.js + routes/promos.js.
+  phoneKey: { type: String, default: '', index: true },
+  streetKey: { type: String, default: '', index: true },
   // Fulfillment stage. Plain string (validated in the route) so legacy values still read.
   // Canonical: received → confirmed → ready → completed, plus cancelled.
   status: {
@@ -132,5 +137,12 @@ const orderSchema = new mongoose.Schema({
   },
   adminNotes: { type: String, default: '' },
 }, { timestamps: true });
+
+// Keep the dedupe match keys in sync with the contact phone + delivery street on every save.
+orderSchema.pre('save', function setMatchKeys(next) {
+  this.phoneKey = phoneKey(this.contact?.phone);
+  this.streetKey = streetKey(this.deliveryAddress?.street);
+  next();
+});
 
 export default mongoose.model('Order', orderSchema);

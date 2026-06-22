@@ -14,7 +14,7 @@ import {
 } from '../utils/orderEmails.js';
 import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
-  discountLabel, mintReferralReward, firstOrderConfig,
+  discountLabel, mintReferralReward, firstOrderConfig, hasPriorOrder,
 } from './promos.js';
 import {
   stripeEnabled, createOneTimeCheckout, createSubscriptionCheckout, createBillingPortalSession,
@@ -233,7 +233,13 @@ router.post('/', optionalAuth, async (req, res) => {
     if (!promoCode && !discount && orderType === 'onetime' && req.userId) {
       const fc = firstOrderConfig(settings);
       const enoughBundles = orderBundleCount(cart) >= FIRST_ORDER_MIN_BUNDLES;
-      if (fc.enabled && enoughBundles && !(await Order.exists({ user: req.userId }))) {
+      // Block reuse across multiple sign-ups: no prior order by this account, phone, or address.
+      const usedBefore = await hasPriorOrder({
+        userId: req.userId,
+        phone: contact?.phone,
+        street: deliveryAddress?.street,
+      });
+      if (fc.enabled && enoughBundles && !usedBefore) {
         discount = discountAmount(fc.type, fc.value, subtotal);
         if (discount > 0) promoCode = 'FIRST-ORDER';
       }
