@@ -15,9 +15,11 @@ import {
 } from '@heroicons/react/24/outline';
 import Logo from '../Logo';
 import { AuthContext } from '../../context/AuthContext';
+import { useAdminChat } from '../../context/AdminChatContext';
 
 function Sidebar({ collapsed = false }) {
   const { user } = useContext(AuthContext);
+  const { totalUnread = 0 } = useAdminChat();
 
   const navigation = [
     { name: 'My Orders', href: '/my-orders', icon: ClipboardDocumentListIcon },
@@ -32,7 +34,9 @@ function Sidebar({ collapsed = false }) {
     navigation.push({ name: 'Feedback', href: '/admin/feedback', icon: StarIcon });
     navigation.push({ name: 'Promo codes', href: '/admin/promos', icon: TicketIcon });
     navigation.push({ name: 'Inventory', href: '/admin/inventory', icon: ArchiveBoxIcon });
-    navigation.push({ name: 'Live chat', href: '/admin/chat', icon: ChatBubbleLeftRightIcon });
+    navigation.push({
+      name: 'Live chat', href: '/admin/chat', icon: ChatBubbleLeftRightIcon, badge: totalUnread,
+    });
   }
 
   return (
@@ -60,13 +64,25 @@ function Sidebar({ collapsed = false }) {
                         : 'text-walnut hover:bg-cream-300 hover:text-ember'
                     }`}
                   >
-                    <item.icon
-                      className="h-6 w-6 shrink-0 text-walnut-300 group-hover:text-ember transition-colors duration-200"
-                      aria-hidden="true"
-                    />
+                    <span className="relative shrink-0">
+                      <item.icon
+                        className="h-6 w-6 text-walnut-300 group-hover:text-ember transition-colors duration-200"
+                        aria-hidden="true"
+                      />
+                      {collapsed && item.badge > 0 && (
+                        <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-ember px-1 text-[10px] font-bold text-white">
+                          {item.badge}
+                        </span>
+                      )}
+                    </span>
                     <span className={`whitespace-nowrap transition-all duration-300 ease-in-out ${collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
                       {item.name}
                     </span>
+                    {!collapsed && item.badge > 0 && (
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-ember px-1.5 text-xs font-bold text-white">
+                        {item.badge}
+                      </span>
+                    )}
                   </NavLink>
                 </li>
               ))}
