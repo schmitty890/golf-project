@@ -45,8 +45,8 @@ const settingsSchema = new mongoose.Schema({
     note: { type: String, default: '' },
   },
   // Live chat: whether the owner is available right now. Drives the customer-facing green "online"
-  // dot + the "Chat with us live" option. Set by the admin chat page; auto-cleared when the admin
-  // socket disconnects so the dot never lies.
+  // dot + the "Chat with us live" option. Fully manual — set by the admin toggle, and stays until
+  // the owner flips it off (a page refresh does NOT change it).
   chat: {
     available: { type: Boolean, default: false },
   },
