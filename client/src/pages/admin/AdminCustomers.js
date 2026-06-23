@@ -1,7 +1,8 @@
-/* eslint-disable no-underscore-dangle */
+/* eslint-disable no-underscore-dangle, jsx-a11y/label-has-associated-control */
 import {
   useState, useEffect, useContext, useCallback,
 } from 'react';
+import PropTypes from 'prop-types';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
 import {
@@ -9,15 +10,40 @@ import {
 } from '../../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+const selectClass = 'rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-walnut focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30';
 
 const fmtDate = (d) => (d
   ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
   : '—');
 
-const mix = (c) => [
-  c.onetime ? `${c.onetime} one-time` : '',
-  c.subscription ? `${c.subscription} subscription` : '',
-].filter(Boolean).join(' · ');
+const SEG_CLASS = {
+  active: 'bg-green-100 text-green-800',
+  lapsed: 'bg-amber-100 text-amber-800',
+  new: 'bg-gray-100 text-gray-600',
+};
+const SEG_LABEL = { active: 'Active', lapsed: 'Lapsed', new: 'New' };
+
+const SORTERS = {
+  bundles: (a, b) => (b.bundles || 0) - (a.bundles || 0),
+  spent: (a, b) => (b.paidValue || 0) - (a.paidValue || 0),
+  recent: (a, b) => new Date(b.lastPaidOrderAt || 0) - new Date(a.lastPaidOrderAt || 0),
+  name: (a, b) => `${a.firstName || a.name || ''} ${a.lastName || ''}`
+    .trim().localeCompare(`${b.firstName || b.name || ''} ${b.lastName || ''}`.trim()),
+};
+
+function StatPill({ label, value }) {
+  return (
+    <div className="rounded-lg border border-cream-300 bg-white px-4 py-2 text-center">
+      <p className="text-xl font-extrabold text-walnut">{value}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-walnut-400">{label}</p>
+    </div>
+  );
+}
+
+StatPill.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+};
 
 function AdminCustomers() {
   const { token } = useContext(AuthContext);
@@ -25,6 +51,9 @@ function AdminCustomers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [windowDays, setWindowDays] = useState(60);
+  const [segment, setSegment] = useState('all');
+  const [sortBy, setSortBy] = useState('bundles');
   const [expanded, setExpanded] = useState(() => new Set());
 
   const load = useCallback(async () => {
@@ -54,8 +83,31 @@ function AdminCustomers() {
   const match = (name, email) => !q
     || (name || '').toLowerCase().includes(q) || (email || '').toLowerCase().includes(q);
 
-  const accounts = data.accounts.filter((a) => match(`${a.firstName} ${a.lastName}`, a.email));
-  const guests = data.guests.filter((g) => match(g.name, g.email));
+  const windowMs = windowDays * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const segmentOf = (c) => {
+    if (!c.lastPaidOrderAt) return 'new';
+    return now - new Date(c.lastPaidOrderAt).getTime() <= windowMs ? 'active' : 'lapsed';
+  };
+
+  // Accounts drive the analytics (segments, giveaway, sorting); guests stay a simple search list.
+  const searchedAccounts = data.accounts
+    .filter((a) => match(`${a.firstName} ${a.lastName}`, a.email));
+  const summary = {
+    active: searchedAccounts.filter((a) => segmentOf(a) === 'active').length,
+    lapsed: searchedAccounts.filter((a) => segmentOf(a) === 'lapsed').length,
+    new: searchedAccounts.filter((a) => segmentOf(a) === 'new').length,
+    bundles: searchedAccounts.reduce((s, a) => s + (a.bundles || 0), 0),
+    revenue: searchedAccounts.reduce((s, a) => s + (a.paidValue || 0), 0),
+  };
+
+  let shownAccounts = searchedAccounts;
+  if (segment === 'giveaway') shownAccounts = shownAccounts.filter((a) => a.giveawayMember);
+  else if (segment !== 'all') shownAccounts = shownAccounts.filter((a) => segmentOf(a) === segment);
+  shownAccounts = [...shownAccounts].sort(SORTERS[sortBy] || SORTERS.bundles);
+
+  const guests = [...data.guests.filter((g) => match(g.name, g.email))]
+    .sort(SORTERS[sortBy] || SORTERS.bundles);
 
   const renderOrders = (orders) => (
     orders.length === 0
@@ -85,6 +137,7 @@ function AdminCustomers() {
 
   const renderCard = (key, title, email, sub, stats) => {
     const open = expanded.has(key);
+    const seg = segmentOf(stats);
     return (
       <li key={key} className="overflow-hidden rounded-lg border border-cream-300 bg-white shadow-sm">
         <button
@@ -95,16 +148,27 @@ function AdminCustomers() {
           <div className="min-w-0">
             <p className="font-bold text-walnut">
               {title}
+              {stats.giveawayMember && <span className="ml-2" title="Giveaway member">⭐</span>}
               {sub}
             </p>
-            <p className="truncate text-sm text-walnut-400">{email || 'no email on file'}</p>
+            <p className="truncate text-sm text-walnut-400">
+              {email || 'no email on file'}
+              {stats.neighborhood ? ` · ${stats.neighborhood}` : ''}
+            </p>
           </div>
           <div className="text-right text-sm">
             <p className="font-semibold text-walnut">
-              {`${stats.orderCount} order${stats.orderCount === 1 ? '' : 's'} · $${stats.totalValue}`}
+              {`${stats.bundles || 0} bundle${stats.bundles === 1 ? '' : 's'} · $${stats.paidValue || 0} spent`}
             </p>
-            <p className="text-walnut-400">
-              {stats.orderCount ? `${mix(stats.counts)} · last ${fmtDate(stats.lastOrderAt)}` : 'no orders yet'}
+            <p className="mt-0.5 flex items-center justify-end gap-2 text-walnut-400">
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${SEG_CLASS[seg]}`}>
+                {SEG_LABEL[seg]}
+              </span>
+              <span>
+                {stats.paidOrderCount
+                  ? `${stats.paidOrderCount} order${stats.paidOrderCount === 1 ? '' : 's'} · last ${fmtDate(stats.lastPaidOrderAt)}`
+                  : 'no paid orders'}
+              </span>
             </p>
           </div>
         </button>
@@ -131,14 +195,56 @@ function AdminCustomers() {
 
       {!loading && !error && (
         <>
+          {/* Summary */}
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <StatPill label="Active" value={summary.active} />
+            <StatPill label="Lapsed" value={summary.lapsed} />
+            <StatPill label="Never ordered" value={summary.new} />
+            <StatPill label="Bundles sold" value={summary.bundles} />
+            <StatPill label="Revenue" value={`$${summary.revenue}`} />
+          </div>
+
+          {/* Controls */}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <label className="text-sm text-walnut-400">
+              Active within
+              <select value={windowDays} onChange={(e) => setWindowDays(Number(e.target.value))} className={`ml-2 ${selectClass}`}>
+                <option value={30}>30 days</option>
+                <option value={60}>60 days</option>
+                <option value={90}>90 days</option>
+              </select>
+            </label>
+            <select
+              value={segment}
+              onChange={(e) => setSegment(e.target.value)}
+              className={selectClass}
+            >
+              <option value="all">All accounts</option>
+              <option value="active">Active</option>
+              <option value="lapsed">Lapsed</option>
+              <option value="new">Never ordered</option>
+              <option value="giveaway">Giveaway members</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className={selectClass}
+            >
+              <option value="bundles">Sort: most bundles</option>
+              <option value="spent">Sort: most spent</option>
+              <option value="recent">Sort: most recent order</option>
+              <option value="name">Sort: name</option>
+            </select>
+          </div>
+
           <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-walnut-400">
-            {`Account holders (${accounts.length})`}
+            {`Account holders (${shownAccounts.length})`}
           </h2>
-          {accounts.length === 0
-            ? <p className="mt-3 text-walnut-400">No accounts found.</p>
+          {shownAccounts.length === 0
+            ? <p className="mt-3 text-walnut-400">No matching accounts.</p>
             : (
               <ul className="mt-3 space-y-3">
-                {accounts.map((a) => renderCard(
+                {shownAccounts.map((a) => renderCard(
                   `a:${a.userId}`,
                   `${a.firstName} ${a.lastName}`.trim() || a.email,
                   a.email,

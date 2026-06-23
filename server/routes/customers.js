@@ -1,11 +1,19 @@
+/* eslint-disable no-underscore-dangle */
 import express from 'express';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
+import GiveawayMember from '../models/GiveawayMember.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 import { orderTotal } from '../utils/orderEmails.js';
+import { orderBundleCount } from '../data/catalog.js';
 
 const router = express.Router();
+
+// Firewood bundles in an order (subscription = monthly size; one-time = the cart's bundle count).
+const bundlesForOrder = (o) => (o.orderType === 'subscription'
+  ? Math.round(Number(o.subscriptionBundles) || 0)
+  : orderBundleCount(o.items));
 
 // Compact per-order summary for the admin customers view.
 const summarize = (o) => ({
@@ -20,19 +28,31 @@ const summarize = (o) => ({
   fulfillment: o.fulfillment,
   phone: o.contact?.phone || '',
   total: orderTotal(o)?.total || 0,
+  bundles: bundlesForOrder(o),
+  // A "real" purchase for analytics: paid and not cancelled.
+  paid: o.paymentStatus === 'paid' && o.status !== 'cancelled',
 });
 
-// Roll a list of (desc-sorted) order summaries into per-customer stats.
-const rollUp = (orders) => ({
-  orderCount: orders.length,
-  lastOrderAt: orders[0]?.createdAt || null,
-  totalValue: orders.reduce((s, o) => s + (o.total || 0), 0),
-  counts: {
-    onetime: orders.filter((o) => o.orderType === 'onetime').length,
-    subscription: orders.filter((o) => o.orderType === 'subscription').length,
-  },
-  orders,
-});
+// Roll a list of (desc-by-createdAt) order summaries into per-customer stats. Lifetime analytics
+// metrics (bundles/spend/last order) count only paid, non-cancelled orders.
+const rollUp = (orders) => {
+  const paid = orders.filter((o) => o.paid);
+  return {
+    orderCount: orders.length,
+    lastOrderAt: orders[0]?.createdAt || null,
+    totalValue: orders.reduce((s, o) => s + (o.total || 0), 0),
+    // Paid-only lifetime totals.
+    paidOrderCount: paid.length,
+    bundles: paid.reduce((s, o) => s + (o.bundles || 0), 0),
+    paidValue: paid.reduce((s, o) => s + (o.total || 0), 0),
+    lastPaidOrderAt: paid[0]?.createdAt || null,
+    counts: {
+      onetime: orders.filter((o) => o.orderType === 'onetime').length,
+      subscription: orders.filter((o) => o.orderType === 'subscription').length,
+    },
+    orders,
+  };
+};
 
 /**
  * @swagger
@@ -47,10 +67,12 @@ const rollUp = (orders) => ({
  */
 router.get('/', auth, requireAdmin, async (req, res) => {
   try {
-    const [users, orders] = await Promise.all([
+    const [users, orders, gwMembers] = await Promise.all([
       User.find().select('-password').sort({ createdAt: -1 }).lean(),
       Order.find().sort({ createdAt: -1 }).lean(),
+      GiveawayMember.find({ active: true }).select('user').lean(),
     ]);
+    const giveawaySet = new Set(gwMembers.map((m) => String(m.user)));
 
     // Bucket orders by account id (when linked) or guest email (when not).
     const byUser = new Map();
@@ -83,7 +105,9 @@ router.get('/', auth, requireAdmin, async (req, res) => {
         email: u.email,
         role: u.role,
         createdAt: u.createdAt,
-        phone: list[0]?.phone || '', // most-recent order's phone, if any
+        neighborhood: u.address?.neighborhood || '',
+        giveawayMember: giveawaySet.has(String(u._id)),
+        phone: list[0]?.phone || u.phone || '', // most-recent order's phone, else the saved one
         ...rollUp(list),
       };
     }).sort((a, b) => (b.lastOrderAt ? new Date(b.lastOrderAt) : 0)
@@ -94,6 +118,7 @@ router.get('/', auth, requireAdmin, async (req, res) => {
       email: g.email,
       name: g.name,
       phone: g.phone,
+      giveawayMember: false,
       ...rollUp(g.orders),
     })).sort((a, b) => new Date(b.lastOrderAt) - new Date(a.lastOrderAt));
 
