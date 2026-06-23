@@ -5,6 +5,14 @@ const faqs = [
     a: 'No — we deliver small bundles only, perfect for cozy backyard firepit fires.',
   },
   {
+    q: 'Can I win free firewood?',
+    a: 'Yes! Every month we give away free firewood to one lucky neighbor. Create a free account, '
+      + 'save your delivery address, and join the monthly drawing — you only sign up once and you’re '
+      + 'entered automatically every month after that. When it’s running, you’ll see a “Win free '
+      + 'firewood” section right on our homepage. We pick one winner at random each month and email '
+      + 'them a code for a free bundle. Open to The Vineyards neighbors with an account.',
+  },
+  {
     q: 'What kind of wood do you sell?',
     a: 'For now, every bundle is a mixed assortment of seasoned hardwood — sourced right here in '
       + 'Mecklenburg County from a variety of local sources. It lights easy and burns clean for '
@@ -32,7 +40,9 @@ const faqs = [
   },
   {
     q: 'Who’s the little log in the corner?',
-    a: 'That’s Woody, our firewood helper! Tap him anytime to start an order in a few taps, check pricing, track an order, or get quick answers. Need a person? He’ll help you send us a message.',
+    a: 'That’s Woody, our firewood helper! Tap him anytime to start an order, check pricing, track an '
+      + 'order, or get quick answers. When we’re online you can chat with us live — otherwise he’ll '
+      + 'help you leave a message.',
   },
 ];
 
