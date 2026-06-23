@@ -17,6 +17,7 @@ import FeedbackModal from '../components/FeedbackModal';
 import ContactForm from '../components/ContactForm';
 import LowStockBanner from '../components/LowStockBanner';
 import WoodTypeBadge from '../components/WoodTypeBadge';
+import GiveawayCTA from '../components/GiveawayCTA';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -334,6 +335,7 @@ function Home() {
       <HowItWorks />
       <WhyVolw />
       <Testimonials />
+      <GiveawayCTA />
       <FAQ />
       <ServiceArea />
       <Contact />

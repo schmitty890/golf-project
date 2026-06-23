@@ -6,6 +6,7 @@ import Settings from '../models/Settings.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 import { phoneKey, streetKey } from '../utils/dedupe.js';
+import { PRODUCT_PRICES } from '../data/catalog.js';
 
 const router = express.Router();
 
@@ -117,6 +118,23 @@ export async function mintReferralReward(ownerId, rc) {
     maxUses: 1,
     owner: ownerId,
     description: 'Referral reward — a neighbor ordered with your code',
+  });
+}
+
+// Mint the monthly-giveaway prize: a one-time code worth N free bundles (N x bundle price), owned
+// by the winner, expiring in ~60 days.
+export async function mintGiveawayPrize(winnerId, bundles = 1) {
+  const n = Math.min(3, Math.max(1, Math.round(Number(bundles) || 1)));
+  const code = await generatePromoCode('WIN');
+  return PromoCode.create({
+    code,
+    discountType: 'amount',
+    discountValue: n * (PRODUCT_PRICES['Standard Bundle'] || 15),
+    active: true,
+    maxUses: 1,
+    owner: winnerId,
+    description: `Monthly giveaway — ${n} free bundle${n === 1 ? '' : 's'}`,
+    expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
   });
 }
 

@@ -254,6 +254,29 @@ export function referralRewardEmail(referrer, reward, label) {
   return { subject, html, text };
 }
 
+// Sent to the winner of the monthly drawing. `reward` is the minted PromoCode doc.
+export function giveawayWinnerEmail(winner, reward, bundles = 1) {
+  const hi = winner?.firstName ? `, ${winner.firstName}` : '';
+  const n = `${bundles} free bundle${bundles === 1 ? '' : 's'}`;
+  const subject = `🎉 You won this month's free firewood — ${BUSINESS()}`;
+  const intro = `Great news${hi}! You won this month's ${BUSINESS()} drawing — ${n} on us.`;
+  const use = `Use code <strong>${reward.code}</strong> at checkout to claim your ${n}.`;
+  const html = wrap('You won! 🔥', `<p>${intro}</p><p style="margin-top:12px">${use}</p><p style="color:#8a7f78;font-size:13px;margin-top:8px">One-time use. You're still entered for next month — good luck!</p>`);
+  const text = `${intro}\n\nUse code ${reward.code} at checkout to claim your ${n}. (One-time use.)\n\nYou're still entered for next month — good luck!`;
+  return { subject, html, text };
+}
+
+// Monthly "you're entered" reminder to standing-list members.
+export function giveawayReminderEmail(member, bundles = 1) {
+  const hi = member?.firstName ? `, ${member.firstName}` : '';
+  const n = `${bundles} free bundle${bundles === 1 ? '' : 's'}`;
+  const subject = `You're entered to win free firewood this month — ${BUSINESS()}`;
+  const intro = `Hi${hi}! You're entered in this month's ${BUSINESS()} drawing for ${n}. We pick one neighbor at random — good luck! 🔥`;
+  const html = wrap('Good luck this month!', `<p>${intro}</p><p style="color:#8a7f78;font-size:13px;margin-top:8px">You're on the list automatically every month. Manage it anytime from your account.</p>`);
+  const text = `${intro}\n\nYou're on the list automatically every month. Manage it anytime from your account.`;
+  return { subject, html, text };
+}
+
 export function contactFormEmail({
   name, email, phone, message,
 }) {

@@ -50,6 +50,13 @@ const settingsSchema = new mongoose.Schema({
   chat: {
     available: { type: Boolean, default: false },
   },
+  // Monthly "win a free bundle" giveaway. `enabled` = on/off; `prizeBundles` (1-3, clamped in the
+  // route) = prize size; `lastReminderMonth` makes the monthly reminder idempotent.
+  giveaway: {
+    enabled: { type: Boolean, default: false },
+    prizeBundles: { type: Number, default: 1 },
+    lastReminderMonth: { type: String, default: '' },
+  },
 }, { timestamps: true, minimize: false });
 
 export default mongoose.model('Settings', settingsSchema);

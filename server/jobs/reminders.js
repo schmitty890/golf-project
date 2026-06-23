@@ -1,9 +1,12 @@
 import Order from '../models/Order.js';
+import Settings from '../models/Settings.js';
+import GiveawayMember from '../models/GiveawayMember.js';
 import { sendMail } from '../utils/mailer.js';
-import { reminderEmail } from '../utils/orderEmails.js';
+import { reminderEmail, giveawayReminderEmail } from '../utils/orderEmails.js';
 
-// Local 'YYYY-MM-DD' helpers (avoid UTC shift from toISOString).
+// Local 'YYYY-MM-DD' / 'YYYY-MM' helpers (avoid UTC shift from toISOString).
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const ym = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 const tomorrowStr = () => {
   const d = new Date();
   d.setDate(d.getDate() + 1);
@@ -34,6 +37,25 @@ async function runReminderPass() {
   console.log(`[reminders] sent ${due.length} reminder(s) for ${tomorrow}`);
 }
 
+// Once per month, email the standing giveaway list "you're entered — good luck!". Idempotent via
+// Settings.giveaway.lastReminderMonth — fires on the first tick of a new month, never repeats.
+async function runGiveawayReminderPass() {
+  const settings = await Settings.findOne({ key: 'availability' });
+  const g = settings?.giveaway;
+  if (!g?.enabled) return;
+  const month = ym(new Date());
+  if (g.lastReminderMonth === month) return;
+
+  const members = await GiveawayMember.find({ active: true }).populate('user', 'firstName email address');
+  const due = members.filter((m) => m.user?.email && m.user.address?.neighborhood);
+  await Promise.all(due.map((m) => sendMail({
+    to: m.user.email,
+    ...giveawayReminderEmail(m.user, g.prizeBundles || 1),
+  })));
+  await Settings.findOneAndUpdate({ key: 'availability' }, { $set: { 'giveaway.lastReminderMonth': month } });
+  console.log(`[giveaway] sent ${due.length} monthly reminder(s) for ${month}`);
+}
+
 // In-process scheduler: check hourly, send only during the evening (local 17:00–21:59).
 // Self-contained (no external cron); the reminderSentAt guard makes repeat ticks safe.
 export function startReminderJob() {
@@ -41,6 +63,7 @@ export function startReminderJob() {
     try {
       const hour = new Date().getHours();
       if (hour >= 17 && hour <= 21) await runReminderPass();
+      await runGiveawayReminderPass();
     } catch (err) {
       console.error('Reminder job error:', err.message);
     }
