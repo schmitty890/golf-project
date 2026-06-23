@@ -12,21 +12,28 @@ export const PRODUCT_PRICES = {
   '3-Bundle Pack': 40,
 };
 
+// Canonical name of the Fire Starter Pack add-on. Its price is admin-editable (Settings.kindling),
+// so it lives outside PRODUCT_PRICES and is passed into computeChargeCents via `extraPrices`.
+export const KINDLING_NAME = 'Fire Starter Pack';
+
 // How many bundles each product represents (for the first-order minimum). KEEP IN SYNC with the
-// `bundles` field in client/src/data/pricing.js.
+// `bundles` field in client/src/data/pricing.js. The Fire Starter Pack is a 0-bundle add-on, so it
+// never counts toward the first-order minimum or the firewood inventory decrement.
 export const PRODUCT_BUNDLES = {
   'Standard Bundle': 1,
   '3-Bundle Pack': 3,
+  [KINDLING_NAME]: 0,
 };
 
 // Minimum bundles for the first-order discount to apply. KEEP IN SYNC with
 // FIRST_ORDER_MIN_BUNDLES in client/src/data/pricing.js.
 export const FIRST_ORDER_MIN_BUNDLES = 3;
 
-// Total bundles in an order's items[] ({ name, quantity }); unknown names count as 1 bundle.
+// Total bundles in an order's items[] ({ name, quantity }). Unknown names count as 1 bundle; a
+// registered 0 (the Fire Starter Pack add-on) stays 0 — hence `??`, not `||`, so 0 isn't defaulted.
 export function orderBundleCount(items) {
   return (items || []).reduce(
-    (n, i) => n + (PRODUCT_BUNDLES[i.name] || 1) * (Number(i.quantity) || 0),
+    (n, i) => n + (PRODUCT_BUNDLES[i.name] ?? 1) * (Number(i.quantity) || 0),
     0,
   );
 }
@@ -54,12 +61,13 @@ const SUB_WEEK_LABELS = {
 export const subscriptionWeekLabel = (v) => SUB_WEEK_LABELS[v] || '';
 
 // Compute the authoritative charge in cents for a one-time order, from the stored cart + delivery +
-// rush − validated discount. Throws if an item isn't in the catalog (don't charge unknown prices).
-export function computeChargeCents(order) {
+// rush, minus the validated discount. `extraPrices` supplies prices for admin-priced add-ons (the
+// Fire Starter Pack) on top of the static catalog. Throws if an item isn't priced.
+export function computeChargeCents(order, extraPrices = {}) {
   const items = order.items || [];
   let dollars = 0;
   items.forEach((i) => {
-    const price = PRODUCT_PRICES[i.name];
+    const price = extraPrices[i.name] ?? PRODUCT_PRICES[i.name];
     if (price === undefined) {
       throw new Error(`Unknown product: ${i.name}`);
     }
