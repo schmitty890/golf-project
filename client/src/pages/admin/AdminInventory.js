@@ -103,7 +103,7 @@ function AdminInventory() {
   const [bannerSaved, setBannerSaved] = useState(false);
   const [woodType, setWoodType] = useState({ label: '', note: '' });
   const [woodSaved, setWoodSaved] = useState(false);
-  const [kindling, setKindling] = useState({ inStock: false, price: 8 });
+  const [kindling, setKindling] = useState({ enabled: false, price: 8, quantity: 0 });
   const [kindlingSaved, setKindlingSaved] = useState(false);
 
   const load = useCallback(async () => {
@@ -197,7 +197,11 @@ function AdminInventory() {
     setKindling(next);
     try {
       const res = await axios.put(`${API_URL}/api/settings/availability`, {
-        kindling: { inStock: next.inStock, price: Number(next.price) || 0 },
+        kindling: {
+          enabled: next.enabled,
+          price: Number(next.price) || 0,
+          quantity: Math.max(0, Math.round(Number(next.quantity) || 0)),
+        },
       }, authHeaders);
       if (res.data.kindling) setKindling(res.data.kindling);
       setKindlingSaved(true);
@@ -323,20 +327,21 @@ function AdminInventory() {
           {kindlingSaved && <span className="text-sm font-semibold text-green-700">Saved ✓</span>}
         </div>
         <p className="mt-1 text-xs text-walnut-400">
-          A paid add-on shown on the order + pricing pages when in stock. It&apos;s not a firewood
-          bundle, so it never affects your bundle count or the first-order minimum.
+          A paid add-on shown on the order + pricing pages when shown and has quantity left.
+          Quantity ticks down as packs sell (like your bundles). Not a firewood bundle, so it never
+          affects your bundle count or the first-order minimum.
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-6">
           <label className="flex items-center gap-2 pb-2 text-sm font-semibold text-walnut">
             <input
               type="checkbox"
-              checked={kindling.inStock}
-              onChange={(e) => saveKindling({ ...kindling, inStock: e.target.checked })}
+              checked={kindling.enabled}
+              onChange={(e) => saveKindling({ ...kindling, enabled: e.target.checked })}
               className="h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
             />
             <span className="flex items-center gap-1.5">
-              <span className={`inline-block h-2.5 w-2.5 rounded-full ${kindling.inStock ? 'bg-green-500' : 'bg-gray-300'}`} />
-              {kindling.inStock ? 'In stock' : 'Out of stock'}
+              <span className={`inline-block h-2.5 w-2.5 rounded-full ${kindling.enabled ? 'bg-green-500' : 'bg-gray-300'}`} />
+              {kindling.enabled ? 'Shown on site' : 'Hidden'}
             </span>
           </label>
           <div>
@@ -351,7 +356,22 @@ function AdminInventory() {
               className={`mt-1 w-24 ${inputClass}`}
             />
           </div>
+          <div>
+            <label htmlFor="k-qty" className="block text-xs font-semibold text-walnut">Quantity for sale</label>
+            <input
+              id="k-qty"
+              type="number"
+              min={0}
+              value={kindling.quantity}
+              onChange={(e) => setKindling({ ...kindling, quantity: e.target.value })}
+              onBlur={() => saveKindling(kindling)}
+              className={`mt-1 w-24 ${inputClass}`}
+            />
+          </div>
         </div>
+        {kindling.enabled && kindling.quantity <= 0 && (
+          <p className="mt-2 text-xs text-amber-600">Sold out — set a quantity to show it on the site.</p>
+        )}
       </div>
 
       {/* Analytics */}

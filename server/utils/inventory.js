@@ -5,9 +5,24 @@
 /* eslint-disable no-param-reassign */
 import Settings from '../models/Settings.js';
 import InventoryLog from '../models/InventoryLog.js';
-import { orderBundleCount } from '../data/catalog.js';
+import { orderBundleCount, KINDLING_NAME } from '../data/catalog.js';
 
 const KEY = 'availability'; // the singleton Settings doc key
+
+// Units of the Fire Starter Pack add-on in an order.
+const kindlingCount = (order) => (order.items || [])
+  .filter((i) => i.name === KINDLING_NAME)
+  .reduce((n, i) => n + (Number(i.quantity) || 0), 0);
+
+// Atomically nudge the Fire Starter Pack's sellable quantity (its own stock, apart from firewood).
+async function adjustKindling(delta) {
+  if (!delta) return;
+  await Settings.findOneAndUpdate(
+    { key: KEY },
+    { $inc: { 'kindling.quantity': delta } },
+    { upsert: true, setDefaultsOnInsert: true },
+  );
+}
 
 // Read-only snapshot of inventory settings (with defaults if the doc/subdoc is absent).
 export async function getInventory() {
@@ -93,6 +108,8 @@ export async function applyOrderInventory(order, { invoiceId = null } = {}) {
   order.inventoryApplied = true; // claim idempotency before adjusting
   await order.save();
   if (qty > 0) await adjustPrepared(-qty, { reason: 'order_paid', order });
+  const packs = kindlingCount(order); // Fire Starter Pack add-on has its own stock
+  if (packs > 0) await adjustKindling(-packs);
   return -qty;
 }
 
@@ -104,5 +121,7 @@ export async function restoreOrderInventory(order) {
   order.inventoryApplied = false;
   await order.save();
   if (qty > 0) await adjustPrepared(qty, { reason: 'order_unpaid', order });
+  const packs = kindlingCount(order);
+  if (packs > 0) await adjustKindling(packs);
   return qty;
 }

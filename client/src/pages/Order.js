@@ -71,7 +71,7 @@ function Order() {
   const [rushRequested, setRushRequested] = useState(false);
   const [venmoHandle, setVenmoHandle] = useState('');
   const [cardEnabled, setCardEnabled] = useState(false);
-  const [kindling, setKindling] = useState({ inStock: false, price: 0 });
+  const [kindling, setKindling] = useState({ enabled: false, price: 0, quantity: 0 });
   const [payMethod, setPayMethod] = useState('venmo'); // 'card' | 'venmo'
   const [returnStatus, setReturnStatus] = useState(''); // 'paid' | 'cancelled' after Stripe redirect
   const [trackToken, setTrackToken] = useState(''); // tracking token of the just-placed order
@@ -164,8 +164,8 @@ function Order() {
   }, [cardEnabled, mode]);
 
   // --- Cart ---
-  // Firewood bundles, plus the Fire Starter Pack add-on (priced by admin) when it's in stock.
-  const displayProducts = kindling.inStock
+  // Firewood bundles, plus the Fire Starter Pack add-on when it's enabled AND in stock.
+  const displayProducts = kindling.enabled && kindling.quantity > 0
     ? [...products, { ...KINDLING, price: Number(kindling.price) || 0 }]
     : products;
   const setProductQty = (id, n) => setQty((prev) => ({ ...prev, [id]: Math.max(0, n) }));

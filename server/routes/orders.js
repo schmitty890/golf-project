@@ -190,14 +190,19 @@ router.post('/', optionalAuth, async (req, res) => {
     // owner fulfills within that week — no specific date/lead-time check.
     const settings = await Settings.findOne({ key: 'availability' });
 
-    // Fire Starter Pack add-on: reject if out of stock, and stamp the authoritative admin price on
-    // the cart item (so the stored order + Venmo total can't be tampered via the client).
+    // Fire Starter Pack add-on: require it offered + in stock for the ordered count, and stamp the
+    // authoritative admin price on the cart item (so the stored order + total can't be tampered).
     const kindlingItem = cart.find((i) => i.name === KINDLING_NAME);
     if (kindlingItem) {
-      if (!settings?.kindling?.inStock) {
+      const k = settings?.kindling || {};
+      const available = k.enabled ? (Number(k.quantity) || 0) : 0;
+      if (available <= 0) {
         return res.status(400).json({ error: 'Fire Starter Packs are out of stock right now.' });
       }
-      kindlingItem.unitPrice = Number(settings.kindling.price) || 0;
+      if (kindlingItem.quantity > available) {
+        return res.status(400).json({ error: `Only ${available} Fire Starter Pack${available === 1 ? '' : 's'} left.` });
+      }
+      kindlingItem.unitPrice = Number(k.price) || 0;
     }
     const extraPrices = { [KINDLING_NAME]: Number(settings?.kindling?.price) || 0 };
 

@@ -57,11 +57,13 @@ const settingsSchema = new mongoose.Schema({
     prizeBundles: { type: Number, default: 1 },
     lastReminderMonth: { type: String, default: '' },
   },
-  // Fire Starter Pack add-on: an admin in-stock toggle + admin-editable price. Shown on the order
-  // and pricing pages only when in stock. A 0-bundle add-on (see catalog.js).
+  // Fire Starter Pack add-on. `enabled` = show toggle; `quantity` = units for sale (decrements on
+  // paid orders, like firewood); `price` = admin-set. Shown only when enabled and quantity > 0.
+  // A 0-bundle add-on (see catalog.js).
   kindling: {
-    inStock: { type: Boolean, default: false },
+    enabled: { type: Boolean, default: false },
     price: { type: Number, default: 8, min: 0 },
+    quantity: { type: Number, default: 0 },
   },
 }, { timestamps: true, minimize: false });
 
