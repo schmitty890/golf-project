@@ -13,7 +13,7 @@ const DEFAULT_FIRST_ORDER = { enabled: true, type: 'amount', value: 15 };
 const DEFAULT_WOOD_TYPE = { label: 'Mixed seasoned hardwood', note: '' };
 const DEFAULT_CHAT = { available: false };
 const DEFAULT_GIVEAWAY = { enabled: false, prizeBundles: 1, lastReminderMonth: '' };
-const DEFAULT_KINDLING = { inStock: false, price: 8 };
+const DEFAULT_KINDLING = { enabled: false, price: 8, quantity: 0 };
 const DEFAULTS = {
   leadDays: 1,
   rushEnabled: true,
@@ -121,8 +121,9 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
     }
     if (req.body?.kindling && typeof req.body.kindling === 'object') {
       const k = req.body.kindling;
-      if (k.inStock !== undefined) update['kindling.inStock'] = Boolean(k.inStock);
+      if (k.enabled !== undefined) update['kindling.enabled'] = Boolean(k.enabled);
       if (k.price !== undefined) update['kindling.price'] = Math.max(0, Number(k.price) || 0);
+      if (k.quantity !== undefined) update['kindling.quantity'] = Math.max(0, Math.round(Number(k.quantity) || 0));
     }
 
     const doc = await Settings.findOneAndUpdate(

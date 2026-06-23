@@ -11,14 +11,14 @@ import WoodTypeBadge from '../components/WoodTypeBadge';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 function Pricing() {
-  const [kindling, setKindling] = useState({ inStock: false, price: 0 });
+  const [kindling, setKindling] = useState({ enabled: false, price: 0, quantity: 0 });
   useEffect(() => {
     axios.get(`${API_URL}/api/settings/availability`)
       .then((res) => { if (res.data.kindling) setKindling(res.data.kindling); })
       .catch(() => {});
   }, []);
 
-  const displayProducts = kindling.inStock
+  const displayProducts = kindling.enabled && kindling.quantity > 0
     ? [...products, { ...KINDLING, price: Number(kindling.price) || 0 }]
     : products;
 
