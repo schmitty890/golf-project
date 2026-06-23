@@ -1,12 +1,27 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import {
-  products,
+  products, KINDLING,
   subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
 } from '../data/pricing';
 import business from '../data/business';
 import WoodTypeBadge from '../components/WoodTypeBadge';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
 function Pricing() {
+  const [kindling, setKindling] = useState({ inStock: false, price: 0 });
+  useEffect(() => {
+    axios.get(`${API_URL}/api/settings/availability`)
+      .then((res) => { if (res.data.kindling) setKindling(res.data.kindling); })
+      .catch(() => {});
+  }, []);
+
+  const displayProducts = kindling.inStock
+    ? [...products, { ...KINDLING, price: Number(kindling.price) || 0 }]
+    : products;
+
   return (
     <div className="bg-cream">
       {/* Header */}
@@ -27,10 +42,13 @@ function Pricing() {
       <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <h2 className="text-center text-2xl font-extrabold tracking-tight text-walnut">Order anytime</h2>
         <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {products.map((p) => (
+          {displayProducts.map((p) => (
             <div key={p.id} className="flex items-start justify-between gap-4 rounded-2xl border border-cream-300 bg-white p-6 shadow-sm">
               <div className="min-w-0">
-                <h3 className="text-lg font-bold text-walnut">{p.name}</h3>
+                <h3 className="text-lg font-bold text-walnut">
+                  {p.name}
+                  {p.addon && <span className="ml-2 rounded-full bg-walnut/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-walnut-400">add-on</span>}
+                </h3>
                 <p className="mt-1 text-sm text-walnut-400">{p.description}</p>
               </div>
               <p className="shrink-0 text-2xl font-extrabold text-ember">{`$${p.price}`}</p>

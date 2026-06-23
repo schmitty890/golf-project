@@ -28,13 +28,25 @@ export const products = [
 
 export const getProduct = (id) => products.find((p) => p.id === id);
 
+// The Fire Starter Pack add-on. 0 bundles (never counts toward the first-order minimum). The price
+// is admin-set (from settings → kindling) and it only shows when kindling.inStock.
+// KEEP `name` IN SYNC with KINDLING_NAME in server/data/catalog.js.
+export const KINDLING = {
+  id: 'fire-starter-pack',
+  name: 'Fire Starter Pack',
+  bundles: 0,
+  addon: true,
+  description: 'Quick-light fire starters — get your fire going fast.',
+};
+
 // Minimum bundles in a cart for the first-order discount to apply — stops a single $15 bundle
 // from being fully covered by a $15 deal. Mirrored server-side in server/data/catalog.js.
 export const FIRST_ORDER_MIN_BUNDLES = 3;
 
-// Total bundles in a cart of { bundles?, count } items (a Standard Bundle counts as 1).
+// Total bundles in a cart of { bundles?, count } items (a Standard Bundle counts as 1; a registered
+// `bundles: 0` add-on like the Fire Starter Pack stays 0 — hence `??`, not `||`).
 export const cartBundleCount = (items) => (items || [])
-  .reduce((n, i) => n + (i.bundles || 1) * (i.count || 0), 0);
+  .reduce((n, i) => n + (i.bundles ?? 1) * (i.count || 0), 0);
 
 // Recurring monthly subscriptions (always delivered): any size 2–10 bundles/month at a flat
 // per-bundle price. The savings story is vs one-time singles ($15 each).

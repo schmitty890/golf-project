@@ -9,7 +9,7 @@ import { PlusIcon, MinusIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import business from '../data/business';
 import {
-  products, TIME_WINDOWS,
+  products, KINDLING, TIME_WINDOWS,
   subscriptionMonthly, clampBundles, bundlesFromPlan,
   SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
   SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
@@ -41,7 +41,7 @@ function Order() {
   const initialQty = (() => {
     const q = {};
     (reorder?.items || []).forEach((it) => {
-      const p = products.find((x) => x.name === it.name);
+      const p = [...products, KINDLING].find((x) => x.name === it.name);
       if (p) q[p.id] = Number(it.quantity) || 1;
     });
     return q;
@@ -71,6 +71,7 @@ function Order() {
   const [rushRequested, setRushRequested] = useState(false);
   const [venmoHandle, setVenmoHandle] = useState('');
   const [cardEnabled, setCardEnabled] = useState(false);
+  const [kindling, setKindling] = useState({ inStock: false, price: 0 });
   const [payMethod, setPayMethod] = useState('venmo'); // 'card' | 'venmo'
   const [returnStatus, setReturnStatus] = useState(''); // 'paid' | 'cancelled' after Stripe redirect
   const [trackToken, setTrackToken] = useState(''); // tracking token of the just-placed order
@@ -136,6 +137,7 @@ function Order() {
           setCardEnabled(true);
           setPayMethod('card');
         }
+        if (res.data.kindling) setKindling(res.data.kindling);
       })
       .catch(() => setDateOverrides({}));
   }, []);
@@ -162,8 +164,12 @@ function Order() {
   }, [cardEnabled, mode]);
 
   // --- Cart ---
+  // Firewood bundles, plus the Fire Starter Pack add-on (priced by admin) when it's in stock.
+  const displayProducts = kindling.inStock
+    ? [...products, { ...KINDLING, price: Number(kindling.price) || 0 }]
+    : products;
   const setProductQty = (id, n) => setQty((prev) => ({ ...prev, [id]: Math.max(0, n) }));
-  const cart = products
+  const cart = displayProducts
     .filter((p) => (qty[p.id] || 0) > 0)
     .map((p) => ({ ...p, count: qty[p.id] }));
   const itemsSub = cart.reduce((s, c) => s + c.price * c.count, 0);
@@ -604,7 +610,7 @@ function Order() {
             <span className={labelClass}>Add items</span>
             <WoodTypeBadge className="mt-2" />
             <div className="mt-2 space-y-3">
-              {products.map((p) => {
+              {displayProducts.map((p) => {
                 const count = qty[p.id] || 0;
                 return (
                   <div
@@ -616,6 +622,7 @@ function Order() {
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-walnut">
                         {p.name}
+                        {p.addon && <span className="ml-2 rounded-full bg-walnut/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-walnut-400">add-on</span>}
                         <span className="ml-2 font-extrabold text-ember">{`$${p.price}`}</span>
                       </p>
                       <p className="text-xs text-walnut-400">{p.description}</p>

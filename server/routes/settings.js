@@ -13,6 +13,7 @@ const DEFAULT_FIRST_ORDER = { enabled: true, type: 'amount', value: 15 };
 const DEFAULT_WOOD_TYPE = { label: 'Mixed seasoned hardwood', note: '' };
 const DEFAULT_CHAT = { available: false };
 const DEFAULT_GIVEAWAY = { enabled: false, prizeBundles: 1, lastReminderMonth: '' };
+const DEFAULT_KINDLING = { inStock: false, price: 8 };
 const DEFAULTS = {
   leadDays: 1,
   rushEnabled: true,
@@ -42,6 +43,7 @@ router.get('/availability', async (req, res) => {
       woodType: doc?.woodType ?? DEFAULT_WOOD_TYPE,
       chat: doc?.chat ?? DEFAULT_CHAT,
       giveaway: doc?.giveaway ?? DEFAULT_GIVEAWAY,
+      kindling: doc?.kindling ?? DEFAULT_KINDLING,
       // A Venmo handle is public by design (it's how customers pay).
       venmoHandle: process.env.VENMO_HANDLE || '',
       // Whether card checkout (Stripe) is available — the client shows the card option only if so.
@@ -117,6 +119,11 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
         update['giveaway.prizeBundles'] = Math.min(3, Math.max(1, Math.round(Number(g.prizeBundles) || 1)));
       }
     }
+    if (req.body?.kindling && typeof req.body.kindling === 'object') {
+      const k = req.body.kindling;
+      if (k.inStock !== undefined) update['kindling.inStock'] = Boolean(k.inStock);
+      if (k.price !== undefined) update['kindling.price'] = Math.max(0, Number(k.price) || 0);
+    }
 
     const doc = await Settings.findOneAndUpdate(
       { key: KEY },
@@ -133,6 +140,7 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
       woodType: doc.woodType,
       chat: doc.chat,
       giveaway: doc.giveaway,
+      kindling: doc.kindling,
     });
   } catch (error) {
     console.error('Update availability error:', error);

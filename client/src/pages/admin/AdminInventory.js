@@ -103,6 +103,8 @@ function AdminInventory() {
   const [bannerSaved, setBannerSaved] = useState(false);
   const [woodType, setWoodType] = useState({ label: '', note: '' });
   const [woodSaved, setWoodSaved] = useState(false);
+  const [kindling, setKindling] = useState({ inStock: false, price: 8 });
+  const [kindlingSaved, setKindlingSaved] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -118,6 +120,7 @@ function AdminInventory() {
         lowStockThreshold: inv.data.inventory.lowStockThreshold,
       });
       setWoodType(settings.data.woodType || { label: '', note: '' });
+      if (settings.data.kindling) setKindling(settings.data.kindling);
       setAnalytics(an.data);
       setError('');
     } catch (err) {
@@ -187,6 +190,20 @@ function AdminInventory() {
       setTimeout(() => setWoodSaved(false), 2000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save wood type');
+    }
+  };
+
+  const saveKindling = async (next) => {
+    setKindling(next);
+    try {
+      const res = await axios.put(`${API_URL}/api/settings/availability`, {
+        kindling: { inStock: next.inStock, price: Number(next.price) || 0 },
+      }, authHeaders);
+      if (res.data.kindling) setKindling(res.data.kindling);
+      setKindlingSaved(true);
+      setTimeout(() => setKindlingSaved(false), 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to save the Fire Starter Pack');
     }
   };
 
@@ -297,6 +314,44 @@ function AdminInventory() {
         <button type="button" onClick={saveWoodType} className="mt-4 rounded-lg bg-ember px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600">
           Save
         </button>
+      </div>
+
+      {/* Fire Starter Pack add-on */}
+      <div className={cardClass}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-walnut">Fire Starter Pack</h2>
+          {kindlingSaved && <span className="text-sm font-semibold text-green-700">Saved ✓</span>}
+        </div>
+        <p className="mt-1 text-xs text-walnut-400">
+          A paid add-on shown on the order + pricing pages when in stock. It&apos;s not a firewood
+          bundle, so it never affects your bundle count or the first-order minimum.
+        </p>
+        <div className="mt-3 flex flex-wrap items-end gap-6">
+          <label className="flex items-center gap-2 pb-2 text-sm font-semibold text-walnut">
+            <input
+              type="checkbox"
+              checked={kindling.inStock}
+              onChange={(e) => saveKindling({ ...kindling, inStock: e.target.checked })}
+              className="h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+            />
+            <span className="flex items-center gap-1.5">
+              <span className={`inline-block h-2.5 w-2.5 rounded-full ${kindling.inStock ? 'bg-green-500' : 'bg-gray-300'}`} />
+              {kindling.inStock ? 'In stock' : 'Out of stock'}
+            </span>
+          </label>
+          <div>
+            <label htmlFor="k-price" className="block text-xs font-semibold text-walnut">Price ($)</label>
+            <input
+              id="k-price"
+              type="number"
+              min={0}
+              value={kindling.price}
+              onChange={(e) => setKindling({ ...kindling, price: e.target.value })}
+              onBlur={() => saveKindling(kindling)}
+              className={`mt-1 w-24 ${inputClass}`}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Analytics */}

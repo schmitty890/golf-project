@@ -22,7 +22,7 @@ import {
 } from '../utils/stripe.js';
 import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
-  SUBSCRIPTION_WEEK_VALUES, orderBundleCount, FIRST_ORDER_MIN_BUNDLES,
+  SUBSCRIPTION_WEEK_VALUES, orderBundleCount, FIRST_ORDER_MIN_BUNDLES, KINDLING_NAME,
 } from '../data/catalog.js';
 import { applyOrderInventory, restoreOrderInventory } from '../utils/inventory.js';
 
@@ -189,6 +189,18 @@ router.post('/', optionalAuth, async (req, res) => {
     // availability/lead-time). Subscriptions instead pick a preferred WEEK of the month, so the
     // owner fulfills within that week — no specific date/lead-time check.
     const settings = await Settings.findOne({ key: 'availability' });
+
+    // Fire Starter Pack add-on: reject if out of stock, and stamp the authoritative admin price on
+    // the cart item (so the stored order + Venmo total can't be tampered via the client).
+    const kindlingItem = cart.find((i) => i.name === KINDLING_NAME);
+    if (kindlingItem) {
+      if (!settings?.kindling?.inStock) {
+        return res.status(400).json({ error: 'Fire Starter Packs are out of stock right now.' });
+      }
+      kindlingItem.unitPrice = Number(settings.kindling.price) || 0;
+    }
+    const extraPrices = { [KINDLING_NAME]: Number(settings?.kindling?.price) || 0 };
+
     let windows = [];
     let isRush = false;
     let rushPercent = 0;
@@ -296,7 +308,7 @@ router.post('/', optionalAuth, async (req, res) => {
             session = await createSubscriptionCheckout(order, monthlyCents, { successUrl, cancelUrl });
           }
         } else {
-          const amountCents = computeChargeCents(order);
+          const amountCents = computeChargeCents(order, extraPrices);
           if (amountCents >= 50) {
             const description = (order.items || []).map((i) => `${i.quantity}× ${i.name}`).join(', ');
             session = await createOneTimeCheckout(order, amountCents, { successUrl, cancelUrl, description });

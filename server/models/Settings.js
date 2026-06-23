@@ -57,6 +57,12 @@ const settingsSchema = new mongoose.Schema({
     prizeBundles: { type: Number, default: 1 },
     lastReminderMonth: { type: String, default: '' },
   },
+  // Fire Starter Pack add-on: an admin in-stock toggle + admin-editable price. Shown on the order
+  // and pricing pages only when in stock. A 0-bundle add-on (see catalog.js).
+  kindling: {
+    inStock: { type: Boolean, default: false },
+    price: { type: Number, default: 8, min: 0 },
+  },
 }, { timestamps: true, minimize: false });
 
 export default mongoose.model('Settings', settingsSchema);
