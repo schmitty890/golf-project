@@ -25,6 +25,7 @@ import AdminPromos from './pages/admin/AdminPromos';
 import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminInventory from './pages/admin/AdminInventory';
 import AdminChat from './pages/admin/AdminChat';
+import AdminGiveaway from './pages/admin/AdminGiveaway';
 
 function App() {
   return (
@@ -122,6 +123,14 @@ function App() {
               element={(
                 <RequireAuth adminOnly>
                   <SidebarLayout><AdminChat /></SidebarLayout>
+                </RequireAuth>
+            )}
+            />
+            <Route
+              path="/admin/giveaway"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout><AdminGiveaway /></SidebarLayout>
                 </RequireAuth>
             )}
             />

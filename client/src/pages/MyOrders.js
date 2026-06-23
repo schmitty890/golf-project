@@ -6,6 +6,7 @@ import { ClockIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import FeedbackModal from '../components/FeedbackModal';
 import RescheduleModal from '../components/RescheduleModal';
+import GiveawayCTA from '../components/GiveawayCTA';
 import {
   describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
@@ -96,6 +97,10 @@ function MyOrders() {
             New Order
           </Link>
         </div>
+      </div>
+
+      <div className="mt-4">
+        <GiveawayCTA variant="compact" />
       </div>
 
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
