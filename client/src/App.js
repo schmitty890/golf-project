@@ -9,6 +9,7 @@ import RequireAuth from './components/RequireAuth';
 import ScrollToTop from './components/ScrollToTop';
 import AnalyticsTracker from './components/AnalyticsTracker';
 import ChatWidget from './components/chatbot/ChatWidget';
+import GiveawayModal from './components/GiveawayModal';
 import Home from './pages/Home';
 import Order from './pages/Order';
 import Pricing from './pages/Pricing';
@@ -136,6 +137,7 @@ function App() {
             />
           </Routes>
           <ChatWidget />
+          <GiveawayModal />
           <AdminUnreadFab />
         </AdminChatProvider>
       </AuthProvider>

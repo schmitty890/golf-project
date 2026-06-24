@@ -57,6 +57,18 @@ function AdminGiveaway() {
     saveSettings({ enabled, prizeBundles: n });
   };
 
+  const removeMember = async (m) => {
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(`Remove ${m.name} from the giveaway list?`)) return;
+    setError('');
+    try {
+      await axios.post(`${API_URL}/api/giveaway/remove`, { userId: m.userId }, authHeaders);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to remove member');
+    }
+  };
+
   const draw = async () => {
     // eslint-disable-next-line no-alert
     if (!window.confirm('Draw this month’s winner now? This can only be done once.')) return;
@@ -162,7 +174,16 @@ function AdminGiveaway() {
                   {m.name}
                   {!m.eligible && <span className="ml-2 text-xs text-amber-600">(no address — not eligible)</span>}
                 </span>
-                <span className="text-xs text-walnut-300">{m.neighborhood || '—'}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-walnut-300">{m.neighborhood || '—'}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeMember(m)}
+                    className="text-xs font-semibold text-walnut-400 underline hover:text-red-600"
+                  >
+                    Remove
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

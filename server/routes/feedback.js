@@ -4,6 +4,8 @@ import Feedback from '../models/Feedback.js';
 import User from '../models/User.js';
 import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
+import { sendMail } from '../utils/mailer.js';
+import { ownerNoticeEmail } from '../utils/orderEmails.js';
 
 const router = express.Router();
 
@@ -59,6 +61,27 @@ router.post('/', optionalAuth, async (req, res) => {
       user: req.userId || null,
       status: 'pending',
     });
+
+    // Alert the owner (pending review). Reply-To the customer when we have their email.
+    if (process.env.OWNER_EMAIL) {
+      const lines = [
+        ['Name', feedback.name],
+        ['Rating', `${feedback.rating}/5`],
+      ];
+      if (feedback.location) lines.push(['Neighborhood', feedback.location]);
+      if (feedback.email) lines.push(['Email', feedback.email]);
+      if (feedback.comment) lines.push(['Comment', feedback.comment]);
+      sendMail({
+        to: process.env.OWNER_EMAIL,
+        ...(feedback.email ? { replyTo: feedback.email } : {}),
+        ...ownerNoticeEmail({
+          subject: `New feedback (${feedback.rating}/5) from ${feedback.name}`,
+          heading: 'New feedback — pending review',
+          intro: `${feedback.name} left a ${feedback.rating}/5 review. Approve it in the admin Feedback page to publish.`,
+          lines,
+        }),
+      });
+    }
 
     return res.status(201).json(feedback);
   } catch (error) {
