@@ -197,6 +197,21 @@ export function orderRescheduledOwnerEmail(order) {
   return { subject, html, text };
 }
 
+// Generic owner-only "FYI" alert: a heading, an optional intro line, and key/value detail lines.
+// Powers the lightweight customer-activity notices (sign-ups, giveaway entries, profile edits,
+// feedback, card payments, subscription changes) so the owner hears about everything customers do.
+// Values are HTML-escaped since they carry user-supplied content (names, addresses, messages).
+export function ownerNoticeEmail({
+  subject, heading, intro = '', lines = [],
+}) {
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const safe = lines.map(([k, v]) => [k, esc(v)]);
+  const introHtml = intro ? `<p>${esc(intro)}</p>` : '';
+  const html = wrap(heading, `${introHtml}${linesToHtml(safe)}`);
+  const text = `${intro ? `${intro}\n\n` : ''}${linesToText(lines)}`;
+  return { subject, html, text };
+}
+
 export function windowConfirmedEmail(order) {
   const when = [fmtDate(order.schedule?.date || order.preferredDate), windowsText(order)].filter(Boolean).join(' · ');
   const how = fulfillmentText(order);

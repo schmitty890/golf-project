@@ -8,9 +8,15 @@ import GiveawayMember from '../models/GiveawayMember.js';
 import GiveawayDraw from '../models/GiveawayDraw.js';
 import { mintGiveawayPrize } from './promos.js';
 import { sendMail } from '../utils/mailer.js';
-import { giveawayWinnerEmail } from '../utils/orderEmails.js';
+import { giveawayWinnerEmail, ownerNoticeEmail } from '../utils/orderEmails.js';
 
 const router = express.Router();
+
+// Fire-and-forget owner alert (no-op if OWNER_EMAIL/SMTP unset; never blocks the request).
+function notifyOwner(notice) {
+  if (!process.env.OWNER_EMAIL) return;
+  sendMail({ to: process.env.OWNER_EMAIL, ...ownerNoticeEmail(notice) });
+}
 
 export function currentMonth(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -63,15 +69,31 @@ router.post('/join', auth, async (req, res) => {
   try {
     const { enabled } = await giveawayConfig();
     if (!enabled) return res.status(400).json({ error: 'No active giveaway right now.' });
-    const user = await User.findById(req.userId).select('address');
+    const user = await User.findById(req.userId).select('firstName lastName email address');
     if (!user?.address?.neighborhood) {
       return res.status(400).json({ error: 'Add your delivery address to enter.' });
     }
+    const existing = await GiveawayMember.findOne({ user: req.userId });
     await GiveawayMember.findOneAndUpdate(
       { user: req.userId },
       { $set: { active: true } },
       { upsert: true, setDefaultsOnInsert: true, new: true },
     );
+    // Only alert the owner on a genuinely new entry (not a re-join of an already-active member).
+    if (!existing?.active) {
+      const memberCount = await GiveawayMember.countDocuments({ active: true });
+      notifyOwner({
+        subject: `New giveaway entry: ${fullName(user)}`,
+        heading: 'New giveaway entry',
+        intro: `${fullName(user)} just entered this month's drawing.`,
+        lines: [
+          ['Name', fullName(user)],
+          ['Email', user.email || '—'],
+          ['Neighborhood', user.address?.neighborhood || '—'],
+          ['On the list now', String(memberCount)],
+        ],
+      });
+    }
     return res.json({ joined: true });
   } catch (error) {
     console.error('Giveaway join error:', error);
@@ -82,7 +104,17 @@ router.post('/join', auth, async (req, res) => {
 // Opt out of the standing list.
 router.post('/leave', auth, async (req, res) => {
   try {
+    const member = await GiveawayMember.findOne({ user: req.userId });
     await GiveawayMember.findOneAndUpdate({ user: req.userId }, { $set: { active: false } });
+    if (member?.active) {
+      const user = await User.findById(req.userId).select('firstName lastName email');
+      notifyOwner({
+        subject: `Giveaway opt-out: ${fullName(user)}`,
+        heading: 'Customer left the giveaway',
+        intro: `${fullName(user)} opted out of the monthly drawing.`,
+        lines: [['Name', fullName(user)], ['Email', user?.email || '—']],
+      });
+    }
     return res.json({ joined: false });
   } catch (error) {
     console.error('Giveaway leave error:', error);
@@ -111,6 +143,7 @@ router.get('/', auth, requireAdmin, async (req, res) => {
       members: members
         .filter((m) => m.user)
         .map((m) => ({
+          userId: String(m.user._id),
           name: fullName(m.user),
           email: m.user.email || '',
           neighborhood: m.user.address?.neighborhood || '',
@@ -123,6 +156,19 @@ router.get('/', auth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Giveaway admin error:', error);
     return res.status(500).json({ error: 'Failed to load giveaway' });
+  }
+});
+
+// Admin: remove a member from the standing list (soft delete — active:false).
+router.post('/remove', auth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId is required.' });
+    await GiveawayMember.findOneAndUpdate({ user: userId }, { $set: { active: false } });
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Giveaway remove error:', error);
+    return res.status(500).json({ error: 'Failed to remove member' });
   }
 });
 

@@ -4,8 +4,18 @@ import multer from 'multer';
 import sharp from 'sharp';
 import User from '../models/User.js';
 import auth from '../middleware/auth.js';
+import { sendMail } from '../utils/mailer.js';
+import { ownerNoticeEmail } from '../utils/orderEmails.js';
 
 const router = express.Router();
+
+const fullName = (u) => [u?.firstName, u?.lastName].filter(Boolean).join(' ') || (u?.email || 'Customer');
+
+// Fire-and-forget owner alert (no-op if OWNER_EMAIL/SMTP unset; never blocks the request).
+function notifyOwner(notice) {
+  if (!process.env.OWNER_EMAIL) return;
+  sendMail({ to: process.env.OWNER_EMAIL, ...ownerNoticeEmail(notice) });
+}
 
 // Configure multer for avatar uploads (memory storage for processing)
 const storage = multer.memoryStorage();
@@ -108,6 +118,13 @@ router.post('/register', async (req, res) => {
     // Create new user
     const user = new User({ email, password });
     await user.save();
+
+    notifyOwner({
+      subject: `New customer sign-up: ${user.email}`,
+      heading: 'New customer sign-up',
+      intro: `${user.email} just created an account.`,
+      lines: [['Email', user.email]],
+    });
 
     // Generate JWT token
     const token = jwt.sign(
@@ -282,16 +299,42 @@ router.put('/profile', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Track which fields the customer actually changed, so the owner alert is specific.
+    const changes = [];
+    if (firstName !== undefined && firstName !== user.firstName) changes.push('Name');
+    if (lastName !== undefined && lastName !== user.lastName) changes.push('Name');
+    if (phone !== undefined && String(phone).trim() !== (user.phone || '')) changes.push('Phone');
+
     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
     if (phone !== undefined) user.phone = String(phone).trim();
     if (address && typeof address === 'object') {
       // Merge only the provided address fields so a partial update doesn't blank the rest.
       ['street', 'unit', 'neighborhood', 'notes'].forEach((k) => {
+        if (address[k] !== undefined && String(address[k]).trim() !== (user.address[k] || '')) {
+          changes.push('Address');
+        }
         if (address[k] !== undefined) user.address[k] = String(address[k]).trim();
       });
     }
     await user.save();
+
+    if (changes.length) {
+      const what = [...new Set(changes)].join(', ');
+      const addr = [user.address?.street, user.address?.unit, user.address?.neighborhood]
+        .filter(Boolean).join(', ');
+      notifyOwner({
+        subject: `Customer updated their profile: ${fullName(user)}`,
+        heading: 'Customer updated their profile',
+        intro: `${fullName(user)} changed: ${what}.`,
+        lines: [
+          ['Name', fullName(user)],
+          ['Email', user.email || '—'],
+          ['Phone', user.phone || '—'],
+          ['Address', addr || '—'],
+        ],
+      });
+    }
 
     return res.json({
       // eslint-disable-next-line no-underscore-dangle
