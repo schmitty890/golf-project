@@ -50,6 +50,12 @@ const settingsSchema = new mongoose.Schema({
   chat: {
     available: { type: Boolean, default: false },
   },
+  // Owner-controlled "rush available now" banner (site-wide). `active` shows it; `until` is an
+  // optional same-day 'HH:MM' cutoff after which it self-hides. Needs `rushEnabled` on.
+  rushAlert: {
+    active: { type: Boolean, default: false },
+    until: { type: String, default: '' },
+  },
   // Monthly "win a free bundle" giveaway. `enabled` = on/off; `prizeBundles` (1-3, clamped in the
   // route) = prize size; `lastReminderMonth` makes the monthly reminder idempotent.
   giveaway: {

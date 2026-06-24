@@ -8,10 +8,12 @@ const router = express.Router();
 
 const KEY = 'availability';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d$/; // 'HH:MM' 24-hour
 const DEFAULT_REFERRAL = { enabled: true, type: 'amount', value: 5 };
 const DEFAULT_FIRST_ORDER = { enabled: true, type: 'amount', value: 15 };
 const DEFAULT_WOOD_TYPE = { label: 'Mixed seasoned hardwood', note: '' };
 const DEFAULT_CHAT = { available: false };
+const DEFAULT_RUSH_ALERT = { active: false, until: '' };
 const DEFAULT_GIVEAWAY = { enabled: false, prizeBundles: 1, lastReminderMonth: '' };
 const DEFAULT_KINDLING = { enabled: false, price: 8, quantity: 0 };
 const DEFAULTS = {
@@ -42,6 +44,7 @@ router.get('/availability', async (req, res) => {
       firstOrderDiscount: doc?.firstOrderDiscount ?? DEFAULT_FIRST_ORDER,
       woodType: doc?.woodType ?? DEFAULT_WOOD_TYPE,
       chat: doc?.chat ?? DEFAULT_CHAT,
+      rushAlert: doc?.rushAlert ?? DEFAULT_RUSH_ALERT,
       giveaway: doc?.giveaway ?? DEFAULT_GIVEAWAY,
       kindling: doc?.kindling ?? DEFAULT_KINDLING,
       // A Venmo handle is public by design (it's how customers pay).
@@ -111,6 +114,12 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
     if (req.body?.chat && typeof req.body.chat === 'object') {
       update.chat = { available: Boolean(req.body.chat.available) };
     }
+    if (req.body?.rushAlert && typeof req.body.rushAlert === 'object') {
+      const ra = req.body.rushAlert;
+      if (ra.active !== undefined) update['rushAlert.active'] = Boolean(ra.active);
+      // Store a valid 'HH:MM' cutoff; anything else (incl. blank) clears it.
+      if (ra.until !== undefined) update['rushAlert.until'] = TIME_RE.test(ra.until) ? ra.until : '';
+    }
     if (req.body?.giveaway && typeof req.body.giveaway === 'object') {
       const g = req.body.giveaway;
       // Only the admin-editable fields here; lastReminderMonth is managed server-side by the job.
@@ -140,6 +149,7 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
       firstOrderDiscount: doc.firstOrderDiscount,
       woodType: doc.woodType,
       chat: doc.chat,
+      rushAlert: doc.rushAlert,
       giveaway: doc.giveaway,
       kindling: doc.kindling,
     });
