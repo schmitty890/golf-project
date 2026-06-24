@@ -724,7 +724,8 @@ function Order() {
               ))}
             </div>
             <p className="mt-1 text-xs text-walnut-300">
-              We deliver sometime during your chosen week — we’ll confirm the day with you.
+              We’ll do our best to deliver within the week you choose, and we’ll email you
+              updates along the way.
             </p>
           </div>
         )}
