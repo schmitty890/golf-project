@@ -31,6 +31,10 @@ function AdminAvailability() {
   const [rushEnabled, setRushEnabled] = useState(true);
   const [rushPercent, setRushPercent] = useState(25);
 
+  // "Rush available now" alert banner (site-wide). Saved instantly on change.
+  const [rushAlertActive, setRushAlertActive] = useState(false);
+  const [rushAlertUntil, setRushAlertUntil] = useState('');
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -41,6 +45,10 @@ function AdminAvailability() {
       if (res.data.leadDays !== undefined) setLeadDays(res.data.leadDays);
       if (res.data.rushEnabled !== undefined) setRushEnabled(res.data.rushEnabled);
       if (res.data.rushPercent !== undefined) setRushPercent(res.data.rushPercent);
+      if (res.data.rushAlert) {
+        setRushAlertActive(Boolean(res.data.rushAlert.active));
+        setRushAlertUntil(res.data.rushAlert.until || '');
+      }
       setError('');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load availability');
@@ -90,7 +98,34 @@ function AdminAvailability() {
     }
   };
 
+  // Persist the rush-alert banner immediately (toggle + cutoff), like the chat availability toggle.
+  const saveRushAlert = async (next) => {
+    try {
+      await axios.put(
+        `${API_URL}/api/settings/availability`,
+        { rushAlert: next },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setError('');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to save — please try again');
+    }
+  };
+
+  const toggleRushAlert = (value) => {
+    setRushAlertActive(value);
+    saveRushAlert({ active: value, until: rushAlertUntil });
+  };
+
+  const changeRushAlertUntil = (value) => {
+    setRushAlertUntil(value);
+    saveRushAlert({ active: rushAlertActive, until: value });
+  };
+
   const today = todayStr();
+  const rushDotClass = rushAlertActive ? 'bg-green-500' : 'bg-gray-300';
 
   const getDayState = (dateStr) => {
     if (dateStr < today) return { disabled: true, tone: 'open' };
@@ -207,6 +242,46 @@ function AdminAvailability() {
           >
             Save rules
           </button>
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mt-6 rounded-xl border border-cream-300 bg-white p-5">
+          <h2 className="text-base font-bold text-walnut">Rush available now</h2>
+          <p className="mt-1 text-sm text-walnut-400">
+            Flip on when you can deliver right away — a banner shows on every customer page,
+            until you turn it off or the cutoff time passes. Saves instantly.
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-6">
+            <label className="flex items-center gap-2 pb-2 text-sm font-semibold text-walnut">
+              <input
+                type="checkbox"
+                checked={rushAlertActive}
+                onChange={(e) => toggleRushAlert(e.target.checked)}
+                className="h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+              />
+              <span className="flex items-center gap-1.5">
+                <span className={`inline-block h-2.5 w-2.5 rounded-full ${rushDotClass}`} />
+                {rushAlertActive ? 'Banner showing' : 'Off'}
+              </span>
+            </label>
+            <div>
+              <label htmlFor="rush-until" className="block text-xs font-semibold text-walnut">Show until (optional)</label>
+              <input
+                id="rush-until"
+                type="time"
+                value={rushAlertUntil}
+                onChange={(e) => changeRushAlertUntil(e.target.value)}
+                className="mt-1 rounded-lg border border-cream-300 px-3 py-2 text-sm text-walnut"
+              />
+              <p className="mt-1 text-xs text-walnut-300">Blank = until you turn it off.</p>
+            </div>
+          </div>
+          {!rushEnabled && (
+            <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Turn on “Offer rush orders” above (and Save rules) for this banner to appear.
+            </p>
+          )}
         </div>
       )}
 
