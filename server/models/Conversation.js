@@ -13,6 +13,9 @@ const conversationSchema = new mongoose.Schema({
   lastMessageAt: { type: Date, default: null },
   lastMessageText: { type: String, default: '' },
   unreadForAdmin: { type: Number, default: 0 },
+  // When we last emailed the owner (+ posted an away auto-reply) because a message arrived while no
+  // admin was watching. Throttles both so a burst of messages doesn't spam. See socket/chat.js.
+  lastAdminAlertAt: { type: Date, default: null },
   closed: { type: Boolean, default: false },
 }, { timestamps: true });
 

@@ -9,6 +9,9 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 // Mounted once, site-wide (above <Routes> in App.js) so the conversation persists
 // across navigation — e.g. when the bot deep-links to /order.
+// Hidden on the auth pages and across the admin console: the owner replies through
+// /admin/chat (their unread indicator is AdminUnreadFab, bottom-left), and the
+// customer launcher would otherwise cover the admin reply Send button on mobile.
 const HIDE_ON = ['/login', '/register'];
 // Stores the epoch-ms of the last time the nudge was dismissed (X'd or chat opened).
 const NUDGE_KEY = 'volw-woody-nudge-dismissed-at';
@@ -65,7 +68,7 @@ function ChatWidget() {
     setOpen(true);
   }, [dismissNudge]);
 
-  if (HIDE_ON.includes(pathname)) return null;
+  if (HIDE_ON.includes(pathname) || pathname.startsWith('/admin')) return null;
 
   return (
     <>

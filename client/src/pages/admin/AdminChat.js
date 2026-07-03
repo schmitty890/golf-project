@@ -46,8 +46,9 @@ function AdminChat() {
         </label>
       </div>
       <p className="mt-1 text-sm text-walnut-400">
-        While available, customers see a green dot and can chat live. This stays on until you turn
-        it off — remember to switch it off when you&apos;re done.
+        While available, customers see a green dot and can chat live. It stays on until you turn it
+        off, and auto-turns off after a couple hours as a safety net. If a customer messages while
+        you&apos;re away, we email you and send them a quick &quot;leave your number&quot; reply.
       </p>
 
       {error && <p className="mt-4 rounded-md bg-red-50 px-4 py-2 text-sm text-red-800">{error}</p>}
