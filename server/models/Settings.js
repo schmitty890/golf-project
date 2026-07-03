@@ -49,6 +49,10 @@ const settingsSchema = new mongoose.Schema({
   // the owner flips it off (a page refresh does NOT change it).
   chat: {
     available: { type: Boolean, default: false },
+    // When availability was last switched on. A safeguard pass (jobs/reminders.js) auto-flips
+    // `available` back off once this is older than a few hours, so the green dot can't linger
+    // overnight if the owner forgets to turn it off. Null whenever unavailable.
+    availableSince: { type: Date, default: null },
   },
   // Owner-controlled "rush available now" banner (site-wide). `active` shows it; `until` is an
   // optional same-day 'HH:MM' cutoff after which it self-hides. Needs `rushEnabled` on.

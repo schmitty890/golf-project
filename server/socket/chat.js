@@ -7,10 +7,17 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Conversation from '../models/Conversation.js';
 import ChatMessage from '../models/ChatMessage.js';
+import { sendMail } from '../utils/mailer.js';
+import { ownerNoticeEmail } from '../utils/orderEmails.js';
 
 const ADMIN_ROOM = 'admin';
 const MAX_LEN = 2000;
 const HISTORY_LIMIT = 50;
+// When no admin is watching, we email the owner + drop one away auto-reply into the thread, then
+// stay quiet for this long so a burst of messages doesn't spam either channel.
+const AWAY_ALERT_COOLDOWN_MS = 15 * 60 * 1000;
+const AWAY_AUTO_REPLY = "Thanks for reaching out! We're not online right this second — leave your "
+  + "name and a good number and we'll text you back shortly. 🔥";
 
 const convRoom = (id) => `conv:${id}`;
 const clean = (t) => String(t || '').slice(0, MAX_LEN).trim();
@@ -28,6 +35,51 @@ async function getOrCreateConversation(socket) {
     convo = await Conversation.create(userId ? { user: userId } : { guestId });
   }
   return convo;
+}
+
+// If a customer message arrives while NO admin socket is connected (owner away from the site),
+// email the owner and drop a single away auto-reply into the thread so the customer isn't left
+// hanging. Throttled per-conversation via an atomic lastAdminAlertAt guard, so a burst of messages
+// triggers this at most once per cooldown. Never throws (mail is a safe no-op when unconfigured).
+async function handleAwayAlert(io, conversationId, { customerName, preview }) {
+  const adminOnline = (io.sockets.adapter.rooms.get(ADMIN_ROOM)?.size || 0) > 0;
+  if (adminOnline) return;
+
+  // Atomically claim the alert: only proceed if we haven't alerted within the cooldown. This both
+  // throttles and avoids double-firing on near-simultaneous messages.
+  const cutoff = new Date(Date.now() - AWAY_ALERT_COOLDOWN_MS);
+  const won = await Conversation.findOneAndUpdate(
+    {
+      _id: conversationId,
+      $or: [{ lastAdminAlertAt: null }, { lastAdminAlertAt: { $lt: cutoff } }],
+    },
+    { $set: { lastAdminAlertAt: new Date() } },
+  );
+  if (!won) return;
+
+  const owner = process.env.OWNER_EMAIL;
+  if (owner) {
+    const site = process.env.SITE_URL || '';
+    await sendMail({
+      to: owner,
+      ...ownerNoticeEmail({
+        subject: `New live-chat message from ${customerName}`,
+        heading: 'New live-chat message',
+        intro: 'A customer messaged while you were away. Open the dashboard to reply.',
+        lines: [
+          ['From', customerName],
+          ['Message', preview],
+          ...(site ? [['Open', `${site}/admin/chat`]] : []),
+        ],
+      }),
+    });
+  }
+
+  const reply = await ChatMessage.create({ conversation: conversationId, from: 'agent', text: AWAY_AUTO_REPLY });
+  await Conversation.findByIdAndUpdate(conversationId, {
+    lastMessageAt: reply.createdAt, lastMessageText: AWAY_AUTO_REPLY,
+  });
+  io.to(convRoom(conversationId)).emit('chat:message', { conversationId, message: shape(reply) });
 }
 
 export default function initChat(io) {
@@ -117,12 +169,22 @@ export default function initChat(io) {
         ...(email ? { customerEmail: email } : {}),
       });
       io.to(convRoom(convo._id)).emit('chat:message', { conversationId: String(convo._id), message: shape(msg) });
+      const displayName = name || (socket.data.userId ? 'Customer' : 'Guest');
       io.to(ADMIN_ROOM).emit('chat:notify', {
         conversationId: String(convo._id),
         preview: body.slice(0, 120),
-        customerName: name || (socket.data.userId ? 'Customer' : 'Guest'),
+        customerName: displayName,
         at: msg.createdAt,
       });
+
+      // Safety net: if the owner isn't on the site, email them + auto-reply. Never breaks delivery.
+      try {
+        await handleAwayAlert(io, convo._id, {
+          customerName: displayName, preview: body.slice(0, 200),
+        });
+      } catch (err) {
+        console.error('[chat] away-alert error:', err.message);
+      }
     });
   });
 }

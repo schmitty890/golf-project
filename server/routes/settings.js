@@ -112,7 +112,9 @@ router.put('/availability', auth, requireAdmin, async (req, res) => {
       };
     }
     if (req.body?.chat && typeof req.body.chat === 'object') {
-      update.chat = { available: Boolean(req.body.chat.available) };
+      const available = Boolean(req.body.chat.available);
+      // Stamp when turned on so the auto-off safeguard can expire it; clear on off.
+      update.chat = { available, availableSince: available ? new Date() : null };
     }
     if (req.body?.rushAlert && typeof req.body.rushAlert === 'object') {
       const ra = req.body.rushAlert;

@@ -56,6 +56,24 @@ async function runGiveawayReminderPass() {
   console.log(`[giveaway] sent ${due.length} monthly reminder(s) for ${month}`);
 }
 
+// Safeguard: if the owner left live-chat availability on, flip it off once it's been on longer than
+// AUTO_OFF_HOURS — so the customer-facing green "online" dot can't linger overnight. Idempotent: it
+// only acts while `available` is true and `availableSince` is stale.
+const AUTO_OFF_HOURS = 2;
+async function runChatAutoOffPass() {
+  const settings = await Settings.findOne({ key: 'availability' });
+  if (!settings?.chat?.available) return;
+  const since = settings.chat.availableSince;
+  const staleBefore = Date.now() - AUTO_OFF_HOURS * 60 * 60 * 1000;
+  // No timestamp (legacy on-state) or an old one → turn it off.
+  if (since && since.getTime() > staleBefore) return;
+  await Settings.findOneAndUpdate(
+    { key: 'availability' },
+    { $set: { 'chat.available': false, 'chat.availableSince': null } },
+  );
+  console.log(`[chat] auto-turned availability off (was on > ${AUTO_OFF_HOURS}h)`);
+}
+
 // In-process scheduler: check hourly, send only during the evening (local 17:00–21:59).
 // Self-contained (no external cron); the reminderSentAt guard makes repeat ticks safe.
 export function startReminderJob() {
@@ -64,6 +82,7 @@ export function startReminderJob() {
       const hour = new Date().getHours();
       if (hour >= 17 && hour <= 21) await runReminderPass();
       await runGiveawayReminderPass();
+      await runChatAutoOffPass();
     } catch (err) {
       console.error('Reminder job error:', err.message);
     }
