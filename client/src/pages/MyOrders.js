@@ -12,8 +12,15 @@ import {
   statusTimeline, statusEventLabel, formatPreferredSchedule,
   paymentStatusClasses, paymentLabel, statusLabel,
 } from '../utils/orderDisplay';
+import { getProduct, SUB_PER_BUNDLE, SUB_MIN_BUNDLES } from '../data/pricing';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
+// Show the subscribe-and-save nudge to proven repeat buyers who aren't already subscribed.
+const SUB_NUDGE_MIN_ORDERS = 2;
+// Real savings vs a one-time single bundle (derived from pricing.js, never hardcoded).
+const ONE_TIME_PER_BUNDLE = getProduct('standard-bundle')?.price || 15;
+const SUB_SAVINGS_PCT = Math.round((1 - SUB_PER_BUNDLE / ONE_TIME_PER_BUNDLE) * 100);
 
 // Build an "Order again" prefill payload from a past order (cart model).
 function buildReorder(order) {
@@ -36,6 +43,7 @@ function MyOrders() {
   const [error, setError] = useState('');
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [rescheduleOrder, setRescheduleOrder] = useState(null);
+  const [cardEnabled, setCardEnabled] = useState(false);
 
   const cancelOrder = async (id) => {
     // eslint-disable-next-line no-alert
@@ -78,6 +86,25 @@ function MyOrders() {
     fetchOrders();
   }, [token]);
 
+  // Subscriptions require Stripe; only pitch them when card checkout is on.
+  useEffect(() => {
+    axios.get(`${API_URL}/api/settings/availability`)
+      .then((res) => setCardEnabled(Boolean(res.data.cardEnabled)))
+      .catch(() => {});
+  }, []);
+
+  // Nudge repeat one-time buyers (no active subscription) to subscribe and save.
+  const oneTimeCompleted = orders.filter(
+    (o) => o.orderType !== 'subscription' && o.status === 'completed',
+  ).length;
+  const hasActiveSub = orders.some(
+    (o) => o.orderType === 'subscription' && o.status !== 'cancelled',
+  );
+  const showSubNudge = cardEnabled && !hasActiveSub && oneTimeCompleted >= SUB_NUDGE_MIN_ORDERS;
+  const startSubscription = () => navigate('/order', {
+    state: { reorder: { orderType: 'subscription', subscriptionBundles: SUB_MIN_BUNDLES } },
+  });
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
@@ -102,6 +129,22 @@ function MyOrders() {
       <div className="mt-4">
         <GiveawayCTA variant="compact" />
       </div>
+
+      {showSubNudge && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ember/30 bg-ember/5 px-4 py-3">
+          <p className="text-sm text-walnut">
+            <span className="font-semibold">{`Order often? Subscribe & save ${SUB_SAVINGS_PCT}%.`}</span>
+            {` Get firewood delivered monthly at $${SUB_PER_BUNDLE}/bundle — cancel anytime.`}
+          </p>
+          <button
+            type="button"
+            onClick={startSubscription}
+            className="shrink-0 rounded-md bg-ember px-4 py-2 text-sm font-semibold text-white hover:bg-ember-600"
+          >
+            Set up a subscription
+          </button>
+        </div>
+      )}
 
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <RescheduleModal

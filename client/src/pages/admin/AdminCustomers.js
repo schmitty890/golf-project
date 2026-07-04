@@ -55,6 +55,7 @@ function AdminCustomers() {
   const [segment, setSegment] = useState('all');
   const [sortBy, setSortBy] = useState('bundles');
   const [expanded, setExpanded] = useState(() => new Set());
+  const [winBack, setWinBack] = useState({ busy: false, msg: '' });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,6 +73,26 @@ function AdminCustomers() {
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Email lapsed customers a one-time comeback code (server picks recipients + skips cooldowns).
+  const sendWinBack = useCallback(async () => {
+    // eslint-disable-next-line no-alert
+    if (!window.confirm('Email lapsed customers a one-time $5 comeback code? Anyone emailed recently is skipped.')) return;
+    setWinBack({ busy: true, msg: '' });
+    try {
+      const res = await axios.post(`${API_URL}/api/customers/winback`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const { sent = 0, skipped = 0 } = res.data || {};
+      setWinBack({
+        busy: false,
+        msg: `Sent ${sent} comeback code${sent === 1 ? '' : 's'}${skipped ? `, skipped ${skipped} on cooldown` : ''}.`,
+      });
+      load();
+    } catch (err) {
+      setWinBack({ busy: false, msg: err.response?.data?.error || 'Failed to send win-back emails' });
+    }
+  }, [token, load]);
 
   const toggle = (key) => setExpanded((prev) => {
     const next = new Set(prev);
@@ -202,6 +223,19 @@ function AdminCustomers() {
             <StatPill label="Never ordered" value={summary.new} />
             <StatPill label="Bundles sold" value={summary.bundles} />
             <StatPill label="Revenue" value={`$${summary.revenue}`} />
+          </div>
+
+          {/* Win-back: email lapsed customers a comeback code */}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={sendWinBack}
+              disabled={winBack.busy}
+              className="rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ember-600 disabled:opacity-50"
+            >
+              {winBack.busy ? 'Sending…' : 'Email lapsed customers a comeback code'}
+            </button>
+            {winBack.msg && <span className="text-sm text-walnut-400">{winBack.msg}</span>}
           </div>
 
           {/* Controls */}
