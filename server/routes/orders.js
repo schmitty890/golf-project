@@ -412,7 +412,10 @@ router.get('/track/:token', async (req, res) => {
       preferredTimes: order.preferredTimes,
       schedule: order.schedule,
       paymentStatus: order.paymentStatus,
+      paymentMethod: order.paymentMethod,
+      discount: order.discount || 0,
       rush: order.rush,
+      rushPercent: order.rushPercent || 0,
       createdAt: order.createdAt,
       customerName: (order.contact?.name || '').split(' ')[0],
       total: orderTotal(order)?.total ?? null,
@@ -479,6 +482,67 @@ router.get('/', auth, requireAdmin, async (req, res) => {
     return res.json(orders);
   } catch (error) {
     console.error('List orders error:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Admin CSV export of orders for bookkeeping / taxes. MUST be registered before `GET /:id` so the
+// literal `export.csv` path isn't read as an order id. Totals use the authoritative orderTotal().
+router.get('/export.csv', auth, requireAdmin, async (req, res) => {
+  try {
+    const {
+      from, to, status, orderType,
+    } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (orderType) filter.orderType = orderType;
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from);
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999); // inclusive through end of the "to" day
+        filter.createdAt.$lte = end;
+      }
+    }
+    const orders = await Order.find(filter).sort({ createdAt: 1 });
+
+    const csvCell = (v) => {
+      const s = v === null || v === undefined ? '' : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+    const itemsText = (o) => (o.orderType === 'subscription'
+      ? `${o.subscriptionBundles || 0} bundles/mo subscription`
+      : (o.items || []).map((i) => `${i.quantity}× ${i.name}`).join('; '));
+
+    const headers = [
+      'Order date', 'Customer', 'Phone', 'Email', 'Type', 'Items', 'Bundles',
+      'Total', 'Payment status', 'Payment method', 'Order status', 'Delivery date', 'Neighborhood',
+    ];
+    const rows = orders.map((o) => [
+      ymd(o.createdAt),
+      o.contact?.name || '',
+      o.contact?.phone || '',
+      o.contact?.email || '',
+      o.orderType === 'subscription' ? 'Subscription' : 'One-time',
+      itemsText(o),
+      o.orderType === 'subscription' ? (o.subscriptionBundles || 0) : orderBundleCount(o.items),
+      orderTotal(o)?.total ?? '',
+      o.paymentStatus || '',
+      o.paymentMethod || '',
+      o.status || '',
+      o.schedule?.date || o.preferredDate || '',
+      o.deliveryAddress?.neighborhood || '',
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n');
+
+    const range = `${from ? ymd(from) : 'all'}_to_${to ? ymd(to) : 'all'}`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="volw-orders-${range}.csv"`);
+    return res.send(`\ufeff${csv}`); // lead with a UTF-8 BOM so Excel reads accented names correctly
+  } catch (error) {
+    console.error('Export orders error:', error);
     return res.status(500).json({ error: 'Server error' });
   }
 });

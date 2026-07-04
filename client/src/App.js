@@ -14,6 +14,7 @@ import Home from './pages/Home';
 import Order from './pages/Order';
 import Pricing from './pages/Pricing';
 import TrackOrder from './pages/TrackOrder';
+import Receipt from './pages/Receipt';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MyOrders from './pages/MyOrders';
@@ -41,6 +42,8 @@ function App() {
             <Route path="/order" element={<PublicLayout><Order /></PublicLayout>} />
             <Route path="/pricing" element={<PublicLayout><Pricing /></PublicLayout>} />
             <Route path="/track/:token" element={<PublicLayout><TrackOrder /></PublicLayout>} />
+            {/* Print-friendly receipt — standalone (no nav/footer) so the printout is clean */}
+            <Route path="/receipt/:token" element={<Receipt />} />
 
             {/* Auth - standalone */}
             <Route path="/login" element={<Login />} />
