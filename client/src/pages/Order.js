@@ -292,6 +292,37 @@ function Order() {
     if (status === 'paid' || status === 'cancelled') setReturnStatus(status);
     const track = searchParams.get('track');
     if (track) setTrackToken(track);
+    // Reorder deep-link from an email (/order?reorder=<trackingToken>). The in-app "Order again"
+    // button seeds these via router state; an email can't, so fetch the past order and apply the
+    // same prefill imperatively. Skip if router state already provided a reorder.
+    const reorderToken = searchParams.get('reorder');
+    if (reorderToken && !reorder) {
+      axios.get(`${API_URL}/api/orders/reorder/${reorderToken}`)
+        .then(({ data }) => {
+          if (data.orderType === 'subscription') {
+            setMode('subscription');
+            if (data.subscriptionBundles) setSubBundles(clampBundles(data.subscriptionBundles));
+            if (data.subscriptionWeek) setSubWeek(data.subscriptionWeek);
+          } else {
+            setMode('onetime');
+            const q = {};
+            (data.items || []).forEach((it) => {
+              const p = [...products, KINDLING].find((x) => x.name === it.name);
+              if (p) q[p.id] = Number(it.quantity) || 1;
+            });
+            if (Object.keys(q).length) setQty(q);
+          }
+          if (data.deliveryAddress) {
+            setAddress({
+              street: data.deliveryAddress.street || '',
+              unit: data.deliveryAddress.unit || '',
+              neighborhood: data.deliveryAddress.neighborhood || '',
+              notes: data.deliveryAddress.notes || '',
+            });
+          }
+        })
+        .catch(() => {});
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -519,6 +550,22 @@ function Order() {
         )}
 
         <ReferralShare className="mt-6" />
+
+        {!isSubscription && cardEnabled && (
+          <div className="mt-6 rounded-xl border border-ember/30 bg-ember/5 p-4 text-center">
+            <p className="text-sm text-walnut">
+              <span className="font-semibold">Order firewood often?</span>
+              {` Subscribe and pay just $${SUB_PER_BUNDLE}/bundle vs $${products.find((p) => p.id === 'standard-bundle')?.price || 15} one-time — cancel anytime.`}
+            </p>
+            <button
+              type="button"
+              onClick={() => { setMode('subscription'); setSubmitted(false); window.scrollTo(0, 0); }}
+              className="mt-3 rounded-md bg-ember px-4 py-2 text-sm font-semibold text-white hover:bg-ember-600"
+            >
+              Switch to a subscription &amp; save
+            </button>
+          </div>
+        )}
 
         <div className="mt-8 flex justify-center gap-4">
           <Link to="/" className="rounded-md bg-cream-300 px-5 py-2.5 text-sm font-semibold text-walnut hover:bg-cream-400">

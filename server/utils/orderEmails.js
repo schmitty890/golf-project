@@ -269,6 +269,22 @@ export function referralRewardEmail(referrer, reward, label) {
   return { subject, html, text };
 }
 
+// Sent to a lapsed customer from the admin "email lapsed customers" action. `reward` is the minted
+// single-use win-back PromoCode doc; the CTA link auto-applies it at checkout.
+export function winBackEmail(customer, reward) {
+  const site = process.env.SITE_URL;
+  const hi = customer?.firstName ? `, ${customer.firstName}` : '';
+  const amount = `$${reward.discountValue}`;
+  const link = site ? `${site}/order?ref=${reward.code}` : '';
+  const cta = link ? `<p style="margin-top:16px"><a href="${link}" style="display:inline-block;background:#b5471f;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Order with ${amount} off</a></p>` : '';
+  const subject = `We miss you — ${amount} off your next firewood`;
+  const intro = `Hey${hi}, it's been a while! Here's ${amount} off your next order to warm up the next fire.`;
+  const use = `Use code <strong>${reward.code}</strong> at checkout.`;
+  const html = wrap('Come back for a fire 🔥', `<p>${intro}</p><p style="margin-top:12px">${use}</p>${cta}<p style="color:#8a7f78;font-size:13px;margin-top:8px">One-time use. Expires in about 45 days.</p>`);
+  const text = `${intro}\n\nUse code ${reward.code} at checkout.${link ? `\n\nOrder: ${link}` : ''}\n\n(One-time use.)`;
+  return { subject, html, text };
+}
+
 // Sent to the winner of the monthly drawing. `reward` is the minted PromoCode doc.
 export function giveawayWinnerEmail(winner, reward, bundles = 1) {
   const hi = winner?.firstName ? `, ${winner.firstName}` : '';
@@ -328,5 +344,20 @@ export function deliveredEmail(order) {
   const subject = `Thanks from ${BUSINESS()}!`;
   const html = wrap('All done — thank you!', `<p>Your firewood is delivered. Thanks for supporting a local neighbor!</p>${fb}`);
   const text = `Your firewood is delivered. Thanks!${site ? `\n\nLeave a review: ${site}` : ''}`;
+  return { subject, html, text };
+}
+
+// Post-delivery nudge for one-time buyers: "running low? reorder in one tap." The link deep-links
+// to the order form with the past order's items pre-filled via the tracking token (reminders.js).
+export function reorderReminderEmail(order) {
+  const site = process.env.SITE_URL;
+  const link = site && order.trackingToken ? `${site}/order?reorder=${order.trackingToken}` : site || '';
+  const name = order.contact?.name ? order.contact.name.split(' ')[0] : 'there';
+  const cta = link ? `<p style="margin-top:16px"><a href="${link}" style="display:inline-block;background:#b5471f;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Reorder in one tap</a></p>` : '';
+  const subject = `Running low on firewood? — ${BUSINESS()}`;
+  const body = `<p>Hi ${name} — it's been a few weeks since your last delivery. Running low for your next fire?</p>
+    <p>We can bring more out whenever you like — same easy delivery.</p>${cta}`;
+  const html = wrap('Time to restock? 🔥', body);
+  const text = `Hi ${name} — running low on firewood? We can bring more out whenever you like.${link ? `\n\nReorder: ${link}` : ''}`;
   return { subject, html, text };
 }

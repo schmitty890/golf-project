@@ -121,6 +121,22 @@ export async function mintReferralReward(ownerId, rc) {
   });
 }
 
+// Mint a one-time, owner-bound win-back code for a lapsed customer (a small "come back" discount),
+// expiring in ~45 days. Amount defaults to $5 off but accepts an override.
+export async function mintWinBackReward(userId, amount = 5) {
+  const code = await generatePromoCode('MISSU');
+  return PromoCode.create({
+    code,
+    discountType: 'amount',
+    discountValue: Math.max(0, Number(amount) || 5),
+    active: true,
+    maxUses: 1,
+    owner: userId,
+    description: 'Win-back — we miss you! Here\'s a little something to come back',
+    expiresAt: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+  });
+}
+
 // Mint the monthly-giveaway prize: a one-time code worth N free bundles (N x bundle price), owned
 // by the winner, expiring in ~60 days.
 export async function mintGiveawayPrize(winnerId, bundles = 1) {

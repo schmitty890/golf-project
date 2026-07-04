@@ -424,6 +424,29 @@ router.get('/track/:token', async (req, res) => {
   }
 });
 
+// Public reorder-prefill lookup (same unguessable-token privacy model as /track/:token). Returns
+// just enough to seed the order form from an emailed "reorder" link — the client feeds this through
+// the same prefill path it uses for the in-app "Order again" button.
+router.get('/reorder/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '');
+    if (!token) return res.status(404).json({ error: 'Not found' });
+    const order = await Order.findOne({ trackingToken: token });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    return res.json({
+      orderType: order.orderType,
+      items: (order.items || []).map((i) => ({ name: i.name, quantity: i.quantity })),
+      subscriptionBundles: order.subscriptionBundles,
+      subscriptionWeek: order.subscriptionWeek,
+      fulfillment: order.fulfillment,
+      deliveryAddress: order.deliveryAddress,
+    });
+  } catch (error) {
+    console.error('Reorder lookup error:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 /**
  * @swagger
  * /api/orders:

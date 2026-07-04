@@ -2,7 +2,7 @@ import Order from '../models/Order.js';
 import Settings from '../models/Settings.js';
 import GiveawayMember from '../models/GiveawayMember.js';
 import { sendMail } from '../utils/mailer.js';
-import { reminderEmail, giveawayReminderEmail } from '../utils/orderEmails.js';
+import { reminderEmail, giveawayReminderEmail, reorderReminderEmail } from '../utils/orderEmails.js';
 
 // Local 'YYYY-MM-DD' / 'YYYY-MM' helpers (avoid UTC shift from toISOString).
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -56,6 +56,33 @@ async function runGiveawayReminderPass() {
   console.log(`[giveaway] sent ${due.length} monthly reminder(s) for ${month}`);
 }
 
+// Nudge one-time buyers to reorder ~REORDER_AFTER_DAYS after their order was delivered (status
+// 'completed'). Idempotent per order via reorderReminderSentAt. There's no dedicated completedAt
+// field, so the completion time comes from the 'completed' entry in statusHistory.
+const REORDER_AFTER_DAYS = 30;
+async function runReorderReminderPass() {
+  const cutoff = Date.now() - REORDER_AFTER_DAYS * 24 * 60 * 60 * 1000;
+  const orders = await Order.find({
+    orderType: 'onetime',
+    status: 'completed',
+    reorderReminderSentAt: null,
+  });
+  const due = orders.filter((o) => {
+    if (!o.contact?.email) return false;
+    const done = [...(o.statusHistory || [])].reverse().find((h) => h.status === 'completed');
+    return done?.at && new Date(done.at).getTime() <= cutoff;
+  });
+  if (due.length === 0) return;
+
+  await Promise.all(due.map(async (order) => {
+    await sendMail({ to: order.contact.email, ...reorderReminderEmail(order) });
+    // eslint-disable-next-line no-param-reassign
+    order.reorderReminderSentAt = new Date();
+    await order.save();
+  }));
+  console.log(`[reorder] sent ${due.length} reorder reminder(s)`);
+}
+
 // Safeguard: if the owner left live-chat availability on, flip it off once it's been on longer than
 // AUTO_OFF_HOURS — so the customer-facing green "online" dot can't linger overnight. Idempotent: it
 // only acts while `available` is true and `availableSince` is stale.
@@ -82,6 +109,7 @@ export function startReminderJob() {
       const hour = new Date().getHours();
       if (hour >= 17 && hour <= 21) await runReminderPass();
       await runGiveawayReminderPass();
+      await runReorderReminderPass();
       await runChatAutoOffPass();
     } catch (err) {
       console.error('Reminder job error:', err.message);
