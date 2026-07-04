@@ -28,6 +28,9 @@ function AdminOrders() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [scheduleState, setScheduleState] = useState({});
   const [cancel, setCancel] = useState(null); // { id, reason } while cancelling
+  const [exportFrom, setExportFrom] = useState('');
+  const [exportTo, setExportTo] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -53,6 +56,35 @@ function AdminOrders() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Download a CSV of orders (current status/type filters + optional date range) for bookkeeping.
+  // The endpoint is auth-gated, so fetch as a blob with the token, then trigger a browser download.
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (filter !== 'all') params.set('status', filter);
+      if (typeFilter !== 'all') params.set('orderType', typeFilter);
+      if (exportFrom) params.set('from', exportFrom);
+      if (exportTo) params.set('to', exportTo);
+      const res = await axios.get(`${API_URL}/api/orders/export.csv?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `volw-orders-${exportFrom || 'all'}_to_${exportTo || 'all'}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('Failed to export orders');
+    } finally {
+      setExporting(false);
+    }
+  }, [token, filter, typeFilter, exportFrom, exportTo]);
 
   const updateStatus = async (id, status) => {
     try {
@@ -167,6 +199,36 @@ function AdminOrders() {
         </div>
       </div>
 
+      {/* Export orders to CSV (bookkeeping / taxes). Optional date range; respects the filters. */}
+      <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-cream-300 bg-cream-100 px-3 py-2">
+        <span className="text-sm font-semibold text-walnut">Export orders</span>
+        <label htmlFor="export-from" className="text-sm text-walnut-400">From</label>
+        <input
+          id="export-from"
+          type="date"
+          value={exportFrom}
+          onChange={(e) => setExportFrom(e.target.value)}
+          className="rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
+        />
+        <label htmlFor="export-to" className="text-sm text-walnut-400">To</label>
+        <input
+          id="export-to"
+          type="date"
+          value={exportTo}
+          onChange={(e) => setExportTo(e.target.value)}
+          className="rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
+        />
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={exporting}
+          className="rounded-md bg-ember px-3 py-1.5 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-50"
+        >
+          {exporting ? 'Exporting…' : 'Export CSV'}
+        </button>
+        <span className="text-xs text-walnut-300">Leave dates blank for all-time.</span>
+      </div>
+
       {loading && <p className="mt-8 text-walnut-400">Loading…</p>}
       {error && <p className="mt-8 text-red-600">{error}</p>}
 
@@ -264,6 +326,16 @@ function AdminOrders() {
                 >
                   {order.paymentStatus === 'paid' ? 'Mark unpaid' : 'Mark paid'}
                 </button>
+                {order.trackingToken && (
+                  <a
+                    href={`/receipt/${order.trackingToken}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md border border-cream-300 px-2 py-1 text-sm font-semibold text-walnut hover:border-ember"
+                  >
+                    Receipt
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={() => deleteOrder(order._id)}

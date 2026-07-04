@@ -230,6 +230,15 @@ function MyOrders() {
                   Track
                 </Link>
               )}
+              {order.trackingToken && (
+                <Link
+                  to={`/receipt/${order.trackingToken}`}
+                  target="_blank"
+                  className="rounded-lg border border-cream-300 px-3 py-1.5 text-sm font-semibold text-walnut hover:border-ember"
+                >
+                  Receipt
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => navigate('/order', { state: { reorder: buildReorder(order) } })}

@@ -98,6 +98,16 @@ function TrackOrder() {
             </p>
           </div>
         )}
+
+        <div className="mt-4 border-t border-cream-300 pt-3">
+          <Link
+            to={`/receipt/${token}`}
+            target="_blank"
+            className="text-sm font-semibold text-ember hover:text-ember-600"
+          >
+            Print receipt →
+          </Link>
+        </div>
       </div>
 
       {cancelled ? (
