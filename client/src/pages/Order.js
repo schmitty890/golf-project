@@ -75,6 +75,7 @@ function Order() {
   const [payMethod, setPayMethod] = useState('venmo'); // 'card' | 'venmo'
   const [returnStatus, setReturnStatus] = useState(''); // 'paid' | 'cancelled' after Stripe redirect
   const [trackToken, setTrackToken] = useState(''); // tracking token of the just-placed order
+  const [paymentCheck, setPaymentCheck] = useState('checking'); // 'checking' | 'paid' | 'pending'
 
   const [codeInput, setCodeInput] = useState('');
   const [appliedCode, setAppliedCode] = useState('');
@@ -292,6 +293,14 @@ function Order() {
     if (status === 'paid' || status === 'cancelled') setReturnStatus(status);
     const track = searchParams.get('track');
     if (track) setTrackToken(track);
+    // Don't trust ?status=paid on its own — confirm the payment server-side. Hitting the tracking
+    // endpoint also self-heals the order if the Stripe webhook was delayed/misconfigured.
+    if (status === 'paid' && track) {
+      setPaymentCheck('checking');
+      axios.get(`${API_URL}/api/orders/track/${track}`)
+        .then((res) => setPaymentCheck(res.data?.paymentStatus === 'paid' ? 'paid' : 'pending'))
+        .catch(() => setPaymentCheck('pending'));
+    }
     // Reorder deep-link from an email (/order?reorder=<trackingToken>). The in-app "Order again"
     // button seeds these via router state; an email can't, so fetch the past order and apply the
     // same prefill imperatively. Skip if router state already provided a reorder.
@@ -336,7 +345,7 @@ function Order() {
   // (purchase); Venmo orders are placed-but-unpaid at submit time (generate_lead). No-op unless
   // analytics is on. The cart is gone after the Stripe redirect, so 'purchase' carries no value.
   useEffect(() => {
-    if (returnStatus === 'paid') {
+    if (returnStatus === 'paid' && paymentCheck === 'paid') {
       trackEvent('purchase', { transaction_id: trackToken || undefined, currency: 'USD' });
     } else if (submitted) {
       trackEvent('generate_lead', {
@@ -346,7 +355,7 @@ function Order() {
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [submitted, returnStatus]);
+  }, [submitted, returnStatus, paymentCheck]);
 
   // The error banner sits at the top of the form; scroll it into view so a failed
   // submit (e.g. an empty cart) isn't missed when the button is far below.
@@ -441,7 +450,33 @@ function Order() {
   };
 
   // Returned from Stripe Checkout (full reload — cart state is gone; details are in the email).
+  // We confirm payment server-side rather than trusting the ?status=paid param.
   if (returnStatus === 'paid') {
+    if (paymentCheck === 'checking') {
+      return (
+        <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-cream-300 border-t-ember" aria-hidden="true" />
+          <h1 className="mt-6 text-2xl font-extrabold text-walnut">Confirming your payment…</h1>
+          <p className="mt-2 text-walnut-400">Just a moment while we confirm your order.</p>
+        </div>
+      );
+    }
+    if (paymentCheck === 'pending') {
+      return (
+        <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
+          <h1 className="mt-4 text-2xl font-extrabold text-walnut">Almost there</h1>
+          <p className="mt-2 text-walnut-400">
+            We&apos;re confirming your payment — this can take a moment. If you completed checkout,
+            your order will update shortly. Follow along below.
+          </p>
+          {trackToken && (
+            <Link to={`/track/${trackToken}`} className="mt-6 inline-block rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600">
+              Track your order →
+            </Link>
+          )}
+        </div>
+      );
+    }
     return (
       <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
         <CheckCircleIcon className="mx-auto h-14 w-14 text-green-600" aria-hidden="true" />

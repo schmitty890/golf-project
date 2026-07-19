@@ -18,8 +18,9 @@ import {
 } from './promos.js';
 import {
   stripeEnabled, createOneTimeCheckout, createSubscriptionCheckout, createBillingPortalSession,
-  cancelSubscription,
+  cancelSubscription, retrieveCheckoutSession,
 } from '../utils/stripe.js';
+import { finalizeCheckoutSession } from '../utils/finalizeCheckout.js';
 import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
   SUBSCRIPTION_WEEK_VALUES, orderBundleCount, FIRST_ORDER_MIN_BUNDLES, KINDLING_NAME,
@@ -399,6 +400,23 @@ router.get('/track/:token', async (req, res) => {
     if (!token) return res.status(404).json({ error: 'Not found' });
     const order = await Order.findOne({ trackingToken: token });
     if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    // Self-heal a card payment whose webhook was delayed or misconfigured: if Stripe says the
+    // Checkout Session is paid but this order isn't yet, finalize it here (idempotent + race-safe).
+    // Gated so already-paid and Venmo orders make no Stripe call.
+    if (order.paymentStatus !== 'paid' && order.paymentMethod === 'card'
+      && order.stripeSessionId && stripeEnabled()) {
+      try {
+        const session = await retrieveCheckoutSession(order.stripeSessionId);
+        if (session?.payment_status === 'paid') {
+          await finalizeCheckoutSession(order, session);
+          order.paymentStatus = 'paid';
+        }
+      } catch (stripeErr) {
+        console.error('Track reconciliation error:', stripeErr.message);
+      }
+    }
+
     return res.json({
       status: order.status,
       statusHistory: order.statusHistory,
