@@ -78,6 +78,14 @@ export async function createBillingPortalSession(customerId, returnUrl) {
   return stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
 }
 
+// Retrieve a Checkout Session by id (used to reconcile a payment on the customer's return, in case
+// the webhook is delayed or misconfigured). Null-safe when Stripe isn't configured.
+export async function retrieveCheckoutSession(sessionId) {
+  const stripe = getStripe();
+  if (!stripe || !sessionId) return null;
+  return stripe.checkout.sessions.retrieve(sessionId);
+}
+
 // Cancel a subscription immediately (used when the owner cancels a recurring order) so no further
 // charges occur. Safe no-op if Stripe isn't configured or there's no subscription id.
 export async function cancelSubscription(subscriptionId) {
@@ -92,4 +100,5 @@ export default {
   createSubscriptionCheckout,
   createBillingPortalSession,
   cancelSubscription,
+  retrieveCheckoutSession,
 };
