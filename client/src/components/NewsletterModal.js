@@ -104,7 +104,7 @@ function NewsletterModal() {
       <div>
         <h3 className="text-xl font-extrabold text-walnut">Get the good stuff 🪵🔥</h3>
         <p className="mt-2 text-sm text-walnut-400">
-          Restock alerts, this week&apos;s wood, and neighbor-only deals — straight to your
+          Seasonal firewood tips, restock alerts, and neighbor-only deals — straight to your
           inbox. No spam, unsubscribe anytime.
         </p>
         {error && <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</div>}
