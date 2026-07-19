@@ -94,6 +94,26 @@ function AdminCustomers() {
     }
   }, [token, load]);
 
+  // Download newsletter subscribers as CSV (auth-gated route → fetch as a blob, then save).
+  const exportSubscribers = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/customers/subscribers.csv`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'volw-newsletter-subscribers.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Failed to export subscribers');
+    }
+  }, [token]);
+
   const toggle = (key) => setExpanded((prev) => {
     const next = new Set(prev);
     if (next.has(key)) next.delete(key); else next.add(key);
@@ -118,6 +138,7 @@ function AdminCustomers() {
     active: searchedAccounts.filter((a) => segmentOf(a) === 'active').length,
     lapsed: searchedAccounts.filter((a) => segmentOf(a) === 'lapsed').length,
     new: searchedAccounts.filter((a) => segmentOf(a) === 'new').length,
+    subscribers: searchedAccounts.filter((a) => a.newsletterSubscribed).length,
     bundles: searchedAccounts.reduce((s, a) => s + (a.bundles || 0), 0),
     revenue: searchedAccounts.reduce((s, a) => s + (a.paidValue || 0), 0),
   };
@@ -170,6 +191,7 @@ function AdminCustomers() {
             <p className="font-bold text-walnut">
               {title}
               {stats.giveawayMember && <span className="ml-2" title="Giveaway member">⭐</span>}
+              {stats.newsletterSubscribed && <span className="ml-2" title="Newsletter subscriber">📧</span>}
               {sub}
             </p>
             <p className="truncate text-sm text-walnut-400">
@@ -217,10 +239,11 @@ function AdminCustomers() {
       {!loading && !error && (
         <>
           {/* Summary */}
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <StatPill label="Active" value={summary.active} />
             <StatPill label="Lapsed" value={summary.lapsed} />
             <StatPill label="Never ordered" value={summary.new} />
+            <StatPill label="Subscribers" value={summary.subscribers} />
             <StatPill label="Bundles sold" value={summary.bundles} />
             <StatPill label="Revenue" value={`$${summary.revenue}`} />
           </div>
@@ -234,6 +257,13 @@ function AdminCustomers() {
               className="rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ember-600 disabled:opacity-50"
             >
               {winBack.busy ? 'Sending…' : 'Email lapsed customers a comeback code'}
+            </button>
+            <button
+              type="button"
+              onClick={exportSubscribers}
+              className="rounded-lg border border-ember px-4 py-2 text-sm font-semibold text-ember transition-colors hover:bg-ember hover:text-white"
+            >
+              Export subscribers (CSV)
             </button>
             {winBack.msg && <span className="text-sm text-walnut-400">{winBack.msg}</span>}
           </div>

@@ -140,6 +140,7 @@ router.post('/register', async (req, res) => {
         id: user._id,
         email: user.email,
         role: user.role,
+        newsletterSubscribed: user.newsletterSubscribed,
       },
     });
   } catch (error) {
@@ -213,6 +214,7 @@ router.post('/login', async (req, res) => {
         id: user._id,
         email: user.email,
         role: user.role,
+        newsletterSubscribed: user.newsletterSubscribed,
       },
     });
   } catch (error) {
@@ -254,6 +256,7 @@ router.get('/me', auth, async (req, res) => {
       phone: user.phone,
       address: user.address,
       role: user.role,
+      newsletterSubscribed: user.newsletterSubscribed,
       createdAt: user.createdAt,
     });
   } catch (error) {
@@ -290,7 +293,7 @@ router.get('/me', auth, async (req, res) => {
 router.put('/profile', auth, async (req, res) => {
   try {
     const {
-      firstName, lastName, phone, address,
+      firstName, lastName, phone, address, newsletterSubscribed,
     } = req.body;
     const user = await User.findById(req.userId);
     if (!user) {
@@ -302,10 +305,19 @@ router.put('/profile', auth, async (req, res) => {
     if (firstName !== undefined && firstName !== user.firstName) changes.push('Name');
     if (lastName !== undefined && lastName !== user.lastName) changes.push('Name');
     if (phone !== undefined && String(phone).trim() !== (user.phone || '')) changes.push('Phone');
+    const nlChanged = newsletterSubscribed !== undefined
+      && !!newsletterSubscribed !== user.newsletterSubscribed;
+    if (nlChanged) {
+      changes.push(newsletterSubscribed ? 'Newsletter (subscribed)' : 'Newsletter (unsubscribed)');
+    }
 
     if (firstName !== undefined) user.firstName = firstName;
     if (lastName !== undefined) user.lastName = lastName;
     if (phone !== undefined) user.phone = String(phone).trim();
+    if (newsletterSubscribed !== undefined) {
+      user.newsletterSubscribed = !!newsletterSubscribed;
+      user.newsletterSubscribedAt = newsletterSubscribed ? new Date() : null;
+    }
     if (address && typeof address === 'object') {
       // Merge only the provided address fields so a partial update doesn't blank the rest.
       ['street', 'unit', 'neighborhood', 'notes'].forEach((k) => {
@@ -344,6 +356,7 @@ router.put('/profile', auth, async (req, res) => {
       phone: user.phone,
       address: user.address,
       role: user.role,
+      newsletterSubscribed: user.newsletterSubscribed,
     });
   } catch (error) {
     console.error('Update profile error:', error);

@@ -10,6 +10,7 @@ import neighborhoods from '../data/neighborhoods';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 const SEEN_KEY = 'volw-giveaway-modal-seen-at';
+const NUDGE_KEY = 'volw-nudge-shown'; // sessionStorage — shared so only one nudge pops per visit
 const DAY = 24 * 60 * 60 * 1000;
 const REVEAL_DELAY = 2500; // let the page settle before nudging
 
@@ -23,6 +24,14 @@ const isExcludedPath = (p) => p.startsWith('/admin')
 function recentlyShown() {
   const ts = Number(localStorage.getItem(SEEN_KEY) || 0);
   return Boolean(ts) && (Date.now() - ts) < DAY;
+}
+
+// Session guard shared with NewsletterModal so two nudges don't both appear in one visit.
+function nudgeShownThisSession() {
+  try { return Boolean(sessionStorage.getItem(NUDGE_KEY)); } catch { return false; }
+}
+function markNudgeShown() {
+  try { sessionStorage.setItem(NUDGE_KEY, '1'); } catch { /* ignore */ }
 }
 
 // Once-per-day nudge for visitors who haven't entered the monthly giveaway. Guests are pointed to
@@ -47,6 +56,7 @@ function GiveawayModal() {
     if (user?.role === 'admin') return;
     if (isExcludedPath(pathname)) return;
     if (recentlyShown()) return;
+    if (nudgeShownThisSession()) return;
 
     let cancelled = false;
     let timer;
@@ -57,7 +67,9 @@ function GiveawayModal() {
       const s = res.data || {};
       // Guests have no account, so they're never "joined" — nudge them to sign up.
       if (!s.enabled || s.joined) return;
+      if (nudgeShownThisSession()) return;
       shownThisSession.current = true;
+      markNudgeShown();
       localStorage.setItem(SEEN_KEY, String(Date.now()));
       setStatus(s);
       timer = setTimeout(() => !cancelled && setOpen(true), REVEAL_DELAY);

@@ -25,6 +25,7 @@ function Account() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState(EMPTY_ADDRESS);
+  const [newsletter, setNewsletter] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
 
@@ -51,6 +52,7 @@ function Account() {
       setLastName(user.lastName || '');
       setPhone(user.phone || '');
       setAddress({ ...EMPTY_ADDRESS, ...(user.address || {}) });
+      setNewsletter(Boolean(user.newsletterSubscribed));
     }
   }, [user]);
 
@@ -63,7 +65,7 @@ function Account() {
       await axios.put(
         `${API_URL}/api/auth/profile`,
         {
-          firstName, lastName, phone, address,
+          firstName, lastName, phone, address, newsletterSubscribed: newsletter,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -367,6 +369,25 @@ function Account() {
                 {profileMessage}
               </p>
             )}
+          </div>
+
+          {/* Newsletter Section */}
+          <div className="border-b border-cream-300 pb-12">
+            <h2 className="text-base/7 font-semibold text-walnut">Newsletter</h2>
+            <p className="mt-1 text-sm/6 text-walnut-400">
+              Get restock alerts, this week&apos;s wood, and neighbor-only deals in your inbox.
+            </p>
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label htmlFor="newsletter" className="mt-6 flex items-center gap-3 text-sm font-medium text-walnut">
+              <input
+                id="newsletter"
+                type="checkbox"
+                checked={newsletter}
+                onChange={(e) => setNewsletter(e.target.checked)}
+                className="h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+              />
+              Email me VOLW Firewood updates
+            </label>
           </div>
 
           {/* Change Password Section */}
