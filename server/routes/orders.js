@@ -722,7 +722,7 @@ router.patch('/:id/cancel', auth, async (req, res) => {
     if (!order.user || order.user.toString() !== req.userId) {
       return res.status(403).json({ error: 'Forbidden' });
     }
-    if (['delivered', 'cancelled'].includes(order.status)) {
+    if (['completed', 'cancelled'].includes(order.status)) {
       return res.status(400).json({ error: `This order is already ${order.status}.` });
     }
     // Subscriptions are locked in until the minimum commitment ends (owner can override in Admin).
@@ -765,7 +765,7 @@ router.patch('/:id/reschedule', auth, async (req, res) => {
     if (!order.user || order.user.toString() !== req.userId) {
       return res.status(403).json({ error: 'Forbidden' });
     }
-    if (['delivered', 'cancelled'].includes(order.status)) {
+    if (['completed', 'cancelled'].includes(order.status)) {
       return res.status(400).json({ error: `This order is already ${order.status}.` });
     }
 
@@ -780,11 +780,11 @@ router.patch('/:id/reschedule', auth, async (req, res) => {
     order.preferredTimes = sched.windows.map((w) => ({ from: w.from || '', to: w.to || '' }));
     order.rush = sched.isRush;
     order.rushPercent = sched.isRush ? sched.rushPercent : 0;
-    // A new date/time invalidates any confirmed window — reset to pending, clear schedule.
+    // A new date/time invalidates any confirmed window — reset to received, clear schedule.
     if (order.status === 'confirmed') {
       order.schedule = { date: '', from: '', to: '' };
-      order.status = 'pending';
-      order.statusHistory.push({ status: 'pending', at: new Date() });
+      order.status = 'received';
+      order.statusHistory.push({ status: 'received', at: new Date() });
     }
     await order.save();
 
