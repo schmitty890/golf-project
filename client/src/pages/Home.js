@@ -17,6 +17,7 @@ import ContactForm from '../components/ContactForm';
 import LowStockBanner from '../components/LowStockBanner';
 import WoodTypeBadge from '../components/WoodTypeBadge';
 import NextDeliveryBadge from '../components/NextDeliveryBadge';
+import PaymentBadge from '../components/PaymentBadge';
 import GiveawayCTA from '../components/GiveawayCTA';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -55,6 +56,7 @@ function Hero() {
 
           <div className="mt-6 flex flex-col items-start gap-3">
             <NextDeliveryBadge variant="light" />
+            <PaymentBadge variant="light" />
             <LowStockBanner className="inline-block" />
           </div>
 
@@ -103,7 +105,7 @@ function About() {
 }
 
 const steps = [
-  { name: 'Place your order', description: 'Choose your bundles or a subscription — at least a day ahead (or request a rush order for sooner, if available).', icon: ShoppingCartIcon },
+  { name: 'Place your order', description: 'Choose your bundles or a subscription — at least a day ahead (or request a rush order for sooner, if available) — and pay by card or Venmo, whatever’s easy.', icon: ShoppingCartIcon },
   { name: 'Free delivery', description: 'Pick a date and the times you’d prefer — we deliver your bundles right to your door, free.', icon: TruckIcon },
   { name: 'You enjoy', description: 'Light it up and enjoy a cozy fire — no hassle.', icon: FireIcon },
 ];
