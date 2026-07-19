@@ -5,7 +5,7 @@ import business from '../../data/business';
 
 function Footer() {
   return (
-    <footer id="contact" className="bg-walnut text-cream">
+    <footer id="site-footer" className="bg-walnut text-cream">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <div>
@@ -57,10 +57,10 @@ function Footer() {
                 <Link to="/order" className="hover:text-ember">Order Firewood</Link>
               </li>
               <li>
-                <a href="/#pricing" className="hover:text-ember">View Pricing</a>
+                <Link to="/pricing" className="hover:text-ember">View Pricing</Link>
               </li>
               <li>
-                <a href="/#subscriptions" className="hover:text-ember">Subscriptions</a>
+                <Link to="/pricing" className="hover:text-ember">Subscriptions</Link>
               </li>
             </ul>
           </div>

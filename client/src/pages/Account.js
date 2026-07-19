@@ -182,9 +182,9 @@ function Account() {
       <form onSubmit={handleProfileSubmit}>
         <div className="space-y-12">
           {/* Profile Section */}
-          <div className="border-b border-gray-900/10 pb-12">
-            <h2 className="text-base/7 font-semibold text-gray-900">Profile</h2>
-            <p className="mt-1 text-sm/6 text-gray-600">
+          <div className="border-b border-cream-300 pb-12">
+            <h2 className="text-base/7 font-semibold text-walnut">Profile</h2>
+            <p className="mt-1 text-sm/6 text-walnut-400">
               Update your personal information and profile photo.
             </p>
 
@@ -192,7 +192,7 @@ function Account() {
               {/* Profile Photo */}
               <div className="col-span-full">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="photo" className="block text-sm/6 font-medium text-gray-900">
+                <label htmlFor="photo" className="block text-sm/6 font-medium text-walnut">
                   Photo
                 </label>
                 <div className="mt-2 flex items-center gap-x-3">
@@ -203,11 +203,11 @@ function Account() {
                       className="size-12 rounded-full object-cover"
                     />
                   ) : (
-                    <UserCircleIcon aria-hidden="true" className="size-12 text-gray-300" />
+                    <UserCircleIcon aria-hidden="true" className="size-12 text-walnut-200" />
                   )}
                   <label
                     htmlFor="avatar-upload"
-                    className="cursor-pointer rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                    className="cursor-pointer rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-walnut shadow-sm ring-1 ring-inset ring-cream-300 hover:bg-cream"
                   >
                     {avatarUploading ? 'Uploading...' : 'Change'}
                     <input
@@ -241,7 +241,7 @@ function Account() {
               {/* First Name */}
               <div className="sm:col-span-3">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="firstName" className="block text-sm/6 font-medium text-gray-900">
+                <label htmlFor="firstName" className="block text-sm/6 font-medium text-walnut">
                   First name
                 </label>
                 <div className="mt-2">
@@ -260,7 +260,7 @@ function Account() {
               {/* Last Name */}
               <div className="sm:col-span-3">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="lastName" className="block text-sm/6 font-medium text-gray-900">
+                <label htmlFor="lastName" className="block text-sm/6 font-medium text-walnut">
                   Last name
                 </label>
                 <div className="mt-2">
@@ -279,7 +279,7 @@ function Account() {
               {/* Email */}
               <div className="sm:col-span-4">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="email" className="block text-sm/6 font-medium text-gray-900">
+                <label htmlFor="email" className="block text-sm/6 font-medium text-walnut">
                   Email address
                 </label>
                 <div className="mt-2">
@@ -293,7 +293,7 @@ function Account() {
                     className="block w-full rounded-xl border border-cream-300 bg-cream-100 px-4 py-3 text-base text-walnut-300"
                   />
                 </div>
-                <p className="mt-1 text-sm/6 text-gray-500">
+                <p className="mt-1 text-sm/6 text-walnut-400">
                   Email cannot be changed.
                 </p>
               </div>
@@ -301,7 +301,7 @@ function Account() {
               {/* Phone */}
               <div className="sm:col-span-3">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="phone" className="block text-sm/6 font-medium text-gray-900">
+                <label htmlFor="phone" className="block text-sm/6 font-medium text-walnut">
                   Phone
                 </label>
                 <div className="mt-2">
@@ -315,35 +315,35 @@ function Account() {
                     className={fieldClass}
                   />
                 </div>
-                <p className="mt-1 text-sm/6 text-gray-500">
+                <p className="mt-1 text-sm/6 text-walnut-400">
                   Saved so we can auto-fill your next order.
                 </p>
               </div>
             </div>
 
             {/* Saved delivery address */}
-            <h3 className="mt-8 text-sm/7 font-semibold text-gray-900">Default delivery address</h3>
-            <p className="mt-1 text-sm/6 text-gray-600">
+            <h3 className="mt-8 text-sm/7 font-semibold text-walnut">Default delivery address</h3>
+            <p className="mt-1 text-sm/6 text-walnut-400">
               We&apos;ll pre-fill this when you order. You can always change it at checkout.
             </p>
             <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-6">
               <div className="sm:col-span-4">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="street" className="block text-sm/6 font-medium text-gray-900">Street address</label>
+                <label htmlFor="street" className="block text-sm/6 font-medium text-walnut">Street address</label>
                 <div className="mt-2">
                   <input id="street" type="text" autoComplete="street-address" value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} className={fieldClass} />
                 </div>
               </div>
               <div className="sm:col-span-2">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="unit" className="block text-sm/6 font-medium text-gray-900">Unit (optional)</label>
+                <label htmlFor="unit" className="block text-sm/6 font-medium text-walnut">Unit (optional)</label>
                 <div className="mt-2">
                   <input id="unit" type="text" value={address.unit} onChange={(e) => setAddress({ ...address, unit: e.target.value })} className={fieldClass} />
                 </div>
               </div>
               <div className="sm:col-span-3">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="neighborhood" className="block text-sm/6 font-medium text-gray-900">Neighborhood (optional)</label>
+                <label htmlFor="neighborhood" className="block text-sm/6 font-medium text-walnut">Neighborhood (optional)</label>
                 <div className="mt-2">
                   <select id="neighborhood" value={address.neighborhood} onChange={(e) => setAddress({ ...address, neighborhood: e.target.value })} className={fieldClass}>
                     <option value="">Select…</option>
@@ -355,7 +355,7 @@ function Account() {
               </div>
               <div className="sm:col-span-6">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="notes" className="block text-sm/6 font-medium text-gray-900">Delivery notes (optional)</label>
+                <label htmlFor="notes" className="block text-sm/6 font-medium text-walnut">Delivery notes (optional)</label>
                 <div className="mt-2">
                   <textarea id="notes" rows={2} value={address.notes} onChange={(e) => setAddress({ ...address, notes: e.target.value })} className={fieldClass} />
                 </div>
@@ -370,9 +370,9 @@ function Account() {
           </div>
 
           {/* Change Password Section */}
-          <div className="border-b border-gray-900/10 pb-12">
-            <h2 className="text-base/7 font-semibold text-gray-900">Change Password</h2>
-            <p className="mt-1 text-sm/6 text-gray-600">
+          <div className="border-b border-cream-300 pb-12">
+            <h2 className="text-base/7 font-semibold text-walnut">Change Password</h2>
+            <p className="mt-1 text-sm/6 text-walnut-400">
               Update your password to keep your account secure.
             </p>
 
@@ -380,7 +380,7 @@ function Account() {
               {/* Current Password */}
               <div className="sm:col-span-4">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="currentPassword" className="block text-sm/6 font-medium text-gray-900">
+                <label htmlFor="currentPassword" className="block text-sm/6 font-medium text-walnut">
                   Current password
                 </label>
                 <div className="mt-2">
@@ -399,7 +399,7 @@ function Account() {
               {/* New Password */}
               <div className="sm:col-span-4">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="newPassword" className="block text-sm/6 font-medium text-gray-900">
+                <label htmlFor="newPassword" className="block text-sm/6 font-medium text-walnut">
                   New password
                 </label>
                 <div className="mt-2">
@@ -414,7 +414,7 @@ function Account() {
                     className="block w-full rounded-xl border border-cream-300 bg-white px-4 py-3 text-base text-walnut placeholder:text-walnut-200 transition-colors focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/30"
                   />
                 </div>
-                <p className="mt-1 text-sm/6 text-gray-500">
+                <p className="mt-1 text-sm/6 text-walnut-400">
                   Must be at least 6 characters.
                 </p>
               </div>
@@ -422,7 +422,7 @@ function Account() {
               {/* Confirm Password */}
               <div className="sm:col-span-4">
                 {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                <label htmlFor="confirmPassword" className="block text-sm/6 font-medium text-gray-900">
+                <label htmlFor="confirmPassword" className="block text-sm/6 font-medium text-walnut">
                   Confirm new password
                 </label>
                 <div className="mt-2">
@@ -458,16 +458,16 @@ function Account() {
           </div>
 
           {/* Sign Out Section */}
-          <div className="border-b border-gray-900/10 pb-12">
+          <div className="border-b border-cream-300 pb-12">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base/7 font-semibold text-gray-900">Sign out</h2>
-                <p className="mt-1 text-sm/6 text-gray-600">Sign out of your account on this device.</p>
+                <h2 className="text-base/7 font-semibold text-walnut">Sign out</h2>
+                <p className="mt-1 text-sm/6 text-walnut-400">Sign out of your account on this device.</p>
               </div>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-walnut shadow-sm ring-1 ring-inset ring-cream-300 hover:bg-cream"
               >
                 Sign Out
               </button>
@@ -477,7 +477,7 @@ function Account() {
           {/* Danger Zone Section */}
           <div className="pb-12">
             <h2 className="text-base/7 font-semibold text-red-600">Danger Zone</h2>
-            <p className="mt-1 text-sm/6 text-gray-600">
+            <p className="mt-1 text-sm/6 text-walnut-400">
               Irreversible actions for your account.
             </p>
 
@@ -485,8 +485,8 @@ function Account() {
               {/* Delete Account */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm/6 font-medium text-gray-900">Delete account</h3>
-                  <p className="text-sm/6 text-gray-500">Permanently delete your account and all data.</p>
+                  <h3 className="text-sm/6 font-medium text-walnut">Delete account</h3>
+                  <p className="text-sm/6 text-walnut-400">Permanently delete your account and all data.</p>
                 </div>
                 <button
                   type="button"
@@ -501,7 +501,7 @@ function Account() {
         </div>
 
         {/* Footer with Save Button */}
-        <div className="mt-6 flex items-center justify-end gap-x-6 border-t border-gray-900/10 pt-6">
+        <div className="mt-6 flex items-center justify-end gap-x-6 border-t border-cream-300 pt-6">
           <button
             type="button"
             onClick={() => {
@@ -509,7 +509,7 @@ function Account() {
               setLastName(user?.lastName || '');
               setProfileMessage('');
             }}
-            className="text-sm/6 font-semibold text-gray-900"
+            className="text-sm/6 font-semibold text-walnut"
           >
             Cancel
           </button>
@@ -528,7 +528,7 @@ function Account() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              className="fixed inset-0 bg-walnut/60 transition-opacity"
               onClick={() => setShowDeleteModal(false)}
               onKeyDown={(e) => e.key === 'Escape' && setShowDeleteModal(false)}
               role="button"
@@ -537,10 +537,10 @@ function Account() {
             />
             <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
               <div>
-                <h3 className="text-base/7 font-semibold text-gray-900 mb-4">
+                <h3 className="text-base/7 font-semibold text-walnut mb-4">
                   Delete Account
                 </h3>
-                <p className="text-sm/6 text-gray-600 mb-4">
+                <p className="text-sm/6 text-walnut-400 mb-4">
                   This action cannot be undone. Please enter your password to confirm.
                 </p>
                 <input
@@ -570,7 +570,7 @@ function Account() {
                     setDeletePassword('');
                     setDeleteError('');
                   }}
-                  className="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
+                  className="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-walnut shadow-sm ring-1 ring-inset ring-cream-300 hover:bg-cream sm:col-start-1 sm:mt-0"
                 >
                   Cancel
                 </button>

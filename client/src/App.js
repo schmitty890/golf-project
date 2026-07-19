@@ -19,6 +19,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
+import NotFound from './pages/NotFound';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminSchedule from './pages/admin/AdminSchedule';
 import AdminAvailability from './pages/admin/AdminAvailability';
@@ -138,6 +139,9 @@ function App() {
                 </RequireAuth>
             )}
             />
+
+            {/* 404 - branded catch-all, keeps nav/footer */}
+            <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
           </Routes>
           <ChatWidget />
           <GiveawayModal />

@@ -10,7 +10,6 @@ import {
   FireIcon,
 } from '@heroicons/react/24/outline';
 import business from '../data/business';
-import testimonials from '../data/testimonials';
 import faqs from '../data/faqs';
 import ReviewsCarousel from '../components/ReviewsCarousel';
 import FeedbackModal from '../components/FeedbackModal';
@@ -215,11 +214,6 @@ function Gallery() {
   );
 }
 
-// Fallback content (hardcoded samples) when no approved reviews exist yet.
-const fallbackItems = (testimonials || []).map((t) => ({
-  name: t.name, text: t.quote, detail: t.detail, rating: null,
-}));
-
 function Testimonials() {
   const [reviews, setReviews] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -231,14 +225,11 @@ function Testimonials() {
   }, []);
 
   // Only show reviews that actually have text — a rating-only entry renders a blank card.
-  const realItems = reviews
+  const items = reviews
     .map((r) => ({
       name: r.name, text: r.comment, detail: r.location, rating: r.rating,
     }))
     .filter((r) => r.text && r.text.trim());
-  const items = realItems.length > 0 ? realItems : fallbackItems;
-
-  if (items.length === 0) return null;
 
   return (
     <section id="testimonials" className="bg-cream-300/40 py-16 sm:py-20">
@@ -247,7 +238,13 @@ function Testimonials() {
           What neighbors say
         </h2>
 
-        <ReviewsCarousel items={items} />
+        {items.length > 0 ? (
+          <ReviewsCarousel items={items} />
+        ) : (
+          <p className="mt-6 text-center text-lg text-walnut-400">
+            Be the first neighbor to share your experience.
+          </p>
+        )}
 
         <div className="mt-10 text-center">
           <button

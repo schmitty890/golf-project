@@ -10,7 +10,7 @@ import GiveawayCTA from '../components/GiveawayCTA';
 import {
   describeOrder, statusClasses, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
-  paymentStatusClasses, paymentLabel, statusLabel,
+  paymentStatusClasses, paymentLabel, statusLabel, normalizeStatus,
 } from '../utils/orderDisplay';
 import { getProduct, SUB_PER_BUNDLE, SUB_MIN_BUNDLES } from '../data/pricing';
 
@@ -255,7 +255,7 @@ function MyOrders() {
                   Manage subscription
                 </button>
               )}
-              {order.orderType !== 'subscription' && ['pending', 'confirmed'].includes(order.status) && (
+              {order.orderType !== 'subscription' && ['received', 'confirmed'].includes(normalizeStatus(order.status)) && (
                 <>
                   <button
                     type="button"
