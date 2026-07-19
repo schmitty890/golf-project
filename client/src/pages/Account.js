@@ -375,7 +375,7 @@ function Account() {
           <div className="border-b border-cream-300 pb-12">
             <h2 className="text-base/7 font-semibold text-walnut">Newsletter</h2>
             <p className="mt-1 text-sm/6 text-walnut-400">
-              Get restock alerts, this week&apos;s wood, and neighbor-only deals in your inbox.
+              Get seasonal firewood tips, restock alerts, and neighbor-only deals in your inbox.
             </p>
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
             <label htmlFor="newsletter" className="mt-6 flex items-center gap-3 text-sm font-medium text-walnut">
