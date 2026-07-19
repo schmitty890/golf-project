@@ -146,6 +146,7 @@ router.get('/', auth, requireAdmin, async (req, res) => {
         createdAt: u.createdAt,
         neighborhood: u.address?.neighborhood || '',
         giveawayMember: giveawaySet.has(String(u._id)),
+        newsletterSubscribed: !!u.newsletterSubscribed,
         phone: list[0]?.phone || u.phone || '', // most-recent order's phone, else the saved one
         ...rollUp(list),
       };
@@ -164,6 +165,45 @@ router.get('/', auth, requireAdmin, async (req, res) => {
     return res.json({ accounts, guests });
   } catch (error) {
     console.error('List customers error:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/customers/subscribers.csv:
+ *   get:
+ *     summary: Admin — export newsletter subscribers as CSV
+ *     tags: [Customers]
+ *     security: [{ bearerAuth: [] }]
+ */
+router.get('/subscribers.csv', auth, requireAdmin, async (req, res) => {
+  try {
+    const subs = await User.find({ newsletterSubscribed: true })
+      .select('email firstName lastName newsletterSubscribedAt')
+      .sort({ newsletterSubscribedAt: 1 })
+      .lean();
+
+    const csvCell = (v) => {
+      const s = v === null || v === undefined ? '' : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const ymd = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+
+    const headers = ['Email', 'First name', 'Last name', 'Subscribed on'];
+    const rows = subs.map((u) => [
+      u.email || '',
+      u.firstName || '',
+      u.lastName || '',
+      ymd(u.newsletterSubscribedAt),
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="volw-newsletter-subscribers.csv"');
+    return res.send(`\ufeff${csv}`); // lead with a UTF-8 BOM so Excel reads accented names correctly
+  } catch (error) {
+    console.error('Export subscribers error:', error);
     return res.status(500).json({ error: 'Server error' });
   }
 });

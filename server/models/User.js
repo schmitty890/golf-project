@@ -58,6 +58,9 @@ const userSchema = new mongoose.Schema({
   // When this customer was last sent a lapsed win-back email. Guards the admin "email lapsed
   // customers" action against re-emailing the same person within a cooldown (routes/customers.js).
   winBackEmailedAt: { type: Date, default: null },
+  // Newsletter opt-in (set via the Account toggle or the subscribe popup).
+  newsletterSubscribed: { type: Boolean, default: false },
+  newsletterSubscribedAt: { type: Date, default: null },
 }, { timestamps: true });
 
 // Hash password before saving
