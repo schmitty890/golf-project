@@ -16,6 +16,7 @@ import FeedbackModal from '../components/FeedbackModal';
 import ContactForm from '../components/ContactForm';
 import LowStockBanner from '../components/LowStockBanner';
 import WoodTypeBadge from '../components/WoodTypeBadge';
+import NextDeliveryBadge from '../components/NextDeliveryBadge';
 import GiveawayCTA from '../components/GiveawayCTA';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -52,7 +53,10 @@ function Hero() {
             {business.tagline}
           </p>
 
-          <LowStockBanner className="mt-6 inline-block" />
+          <div className="mt-6 flex flex-col items-start gap-3">
+            <NextDeliveryBadge variant="light" />
+            <LowStockBanner className="inline-block" />
+          </div>
 
           <div className="mt-10 flex flex-wrap gap-4">
             <Link

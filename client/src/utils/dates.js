@@ -52,6 +52,21 @@ export function relativeDayLabel(s) {
   return formatDayLabel(s);
 }
 
+// Earliest deliverable date as 'YYYY-MM-DD': today + leadDays, then step past any fully-closed
+// date to the first open one. `dateOverrides` maps 'YYYY-MM-DD' -> array of open window times;
+// an empty array means closed all day (a non-empty array is open, possibly with limited windows).
+export function nextAvailableDate(leadDays = 1, dateOverrides = {}) {
+  const lead = Math.max(0, Math.round(Number(leadDays) || 0));
+  let d = addDays(todayStr(), lead);
+  for (let i = 0; i < 120; i += 1) {
+    const ov = dateOverrides ? dateOverrides[d] : undefined;
+    const closed = Array.isArray(ov) && ov.length === 0;
+    if (!closed) return d;
+    d = addDays(d, 1);
+  }
+  return d;
+}
+
 // 'June 2026'
 export function formatMonthLabel(year, monthIndex) {
   return new Date(year, monthIndex, 1).toLocaleDateString(undefined, {
