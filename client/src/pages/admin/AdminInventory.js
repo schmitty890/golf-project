@@ -41,7 +41,7 @@ function Card({ title, saved, children }) {
     <div className={cardBase}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-base font-bold text-walnut">{title}</h3>
-        {saved && <span className="text-sm font-semibold text-green-700">Saved ✓</span>}
+        {saved && <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-semibold text-green-700">Saved ✓</span>}
       </div>
       {children}
     </div>
@@ -171,7 +171,7 @@ function AdminInventory() {
   const [kindling, setKindling] = useState({ enabled: false, price: 8, quantity: 0 });
   const [kindlingSaved, setKindlingSaved] = useState(false);
 
-  const flash = (setter) => { setter(true); setTimeout(() => setter(false), 2000); };
+  const flash = (setter) => { setter(true); setTimeout(() => setter(false), 3500); };
 
   const load = useCallback(async () => {
     try {
@@ -369,7 +369,10 @@ function AdminInventory() {
                 <input id="wt-note" value={woodType.note} onChange={(e) => setWoodType({ ...woodType, note: e.target.value })} placeholder="A rotating assortment — oak, hickory, maple & more" className={`mt-1 w-full ${inputClass}`} />
               </div>
             </div>
-            <button type="button" onClick={saveWoodType} className={`mt-4 ${btnPrimary}`}>Save</button>
+            <div className="mt-4 flex items-center gap-3">
+              <button type="button" onClick={saveWoodType} className={btnPrimary}>Save</button>
+              {woodSaved && <span className="text-sm font-semibold text-green-700">Saved ✓</span>}
+            </div>
           </Card>
 
           <Card title="Low-stock banner" saved={bannerSaved}>
@@ -392,6 +395,7 @@ function AdminInventory() {
                 <input id="threshold" type="number" min={0} value={banner.lowStockThreshold} onChange={(e) => setBanner({ ...banner, lowStockThreshold: e.target.value })} className={`mt-1 w-24 ${inputClass}`} />
               </div>
               <button type="button" onClick={saveBanner} className={btnPrimary}>Save</button>
+              {bannerSaved && <span className="pb-2 text-sm font-semibold text-green-700">Saved ✓</span>}
             </div>
           </Card>
         </div>
