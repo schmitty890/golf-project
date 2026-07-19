@@ -126,12 +126,11 @@ router.post('/register', async (req, res) => {
       lines: [['Email', user.email]],
     });
 
-    // Generate JWT token
+    // Generate JWT token (no expiry — users stay logged in until manual logout)
     const token = jwt.sign(
       // eslint-disable-next-line no-underscore-dangle
       { userId: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' },
     );
 
     return res.status(201).json({
@@ -200,12 +199,11 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
 
-    // Generate JWT token
+    // Generate JWT token (no expiry — users stay logged in until manual logout)
     const token = jwt.sign(
       // eslint-disable-next-line no-underscore-dangle
       { userId: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' },
     );
 
     return res.json({
