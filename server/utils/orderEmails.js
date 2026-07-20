@@ -145,6 +145,27 @@ function wrap(title, bodyHtml) {
   </div>`;
 }
 
+// Escape admin-authored text for safe HTML embedding.
+const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// A newsletter email built from admin-composed plain text. Unlike transactional order emails, it
+// carries a visible Unsubscribe link (required for bulk marketing email). In `body`, blank lines
+// split paragraphs and single newlines become <br>.
+export function newsletterEmail({
+  subject, heading = '', body = '', unsubscribeUrl = '',
+}) {
+  const paragraphs = String(body).split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  const bodyHtml = paragraphs
+    .map((p) => `<p>${escHtml(p).replace(/\n/g, '<br>')}</p>`)
+    .join('');
+  const unsubHtml = unsubscribeUrl
+    ? `<p style="color:#8a7f78;font-size:12px;margin-top:16px">You're receiving this because you subscribed to ${BUSINESS()} updates. <a href="${unsubscribeUrl}" style="color:#8a7f78">Unsubscribe</a>.</p>`
+    : '';
+  const html = wrap(heading || subject, `${bodyHtml}${unsubHtml}`);
+  const text = `${body}${unsubscribeUrl ? `\n\n—\nUnsubscribe: ${unsubscribeUrl}` : ''}`;
+  return { subject, html, text };
+}
+
 function linesToHtml(lines) {
   return `<table style="border-collapse:collapse">${lines.map(
     ([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#8a7f78">${k}</td><td style="padding:4px 0;font-weight:bold">${v}</td></tr>`,

@@ -30,6 +30,8 @@ import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminInventory from './pages/admin/AdminInventory';
 import AdminChat from './pages/admin/AdminChat';
 import AdminGiveaway from './pages/admin/AdminGiveaway';
+import AdminNewsletter from './pages/admin/AdminNewsletter';
+import Unsubscribe from './pages/Unsubscribe';
 
 function App() {
   return (
@@ -46,6 +48,8 @@ function App() {
             <Route path="/track/:token" element={<PublicLayout><TrackOrder /></PublicLayout>} />
             {/* Print-friendly receipt — standalone (no nav/footer) so the printout is clean */}
             <Route path="/receipt/:token" element={<Receipt />} />
+            {/* Public newsletter unsubscribe (reached from an email link) */}
+            <Route path="/unsubscribe/:token" element={<Unsubscribe />} />
 
             {/* Auth - standalone */}
             <Route path="/login" element={<Login />} />
@@ -137,6 +141,14 @@ function App() {
               element={(
                 <RequireAuth adminOnly>
                   <SidebarLayout><AdminGiveaway /></SidebarLayout>
+                </RequireAuth>
+            )}
+            />
+            <Route
+              path="/admin/newsletter"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout><AdminNewsletter /></SidebarLayout>
                 </RequireAuth>
             )}
             />
