@@ -15,6 +15,7 @@ import inventoryRouter from './routes/inventory.js';
 import analyticsRouter from './routes/analytics.js';
 import chatRouter from './routes/chat.js';
 import giveawayRouter from './routes/giveaway.js';
+import newsletterRouter from './routes/newsletter.js';
 import initChat from './socket/chat.js';
 import { startReminderJob } from './jobs/reminders.js';
 import stripeWebhook from './routes/stripeWebhook.js';
@@ -63,6 +64,7 @@ app.use('/api/inventory', inventoryRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/giveaway', giveawayRouter);
+app.use('/api/newsletter', newsletterRouter);
 
 // Start server
 httpServer.listen(PORT, () => {

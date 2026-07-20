@@ -26,15 +26,17 @@ function getTransport() {
   return transport;
 }
 
-// Send an email. Resolves silently (logging) when unconfigured or when `to` is empty.
+// Send an email. Returns true on success, false on failure/no-op — so batch senders can tally
+// delivery. Resolves silently (logging) when unconfigured or when `to` is empty. Never throws.
+// `headers` lets callers add e.g. a List-Unsubscribe header for newsletter deliverability.
 export async function sendMail({
-  to, subject, html, text, replyTo,
+  to, subject, html, text, replyTo, headers,
 }) {
-  if (!to) return;
+  if (!to) return false;
   const t = getTransport();
   if (!t) {
     console.log(`[mail] would send "${subject}" to ${to} (SMTP not configured)`);
-    return;
+    return false;
   }
   try {
     await t.sendMail({
@@ -44,9 +46,12 @@ export async function sendMail({
       text,
       html,
       ...(replyTo ? { replyTo } : {}),
+      ...(headers ? { headers } : {}),
     });
+    return true;
   } catch (err) {
     console.error(`[mail] failed to send "${subject}" to ${to}:`, err.message);
+    return false;
   }
 }
 

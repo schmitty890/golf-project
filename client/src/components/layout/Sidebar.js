@@ -13,6 +13,7 @@ import {
   ArchiveBoxIcon,
   ChatBubbleLeftRightIcon,
   GiftIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 import Logo from '../Logo';
 import { AuthContext } from '../../context/AuthContext';
@@ -39,6 +40,7 @@ function Sidebar({ collapsed = false }) {
       name: 'Live chat', href: '/admin/chat', icon: ChatBubbleLeftRightIcon, badge: totalUnread,
     });
     navigation.push({ name: 'Giveaway', href: '/admin/giveaway', icon: GiftIcon });
+    navigation.push({ name: 'Newsletter', href: '/admin/newsletter', icon: EnvelopeIcon });
   }
 
   return (

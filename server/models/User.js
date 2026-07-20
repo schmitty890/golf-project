@@ -61,6 +61,8 @@ const userSchema = new mongoose.Schema({
   // Newsletter opt-in (set via the Account toggle or the subscribe popup).
   newsletterSubscribed: { type: Boolean, default: false },
   newsletterSubscribedAt: { type: Date, default: null },
+  // Unguessable token for one-click email unsubscribe (minted lazily when first emailed).
+  unsubscribeToken: { type: String, index: true, default: '' },
 }, { timestamps: true });
 
 // Hash password before saving
