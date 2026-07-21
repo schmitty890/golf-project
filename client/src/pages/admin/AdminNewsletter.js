@@ -99,6 +99,24 @@ function AdminNewsletter() {
     }
   };
 
+  const sendTest = async () => {
+    if (!subject.trim() || !body.trim()) {
+      setError('Please add a subject and a message first.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    setResult('');
+    try {
+      const res = await axios.post(`${API_URL}/api/newsletter/test`, { subject, heading, body }, authHeaders);
+      setResult(`Test sent to ${res.data.to} — check your inbox.`);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to send test');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const createAndSend = async () => {
     if (!subject.trim() || !body.trim()) {
       setError('Please add a subject and a message.');
@@ -184,14 +202,24 @@ function AdminNewsletter() {
             Sent from your branded template with an unsubscribe link added automatically.
           </p>
 
-          <button
-            type="button"
-            onClick={createAndSend}
-            disabled={busy || !subscriberCount}
-            className="mt-4 rounded-lg bg-ember px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-50"
-          >
-            {busy ? 'Sending…' : `Send to ${subscriberCount ?? 0} subscriber${subscriberCount === 1 ? '' : 's'}`}
-          </button>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={sendTest}
+              disabled={busy}
+              className="rounded-lg border border-ember px-5 py-2 text-sm font-semibold text-ember transition-colors hover:bg-ember hover:text-white disabled:opacity-50"
+            >
+              {busy ? 'Working…' : 'Send test to myself'}
+            </button>
+            <button
+              type="button"
+              onClick={createAndSend}
+              disabled={busy || !subscriberCount}
+              className="rounded-lg bg-ember px-5 py-2 text-sm font-semibold text-white hover:bg-ember-600 disabled:opacity-50"
+            >
+              {busy ? 'Sending…' : `Send to ${subscriberCount ?? 0} subscriber${subscriberCount === 1 ? '' : 's'}`}
+            </button>
+          </div>
           {!subscriberCount ? (
             <p className="mt-2 text-xs text-walnut-400">No subscribers yet — nothing to send.</p>
           ) : null}
