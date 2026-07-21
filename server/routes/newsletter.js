@@ -62,6 +62,37 @@ router.post('/campaigns', auth, requireAdmin, async (req, res) => {
   }
 });
 
+// ---- Admin: send a test copy to yourself (preview before sending to the list) ----
+router.post('/test', auth, requireAdmin, async (req, res) => {
+  try {
+    const subject = String(req.body.subject || '').trim();
+    const heading = String(req.body.heading || '').trim();
+    const body = String(req.body.body || '').trim();
+    if (!subject || !body) {
+      return res.status(400).json({ error: 'Subject and body are required.' });
+    }
+    const user = await User.findById(req.userId).select('email unsubscribeToken');
+    if (!user?.email) return res.status(400).json({ error: 'No email on your account.' });
+    if (!user.unsubscribeToken) {
+      user.unsubscribeToken = crypto.randomBytes(16).toString('hex');
+      await user.save();
+    }
+    const unsubscribeUrl = `${process.env.SITE_URL || ''}/unsubscribe/${user.unsubscribeToken}`;
+    const ok = await sendMail({
+      to: user.email,
+      ...newsletterEmail({
+        subject: `[TEST] ${subject}`, heading, body, unsubscribeUrl,
+      }),
+      headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>` },
+    });
+    if (!ok) return res.status(502).json({ error: 'Email failed to send (check SMTP config).' });
+    return res.json({ sent: true, to: user.email });
+  } catch (error) {
+    console.error('Test newsletter error:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ---- Admin: send the next batch (up to BATCH_SIZE) of a campaign ----
 router.post('/campaigns/:id/send-batch', auth, requireAdmin, async (req, res) => {
   try {
