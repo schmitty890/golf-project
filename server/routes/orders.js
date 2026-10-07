@@ -27,7 +27,9 @@ import {
   SUBSCRIPTION_WEEK_VALUES, orderBundleCount, FIRST_ORDER_MIN_BUNDLES, KINDLING_NAME,
   PRODUCT_PRICES, SUBSCRIPTIONS_ENABLED,
 } from '../data/catalog.js';
-import { applyOrderInventory, restoreOrderInventory } from '../utils/inventory.js';
+import {
+  applyOrderInventory, restoreOrderInventory, getAvailableBundles,
+} from '../utils/inventory.js';
 
 const router = express.Router();
 
@@ -222,6 +224,20 @@ router.post('/', optionalAuth, async (req, res) => {
       kindlingItem.unitPrice = Number(k.price) || 0;
     }
     const extraPrices = { [KINDLING_NAME]: Number(settings?.kindling?.price) || 0 };
+
+    // Firewood stock: don't take an order for more bundles than are ready to sell.
+    const wantedBundles = orderBundleCount(cart);
+    if (orderType === 'onetime' && wantedBundles > 0) {
+      const available = await getAvailableBundles();
+      if (available <= 0) {
+        return res.status(409).json({ error: "We're sold out right now — check back soon!" });
+      }
+      if (wantedBundles > available) {
+        return res.status(409).json({
+          error: `Only ${available} bundle${available === 1 ? '' : 's'} left — please order fewer.`,
+        });
+      }
+    }
 
     let windows = [];
     let isRush = false;
@@ -679,10 +695,16 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
 
     // Keep prepared-bundle stock in sync with the payment toggle (Venmo orders are marked paid by
     // hand here). Deduct on unpaid→paid, restore on paid→unpaid. Idempotent + audited internally.
-    if (order.paymentStatus === 'paid' && prevPayment !== 'paid') {
+    // Cancelling a paid order puts its bundles back; un-cancelling a paid order takes them again.
+    if (order.status === 'cancelled' && prevStatus !== 'cancelled') {
+      await restoreOrderInventory(order, { reason: 'order_cancelled' });
+    } else if (order.paymentStatus === 'paid' && prevPayment !== 'paid') {
       await applyOrderInventory(order);
     } else if (order.paymentStatus === 'unpaid' && prevPayment === 'paid') {
       await restoreOrderInventory(order);
+    } else if (prevStatus === 'cancelled' && order.status !== 'cancelled'
+      && order.paymentStatus === 'paid') {
+      await applyOrderInventory(order);
     }
 
     // Notify the customer on key transitions (fire-and-forget).
@@ -747,6 +769,7 @@ router.patch('/:id/cancel', auth, async (req, res) => {
     order.status = 'cancelled';
     order.statusHistory.push({ status: 'cancelled', at: new Date() });
     await order.save();
+    await restoreOrderInventory(order, { reason: 'order_cancelled' });
 
     // Let the owner know (fire-and-forget).
     if (process.env.OWNER_EMAIL) {
@@ -836,10 +859,15 @@ router.patch('/:id/reschedule', auth, async (req, res) => {
  */
 router.delete('/:id', auth, requireAdmin, async (req, res) => {
   try {
-    const order = await Order.findByIdAndDelete(req.params.id);
+    const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
+    // Put a paid order's bundles back before it disappears.
+    if (order.status !== 'cancelled') {
+      await restoreOrderInventory(order, { reason: 'order_cancelled' });
+    }
+    await order.deleteOne();
     return res.json({ message: 'Order deleted' });
   } catch (error) {
     console.error('Delete order error:', error);

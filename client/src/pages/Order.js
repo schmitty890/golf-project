@@ -124,6 +124,14 @@ function Order() {
     }
   }, [user]);
 
+  // Sold out? (The server enforces this too; this just saves filling in a form for nothing.)
+  const [soldOut, setSoldOut] = useState(false);
+  useEffect(() => {
+    axios.get(`${API_URL}/api/inventory/public`)
+      .then((res) => setSoldOut(Boolean(res.data?.soldOut)))
+      .catch(() => setSoldOut(false));
+  }, []);
+
   // Load admin availability + scheduling rules.
   useEffect(() => {
     axios.get(`${API_URL}/api/settings/availability`)
@@ -1060,9 +1068,14 @@ function Order() {
           <p className="mt-2 text-xs text-walnut-300">{totalNote}</p>
         </div>
 
+        {soldOut && !isSubscription && (
+          <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
+            We&apos;re sold out right now — a fresh batch is on the way. Check back soon!
+          </p>
+        )}
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || (soldOut && !isSubscription)}
           className="w-full rounded-xl bg-ember px-4 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-ember-600 disabled:opacity-50"
         >
           {/* eslint-disable-next-line no-nested-ternary */}

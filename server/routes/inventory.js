@@ -3,7 +3,7 @@ import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 import InventoryLog from '../models/InventoryLog.js';
 import {
-  getInventory, adjustPrepared, setPrepared, updateInventorySettings,
+  getInventory, adjustPrepared, setPrepared, updateInventorySettings, getAvailableBundles,
 } from '../utils/inventory.js';
 
 const router = express.Router();
@@ -14,16 +14,19 @@ const router = express.Router();
  *   get:
  *     summary: Minimal inventory state for the customer low-stock banner (public)
  */
-// Public — drives the customer low-stock banner. Deliberately leaks nothing when well-stocked:
-// `show` is true only when the owner enabled the banner AND stock is at/below the threshold.
+// Public — drives the customer low-stock banner and the order page's sold-out state. Deliberately
+// leaks no count when well-stocked: a low-stock count shows only when the owner enabled the banner
+// AND available stock is at/below the threshold. Sold out is always reported.
 router.get('/public', async (req, res) => {
   try {
-    const { bundlesPrepared, publicBannerEnabled, lowStockThreshold } = await getInventory();
-    const show = publicBannerEnabled && bundlesPrepared <= lowStockThreshold;
+    const { publicBannerEnabled, lowStockThreshold } = await getInventory();
+    const available = await getAvailableBundles();
+    const soldOut = available <= 0;
+    const show = soldOut || (publicBannerEnabled && available <= lowStockThreshold);
     return res.json({
       show,
-      soldOut: show && bundlesPrepared <= 0,
-      bundlesReady: show ? Math.max(0, bundlesPrepared) : null,
+      soldOut,
+      bundlesReady: show ? Math.max(0, available) : null,
     });
   } catch (error) {
     // Never break a customer page over the banner — just hide it.

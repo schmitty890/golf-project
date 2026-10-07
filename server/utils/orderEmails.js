@@ -206,7 +206,10 @@ export function ownerAlertEmail(order) {
 }
 
 export function orderCancelledOwnerEmail(order) {
-  const lines = summaryLines(order);
+  const refund = order.paymentStatus === 'paid' && order.paymentMethod === 'card'
+    ? 'PAID by card — refund it in Stripe'
+    : paymentStatusText(order);
+  const lines = [...summaryLines(order), ['Payment', refund]];
   const contact = `${order.contact?.name || ''}${order.contact?.phone ? ` · ${order.contact.phone}` : ''}`;
   const subject = `Order cancelled by customer: ${describeOrder(order)}`;
   const html = wrap('Order cancelled by customer', `${linesToHtml([...lines, ['Contact', contact]])}`);

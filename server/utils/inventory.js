@@ -5,6 +5,7 @@
 /* eslint-disable no-param-reassign */
 import Settings from '../models/Settings.js';
 import InventoryLog from '../models/InventoryLog.js';
+import Order from '../models/Order.js';
 import { orderBundleCount, KINDLING_NAME } from '../data/catalog.js';
 
 const KEY = 'availability'; // the singleton Settings doc key
@@ -33,6 +34,22 @@ export async function getInventory() {
     publicBannerEnabled: inv.publicBannerEnabled ?? false,
     lowStockThreshold: inv.lowStockThreshold ?? 15,
   };
+}
+
+// Bundles a new order can still claim: prepared stock minus open Venmo orders that haven't been
+// paid yet (their stock is only deducted when the owner marks them paid, but the customer has been
+// promised the wood). Unpaid card orders aren't counted — those are usually abandoned checkouts,
+// and a paid one deducts the moment Stripe confirms it.
+export async function getAvailableBundles() {
+  const { bundlesPrepared } = await getInventory();
+  const pending = await Order.find({
+    orderType: 'onetime',
+    paymentMethod: 'venmo',
+    paymentStatus: { $ne: 'paid' },
+    status: { $nin: ['cancelled', 'completed'] },
+  }).select('items').lean();
+  const held = pending.reduce((n, o) => n + orderBundleCount(o.items), 0);
+  return bundlesPrepared - held;
 }
 
 // Apply a relative change to the prepared count and log it. Returns the new balance.
@@ -113,14 +130,15 @@ export async function applyOrderInventory(order, { invoiceId = null } = {}) {
   return -qty;
 }
 
-// Reverse a one-time order's deduction when the owner flips it back to unpaid. (Subscriptions are
-// Stripe-only and don't use the manual paid toggle, so only one-time restore is handled here.)
-export async function restoreOrderInventory(order) {
+// Reverse a one-time order's deduction when the owner flips it back to unpaid, or when a paid
+// order is cancelled or deleted. (Subscriptions are Stripe-only and don't use the manual paid
+// toggle, so only one-time restore is handled here.)
+export async function restoreOrderInventory(order, { reason = 'order_unpaid' } = {}) {
   if (!order || !order.inventoryApplied) return null;
   const qty = orderBundleCount(order.items);
   order.inventoryApplied = false;
   await order.save();
-  if (qty > 0) await adjustPrepared(qty, { reason: 'order_unpaid', order });
+  if (qty > 0) await adjustPrepared(qty, { reason, order });
   const packs = kindlingCount(order);
   if (packs > 0) await adjustKindling(packs);
   return qty;
