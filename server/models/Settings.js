@@ -22,9 +22,9 @@ const settingsSchema = new mongoose.Schema({
     value: { type: Number, default: 5, min: 0 },
   },
   // First-order deal: auto-applied for a signed-in customer's first one-time order (once per acct).
-  // Default $15 brings the 3-Bundle Pack ($40, free delivery) down to $25.
+  // Off by default (simple, flat pricing at launch); the owner can switch it on in Admin → Promos.
   firstOrderDiscount: {
-    enabled: { type: Boolean, default: true },
+    enabled: { type: Boolean, default: false },
     type: { type: String, enum: ['amount', 'percent'], default: 'amount' },
     value: { type: Number, default: 15, min: 0 },
   },
