@@ -11,7 +11,7 @@ import { PRODUCT_PRICES } from '../data/catalog.js';
 const router = express.Router();
 
 const DEFAULT_REFERRAL = { enabled: true, type: 'amount', value: 5 };
-const DEFAULT_FIRST_ORDER = { enabled: true, type: 'amount', value: 15 };
+const DEFAULT_FIRST_ORDER = { enabled: false, type: 'amount', value: 15 };
 const norm = (code) => String(code || '').toUpperCase().trim();
 
 // --- Shared helpers (also used by the orders create route) ---

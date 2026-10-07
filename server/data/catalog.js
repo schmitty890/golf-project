@@ -38,6 +38,10 @@ export function orderBundleCount(items) {
   );
 }
 
+// Subscriptions are switched off for launch: renewals/cancellations from Stripe aren't wired into
+// the app yet. KEEP IN SYNC with SUBSCRIPTIONS_ENABLED in client/src/data/pricing.js.
+export const SUBSCRIPTIONS_ENABLED = false;
+
 // Subscriptions: any size from SUB_MIN_BUNDLES..SUB_MAX_BUNDLES bundles/month at a flat
 // per-bundle price (the savings story is vs one-time singles at $15). KEEP IN SYNC with the
 // matching block in client/src/data/pricing.js.

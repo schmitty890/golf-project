@@ -4,6 +4,7 @@
 // server derives it from their authenticated userId or guestId — never from client input). The
 // owner joins the shared `admin` room and explicitly opens individual conversations to reply.
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Conversation from '../models/Conversation.js';
 import ChatMessage from '../models/ChatMessage.js';
@@ -20,6 +21,16 @@ const AWAY_AUTO_REPLY = "Thanks for reaching out! We're not online right this se
   + "name and a good number and we'll text you back shortly. 🔥";
 
 const convRoom = (id) => `conv:${id}`;
+// Wrap a socket event handler so a malformed payload (or a DB hiccup) is logged and dropped instead
+// of becoming an unhandled rejection that takes down the whole process.
+const safe = (name, fn) => async (payload) => {
+  try {
+    await fn(payload && typeof payload === 'object' ? payload : {});
+  } catch (err) {
+    console.error(`[chat] ${name} error:`, err.message);
+  }
+};
+const validId = (id) => mongoose.isValidObjectId(id);
 const clean = (t) => String(t || '').slice(0, MAX_LEN).trim();
 const shape = (m) => ({
   id: String(m._id), from: m.from, text: m.text, createdAt: m.createdAt,
@@ -114,8 +125,8 @@ export default function initChat(io) {
       socket.join(ADMIN_ROOM);
 
       // Open a specific conversation: join its room, send history, clear its unread.
-      socket.on('admin:join', async ({ conversationId }) => {
-        if (!conversationId) return;
+      socket.on('admin:join', safe('admin:join', async ({ conversationId }) => {
+        if (!validId(conversationId)) return;
         socket.join(convRoom(conversationId));
         const messages = await ChatMessage.find({ conversation: conversationId })
           .sort({ createdAt: 1 }).limit(HISTORY_LIMIT).lean();
@@ -123,23 +134,23 @@ export default function initChat(io) {
         await Conversation.findByIdAndUpdate(conversationId, { unreadForAdmin: 0 });
         await ChatMessage.updateMany({ conversation: conversationId, from: 'customer' }, { readByAdmin: true });
         io.to(ADMIN_ROOM).emit('chat:read', { conversationId });
-      });
+      }));
 
-      socket.on('admin:send', async ({ conversationId, text }) => {
+      socket.on('admin:send', safe('admin:send', async ({ conversationId, text }) => {
         const body = clean(text);
-        if (!conversationId || !body) return;
+        if (!validId(conversationId) || !body) return;
         const msg = await ChatMessage.create({ conversation: conversationId, from: 'agent', text: body });
         await Conversation.findByIdAndUpdate(conversationId, {
           lastMessageAt: msg.createdAt, lastMessageText: body, unreadForAdmin: 0,
         });
         io.to(convRoom(conversationId)).emit('chat:message', { conversationId, message: shape(msg) });
-      });
+      }));
 
-      socket.on('admin:markRead', async ({ conversationId }) => {
-        if (!conversationId) return;
+      socket.on('admin:markRead', safe('admin:markRead', async ({ conversationId }) => {
+        if (!validId(conversationId)) return;
         await Conversation.findByIdAndUpdate(conversationId, { unreadForAdmin: 0 });
         io.to(ADMIN_ROOM).emit('chat:read', { conversationId });
-      });
+      }));
 
       // Availability is fully manual (owner's toggle) — intentionally NOT cleared on disconnect, so
       // a page refresh doesn't knock the owner offline.
@@ -147,14 +158,21 @@ export default function initChat(io) {
     }
 
     // ---- Customer (logged-in or guest) ----
-    const convo = await getOrCreateConversation(socket);
-    socket.data.conversationId = String(convo._id);
-    socket.join(convRoom(convo._id));
-    const history = await ChatMessage.find({ conversation: convo._id })
-      .sort({ createdAt: 1 }).limit(HISTORY_LIMIT).lean();
-    socket.emit('chat:history', { conversationId: String(convo._id), messages: history.map(shape) });
+    let convo;
+    try {
+      convo = await getOrCreateConversation(socket);
+      socket.data.conversationId = String(convo._id);
+      socket.join(convRoom(convo._id));
+      const history = await ChatMessage.find({ conversation: convo._id })
+        .sort({ createdAt: 1 }).limit(HISTORY_LIMIT).lean();
+      socket.emit('chat:history', { conversationId: String(convo._id), messages: history.map(shape) });
+    } catch (err) {
+      console.error('[chat] connection setup error:', err.message);
+      socket.disconnect(true);
+      return;
+    }
 
-    socket.on('chat:send', async ({ text }) => {
+    socket.on('chat:send', safe('chat:send', async ({ text }) => {
       const body = clean(text);
       if (!body) return;
       const msg = await ChatMessage.create({ conversation: convo._id, from: 'customer', text: body });
@@ -185,6 +203,6 @@ export default function initChat(io) {
       } catch (err) {
         console.error('[chat] away-alert error:', err.message);
       }
-    });
+    }));
   });
 }

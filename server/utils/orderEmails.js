@@ -191,8 +191,13 @@ export function customerConfirmationEmail(order) {
   return { subject, html, text };
 }
 
+function paymentStatusText(order) {
+  if (order.paymentStatus === 'paid') return order.paymentMethod === 'card' ? 'Card — PAID' : 'PAID';
+  return order.paymentMethod === 'card' ? 'Card — not paid yet' : 'Venmo — not paid yet (mark paid when it arrives)';
+}
+
 export function ownerAlertEmail(order) {
-  const lines = summaryLines(order);
+  const lines = [...summaryLines(order), ['Payment', paymentStatusText(order)]];
   const contact = `${order.contact?.name || ''}${order.contact?.phone ? ` · ${order.contact.phone}` : ''}${order.contact?.email ? ` · ${order.contact.email}` : ''}`;
   const subject = `New order: ${describeOrder(order)}${order.rush ? ' [RUSH]' : ''}`;
   const html = wrap('New order', `${linesToHtml([...lines, ['Contact', contact]])}`);

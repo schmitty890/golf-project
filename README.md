@@ -154,6 +154,7 @@ Env vars get set in **two places**: the **backend** (Node service) and the **fro
 | `STRIPE_SECRET_KEY` | `sk_live_…` (test: `sk_test_…`) | 🔒 encrypt; enables card checkout (empty = card off, Venmo only) |
 | `STRIPE_PUBLISHABLE_KEY` | `pk_live_…` | public key (safe to expose) |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_…` | 🔒 encrypt; from the Stripe webhook endpoint — lets paid card orders auto-mark "paid" |
+| `TZ` | `America/New_York` | server clock in Eastern time, so evening reminder emails go out in the evening (order date checks are pinned to Eastern regardless) |
 
 ### Frontend (static site) → build-time
 

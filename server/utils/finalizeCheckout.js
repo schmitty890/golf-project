@@ -5,6 +5,7 @@ import Order from '../models/Order.js';
 import { sendMail } from './mailer.js';
 import { paymentReceivedEmail, ownerNoticeEmail, orderTotal } from './orderEmails.js';
 import { applyOrderInventory } from './inventory.js';
+import { sendNewOrderNotices } from './orderNotices.js';
 
 // Fire-and-forget owner alert (no-op if OWNER_EMAIL/SMTP unset; never blocks the caller).
 export function notifyOwner(notice) {
@@ -31,6 +32,9 @@ export function orderLines(order) {
 // claim, false if the order was already paid / not found.
 export async function finalizeCheckoutSession(order, session) {
   if (!order) return false;
+  // A completed session isn't necessarily a paid one (e.g. delayed payment methods) — only finalize
+  // one-time checkouts Stripe reports as paid.
+  if (session.mode !== 'subscription' && session.payment_status !== 'paid') return false;
 
   const set = {
     paymentStatus: 'paid',
@@ -57,6 +61,10 @@ export async function finalizeCheckoutSession(order, session) {
   // invoice.payment_succeeded (which fires for month 1 too), so we don't deduct them here.
   if (claimed.orderType !== 'subscription') {
     await applyOrderInventory(claimed);
+    // One-time card orders hold their "new order" emails until now (see POST /api/orders), so the
+    // confirmation + owner alert double as the payment receipt.
+    sendNewOrderNotices(claimed);
+    return true;
   }
   if (claimed.contact?.email) {
     sendMail({ to: claimed.contact.email, ...paymentReceivedEmail(claimed) });

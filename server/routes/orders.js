@@ -8,22 +8,24 @@ import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 import { sendMail } from '../utils/mailer.js';
 import {
-  customerConfirmationEmail, ownerAlertEmail, windowConfirmedEmail, deliveredEmail,
+  windowConfirmedEmail, deliveredEmail,
   orderCancelledOwnerEmail, orderRescheduledOwnerEmail, paymentReceivedEmail,
-  referralRewardEmail, readyEmail, orderTotal, orderCancelledCustomerEmail,
+  readyEmail, orderTotal, orderCancelledCustomerEmail,
 } from '../utils/orderEmails.js';
 import {
   lookupPromo, computeDiscount, lookupReferralUser, referralConfig, discountAmount,
-  discountLabel, mintReferralReward, firstOrderConfig, hasPriorOrder,
+  firstOrderConfig, hasPriorOrder,
 } from './promos.js';
 import {
   stripeEnabled, createOneTimeCheckout, createSubscriptionCheckout, createBillingPortalSession,
   cancelSubscription, retrieveCheckoutSession,
 } from '../utils/stripe.js';
 import { finalizeCheckoutSession } from '../utils/finalizeCheckout.js';
+import { sendNewOrderNotices } from '../utils/orderNotices.js';
 import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
   SUBSCRIPTION_WEEK_VALUES, orderBundleCount, FIRST_ORDER_MIN_BUNDLES, KINDLING_NAME,
+  PRODUCT_PRICES, SUBSCRIPTIONS_ENABLED,
 } from '../data/catalog.js';
 import { applyOrderInventory, restoreOrderInventory } from '../utils/inventory.js';
 
@@ -31,13 +33,12 @@ const router = express.Router();
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// Today's date as a local 'YYYY-MM-DD' string (avoids UTC shift from toISOString).
-const todayStr = () => {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
-};
+// Today's date in the business's time zone (Eastern) as 'YYYY-MM-DD'. Pinned explicitly so a host
+// running on UTC doesn't roll over to "tomorrow" at ~8pm and reject valid next-day orders.
+const BUSINESS_TZ = 'America/New_York';
+const todayStr = () => new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date());
 
 // Add N days to a 'YYYY-MM-DD' string, returning a 'YYYY-MM-DD' string (local time).
 const addDaysStr = (s, n) => {
@@ -148,23 +149,38 @@ router.post('/', optionalAuth, async (req, res) => {
     const {
       orderType, items, subscriptionBundles, subscriptionWeek,
       contact, deliveryAddress, preferredDate, preferredTimes,
-      rush, code, subtotal, agreedToTerms, paymentMethod,
+      rush, code, agreedToTerms, paymentMethod,
     } = req.body;
 
     if (!['onetime', 'subscription'].includes(orderType)) {
       return res.status(400).json({ error: 'A valid order type is required' });
     }
+    if (orderType === 'subscription' && !SUBSCRIPTIONS_ENABLED) {
+      return res.status(400).json({ error: 'Monthly subscriptions are coming soon — please place a one-time order.' });
+    }
     if (!contact?.name || !contact?.phone) {
       return res.status(400).json({ error: 'Contact name and phone are required' });
     }
-    // Sanitize the cart for one-time orders; require at least one item.
+    // Sanitize the cart for one-time orders; require at least one item. Prices always come from
+    // the server catalog (never the client), so stored totals, emails and Venmo amounts can't be
+    // tampered with.
     const cart = Array.isArray(items)
       ? items
-        .filter((i) => i && i.name && Number(i.quantity) > 0)
-        .map((i) => ({ name: i.name, quantity: Number(i.quantity), unitPrice: Number(i.unitPrice) || 0 }))
+        .filter((i) => i && i.name
+          && Number.isInteger(Number(i.quantity)) && Number(i.quantity) > 0)
+        .map((i) => ({
+          name: String(i.name),
+          quantity: Number(i.quantity),
+          unitPrice: PRODUCT_PRICES[String(i.name)] ?? 0,
+        }))
       : [];
     if (orderType === 'onetime' && cart.length === 0) {
       return res.status(400).json({ error: 'Please add at least one item' });
+    }
+    const unknown = cart.find((i) => i.name !== KINDLING_NAME
+      && PRODUCT_PRICES[i.name] === undefined);
+    if (unknown) {
+      return res.status(400).json({ error: `Unknown product: ${unknown.name}` });
     }
     // Subscriptions: validate the requested size is a whole number in range.
     const subBundles = Math.round(Number(subscriptionBundles) || 0);
@@ -224,11 +240,15 @@ router.post('/', optionalAuth, async (req, res) => {
       ({ windows, isRush, rushPercent } = sched);
     }
 
+    // Pre-discount subtotal, computed server-side (items + rush surcharge; delivery is free).
+    // Mirrors the client's estimate and the charge math in computeChargeCents.
+    const itemsSubtotal = cart.reduce((n, i) => n + i.unitPrice * i.quantity, 0);
+    const subtotal = itemsSubtotal + (isRush ? Math.round(itemsSubtotal * (rushPercent / 100)) : 0);
+
     // Apply a promo OR a neighbor's referral code (re-validated; owner honors final total).
     let promoCode = '';
     let discount = 0;
     let referredBy = null;
-    let referrer = null;
     const promo = await lookupPromo(code);
     if (promo) {
       discount = computeDiscount(promo, subtotal);
@@ -237,7 +257,7 @@ router.post('/', optionalAuth, async (req, res) => {
       await promo.save();
     } else if (code) {
       const rc = referralConfig(settings);
-      referrer = rc.enabled ? await lookupReferralUser(code, req.userId) : null;
+      const referrer = rc.enabled ? await lookupReferralUser(code, req.userId) : null;
       if (referrer) {
         discount = discountAmount(rc.type, rc.value, subtotal);
         promoCode = referrer.referralCode;
@@ -331,35 +351,10 @@ router.post('/', optionalAuth, async (req, res) => {
       }
     }
 
-    // Fire-and-forget notifications — never block or fail the order on email issues.
-    (async () => {
-      try {
-        let customerEmail = order.contact?.email || '';
-        if (!customerEmail && req.userId) {
-          const u = await User.findById(req.userId).select('email');
-          customerEmail = u?.email || '';
-        }
-        if (customerEmail) {
-          await sendMail({ to: customerEmail, ...customerConfirmationEmail(order) });
-        }
-        if (process.env.OWNER_EMAIL) {
-          await sendMail({ to: process.env.OWNER_EMAIL, ...ownerAlertEmail(order) });
-        }
-        // Reward the referrer: mint a one-time discount code for their next order and email it.
-        if (referredBy && referrer) {
-          const rc = referralConfig(settings);
-          const reward = await mintReferralReward(referredBy, rc);
-          if (referrer.email) {
-            await sendMail({
-              to: referrer.email,
-              ...referralRewardEmail(referrer, reward, discountLabel(rc.type, rc.value)),
-            });
-          }
-        }
-      } catch (mailErr) {
-        console.error('Order notification error:', mailErr.message);
-      }
-    })();
+    // Notifications. A card order that went off to Stripe waits until it's actually paid
+    // (finalizeCheckoutSession sends them), so abandoned checkouts don't look like real orders.
+    // Fire-and-forget — never block or fail the order on email issues.
+    if (!stripeCheckoutUrl) sendNewOrderNotices(order);
 
     return res.status(201).json({ ...order.toObject(), stripeCheckoutUrl });
   } catch (error) {

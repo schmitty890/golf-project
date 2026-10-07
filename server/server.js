@@ -23,6 +23,11 @@ import { swaggerUi, specs } from './swagger.js';
 
 dotenv.config();
 
+// Backstop: log a stray async error instead of letting Node kill the process (and the live site).
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
+});
+
 const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 5001;
