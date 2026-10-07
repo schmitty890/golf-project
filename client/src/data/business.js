@@ -10,11 +10,10 @@ const business = {
   // Social links are hidden until real accounts exist. To show them in the footer,
   // add entries here, e.g. { name: 'Instagram', href: 'https://instagram.com/...' }.
   social: [],
-  // First-order promo in the top announcement bar. The $ amount is just copy — keep it in sync with
-  // Settings.firstOrderDiscount (the real discount, applied server-side to a signed-in customer's
-  // first order). Set launchOffer to null to hide the bar.
+  // Top announcement bar. The prices are just copy — keep them in sync with
+  // client/src/data/pricing.js. Set launchOffer to null to hide the bar.
   launchOffer: {
-    text: 'New neighbors: $15 off your first order — 3 bundles delivered for just $25.',
+    text: 'Now delivering in The Vineyards — $15 a bundle, 3 for $40, free delivery.',
     cta: 'Order now',
     href: '/order',
   },

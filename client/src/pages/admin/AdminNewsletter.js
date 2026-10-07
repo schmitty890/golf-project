@@ -16,7 +16,7 @@ const TEMPLATES = [
     subject: 'Fall firepit season is here 🔥',
     heading: 'Cozy nights are back',
     body: 'Hey neighbor!\n\nThe evenings are finally cooling off — perfect for a backyard fire. '
-      + 'We\'ve got fresh, seasoned red & white oak stocked and ready to deliver right to your door.\n\n'
+      + 'We\'ve got seasoned hardwood bundled and ready to deliver right to your door.\n\n'
       + 'Order anytime at volwfirewood.com. See you around the fire!',
   },
   {
@@ -25,7 +25,7 @@ const TEMPLATES = [
     heading: 'Stay warm this week',
     body: 'Hey neighbor!\n\nThere\'s a cold stretch in the forecast. Now\'s a great time to top off '
       + 'your firewood so you\'re ready for those chilly nights.\n\n'
-      + 'Seasoned and split, delivered to your driveway or doorway. Order at volwfirewood.com.',
+      + 'Seasoned hardwood, delivered right to your door. Order at volwfirewood.com.',
   },
   {
     name: 'Spring / summer lake nights',

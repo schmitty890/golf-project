@@ -90,8 +90,8 @@ function About() {
           {' '}
           {business.serviceArea}
           {' '}
-          — a neighbor supplying neighbors. We personally gather and hand-split the
-          wood, then deliver clean, ready-to-burn campfire bundles right to your door.
+          — a neighbor supplying neighbors. We source seasoned hardwood locally, bundle
+          it by hand, and deliver clean, ready-to-burn firepit bundles right to your door.
         </p>
         <WoodTypeBadge className="mt-6" />
         <p className="mt-4 text-lg text-walnut-400">
@@ -105,7 +105,7 @@ function About() {
 }
 
 const steps = [
-  { name: 'Place your order', description: 'Choose your bundles or a subscription — at least a day ahead (or request a rush order for sooner, if available) — and pay by card or Venmo, whatever’s easy.', icon: ShoppingCartIcon },
+  { name: 'Place your order', description: 'Choose your bundles — at least a day ahead (or request a rush order for sooner, if available) — and pay by card or Venmo, whatever’s easy.', icon: ShoppingCartIcon },
   { name: 'Free delivery', description: 'Pick a date and the times you’d prefer — we deliver your bundles right to your door, free.', icon: TruckIcon },
   { name: 'You enjoy', description: 'Light it up and enjoy a cozy fire — no hassle.', icon: FireIcon },
 ];

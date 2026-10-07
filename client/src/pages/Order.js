@@ -13,7 +13,7 @@ import {
   subscriptionMonthly, clampBundles, bundlesFromPlan,
   SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
   SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
-  FIRST_ORDER_MIN_BUNDLES, cartBundleCount,
+  FIRST_ORDER_MIN_BUNDLES, cartBundleCount, SUBSCRIPTIONS_ENABLED,
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
@@ -167,10 +167,12 @@ function Order() {
     return () => clearTimeout(t);
   }, [token, contact.phone, address.street]);
 
-  // Subscriptions require card auto-pay; if Stripe is off, never sit in subscription mode.
+  // Subscriptions require card auto-pay (and are switched off for now); never sit in subscription
+  // mode when they aren't offered — e.g. an "order again" link from an old subscription.
+  const subsOffered = cardEnabled && SUBSCRIPTIONS_ENABLED;
   useEffect(() => {
-    if (!cardEnabled && mode === 'subscription') setMode('onetime');
-  }, [cardEnabled, mode]);
+    if (!subsOffered && mode === 'subscription') setMode('onetime');
+  }, [subsOffered, mode]);
 
   // --- Cart ---
   // Firewood bundles, plus the Fire Starter Pack add-on when it's enabled AND in stock.
@@ -594,7 +596,7 @@ function Order() {
 
         <ReferralShare className="mt-6" />
 
-        {!isSubscription && cardEnabled && (
+        {!isSubscription && subsOffered && (
           <div className="mt-6 rounded-xl border border-ember/30 bg-ember/5 p-4 text-center">
             <p className="text-sm text-walnut">
               <span className="font-semibold">Order firewood often?</span>
@@ -640,14 +642,14 @@ function Order() {
   const totalNote = (() => {
     if (isSubscription) return 'Billed to your card monthly — entered securely at checkout. Cancel anytime.';
     if (cardEnabled && payMethod === 'card') return "You'll pay securely by card on the next step.";
-    return "Estimate only — no payment now. We'll confirm the final total with you.";
+    return "Pay with Venmo right after you submit — we'll pre-fill this amount.";
   })();
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-extrabold tracking-tight text-walnut">Order Firewood</h1>
       <p className="mt-2 text-walnut-400">
-        Hand-split, ready-to-burn bundles in
+        Seasoned, ready-to-burn hardwood bundles in
         {' '}
         {business.serviceArea}
         {`. ${payNote}`}
@@ -670,29 +672,31 @@ function Order() {
           <div ref={errorRef} role="alert" className="rounded-md bg-red-50 p-4 text-sm text-red-800">{error}</div>
         )}
 
-        {/* One-time vs subscription (subscriptions are card auto-pay → only when Stripe is on) */}
-        <div>
-          <span className={labelClass}>What would you like?</span>
-          <div className={`mt-2 grid gap-3 ${cardEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {[
-              { id: 'onetime', label: 'One-time order' },
-              ...(cardEnabled ? [{ id: 'subscription', label: 'Monthly subscription' }] : []),
-            ].map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setMode(m.id)}
-                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
-                  mode === m.id
-                    ? 'border-ember bg-ember text-white'
-                    : 'border-cream-300 bg-white text-walnut hover:border-ember'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
+        {/* One-time vs subscription — only shown when subscriptions are offered */}
+        {subsOffered && (
+          <div>
+            <span className={labelClass}>What would you like?</span>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              {[
+                { id: 'onetime', label: 'One-time order' },
+                { id: 'subscription', label: 'Monthly subscription' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMode(m.id)}
+                  className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
+                    mode === m.id
+                      ? 'border-ember bg-ember text-white'
+                      : 'border-cream-300 bg-white text-walnut hover:border-ember'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* One-time: product cart */}
         {!isSubscription && (
@@ -773,7 +777,7 @@ function Order() {
               <div className="leading-tight">
                 <span className="block text-lg font-extrabold text-ember">{`$${subMonthly}/mo`}</span>
                 <span className="block text-xs text-walnut-400">
-                  {`$${SUB_PER_BUNDLE}/bundle · save vs $15 one-time`}
+                  {`$${SUB_PER_BUNDLE}/bundle · save vs $${products.find((p) => p.id === 'standard-bundle')?.price} one-time`}
                 </span>
               </div>
             </div>

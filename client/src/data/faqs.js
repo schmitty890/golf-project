@@ -6,7 +6,7 @@ const faqs = [
   },
   {
     q: 'Can I win free firewood?',
-    a: 'Yes! Every month we give away free firewood to one lucky neighbor. Create a free account, '
+    a: 'Sometimes! When our monthly giveaway is running, one lucky neighbor wins free firewood. Create a free account, '
       + 'save your delivery address, and join the monthly drawing — you only sign up once and you’re '
       + 'entered automatically every month after that. When it’s running, you’ll see a “Win free '
       + 'firewood” section right on our homepage. We pick one winner at random each month and email '
@@ -14,8 +14,8 @@ const faqs = [
   },
   {
     q: 'What kind of wood do you sell?',
-    a: 'For now, every bundle is a mixed assortment of seasoned hardwood — sourced right here in '
-      + 'Mecklenburg County from a variety of local sources. It lights easy and burns clean for '
+    a: 'For now, every bundle is a mixed assortment of seasoned hardwood — bought from local '
+      + 'suppliers and bundled by hand right here in the neighborhood. It lights easy and burns clean for '
       + 'backyard firepit fires. We’re a small operation working to expand into specific wood types '
       + 'down the road — so eventually you may be able to pick your wood when you order — but we’re '
       + 'not there yet. For now, it’s a quality mix.',

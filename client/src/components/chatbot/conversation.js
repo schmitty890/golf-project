@@ -20,7 +20,7 @@
 // stays in sync with the rest of the site.
 
 import {
-  products, subscriptionMonthly, SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
+  products, subscriptionMonthly, SUBSCRIPTION_WEEKS, subscriptionWeekLabel, SUBSCRIPTIONS_ENABLED,
 } from '../../data/pricing';
 import faqs from '../../data/faqs';
 import business from '../../data/business';
@@ -57,7 +57,12 @@ export const nodes = {
       ? `Hey ${ctx.user.firstName}! I'm Woody 🪵 — what can I do for you?`
       : "Hi, I'm Woody! 🪵🔥 Your VOLW Firewood helper — what can I do for you?"),
     options: [
-      { label: '🔥 Order firewood', next: 'order_type' },
+      // Subscriptions off → only one kind of order, so skip the one-time/subscription step.
+      SUBSCRIPTIONS_ENABLED
+        ? { label: '🔥 Order firewood', next: 'order_type' }
+        : {
+          label: '🔥 Order firewood', set: () => ({ orderType: 'onetime' }), next: 'product_pick',
+        },
       { label: '💲 See pricing', action: 'navigate:/pricing' },
       { label: '📦 Track my order', action: 'navigate:/my-orders' },
       { label: '❓ Common questions', next: 'faq_list' },

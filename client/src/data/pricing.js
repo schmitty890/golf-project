@@ -6,8 +6,9 @@
 // Delivery is free for everyone. Kept as a constant (0) so any fee math stays explicit.
 export const DELIVERY_FEE = 0;
 
-// Minimum subscription commitment (months) before it goes month-to-month.
-export const SUBSCRIPTION_MIN_MONTHS = 3;
+// Subscriptions are hidden for now (Stripe renewals/cancellations aren't wired into the app yet).
+// KEEP IN SYNC with SUBSCRIPTIONS_ENABLED in server/data/catalog.js (rejects them server-side).
+export const SUBSCRIPTIONS_ENABLED = false;
 
 // À-la-carte products for a one-time order (the cart). `price` is dollars each.
 export const products = [
