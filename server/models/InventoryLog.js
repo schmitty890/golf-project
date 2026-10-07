@@ -8,7 +8,10 @@ const inventoryLogSchema = new mongoose.Schema({
   delta: { type: Number, required: true }, // +N prepared a batch, -N order consumed bundles
   reason: {
     type: String,
-    enum: ['admin_adjust', 'admin_set', 'order_paid', 'order_unpaid', 'subscription_renewal'],
+    enum: [
+      'admin_adjust', 'admin_set', 'order_paid', 'order_unpaid', 'order_cancelled',
+      'subscription_renewal',
+    ],
     required: true,
   },
   balanceAfter: { type: Number, required: true },

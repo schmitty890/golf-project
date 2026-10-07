@@ -22,6 +22,7 @@ const REASON_LABELS = {
   admin_set: 'Set total',
   order_paid: 'Order paid',
   order_unpaid: 'Order un-paid',
+  order_cancelled: 'Order cancelled (restocked)',
   subscription_renewal: 'Subscription renewal',
 };
 
