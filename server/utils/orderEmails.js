@@ -121,7 +121,7 @@ function venmoBlock(order) {
   if (!handle) return null;
   const t = orderTotal(order);
   const amount = t ? `$${t.total}` : 'the order total';
-  return `Pay ${amount} via Venmo to @${handle.replace(/^@/, '')} — the amount is pre-filled in the link. Add your name in the note so we can match your order. Please pay now — we set out or deliver once your payment arrives.`;
+  return `Pay ${amount} via Venmo to @${handle.replace(/^@/, '')} — the amount is pre-filled in the link. Add your name in the note so we can match your order. Please pay now — we deliver once your payment arrives.`;
 }
 
 // The "how to pay" line for an order: Venmo instructions, or (for card) the auto-pay note.

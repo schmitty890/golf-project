@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import {
   products, KINDLING,
-  subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
+  subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE, SUBSCRIPTIONS_ENABLED,
 } from '../data/pricing';
 import business from '../data/business';
 import WoodTypeBadge from '../components/WoodTypeBadge';
@@ -29,7 +29,7 @@ function Pricing() {
         <div className="mx-auto max-w-5xl px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8">
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Pricing</h1>
           <p className="mt-4 text-lg text-cream-300">
-            Hand-split, ready-to-burn hardwood for
+            Seasoned, ready-to-burn hardwood for
             {' '}
             {business.serviceArea}
             . Free delivery, right to your door.
@@ -56,39 +56,41 @@ function Pricing() {
           ))}
         </div>
         <p className="mt-6 text-center text-sm text-walnut-300">
-          Free delivery to your driveway, here in
+          Free delivery right to your door, here in
           {' '}
           {business.serviceArea}
           .
         </p>
       </section>
 
-      {/* Subscriptions */}
-      <section className="bg-cream-300/40 py-16 sm:py-20">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-center text-2xl font-extrabold tracking-tight text-walnut">
-            Monthly subscriptions
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-center text-sm text-walnut-300">
-            {`Never run out — pick any size from ${SUB_MIN_BUNDLES} to ${SUB_MAX_BUNDLES} bundles, delivered every month at $${SUB_PER_BUNDLE} a bundle.`}
-          </p>
-          <p className="mx-auto mt-1 max-w-xl text-center text-xs text-walnut-300">
-            Billed automatically to your card each month — cancel anytime.
-          </p>
-          <div className="mx-auto mt-10 grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-3">
-            {[SUB_MIN_BUNDLES, 5, SUB_MAX_BUNDLES].map((n) => (
-              <div key={n} className="rounded-2xl border border-cream-300 bg-white p-6 text-center shadow-sm">
-                <h3 className="text-lg font-bold text-walnut">{`${n} bundles / month`}</h3>
-                <p className="mt-2 text-3xl font-extrabold text-ember">{`$${subscriptionMonthly(n)}/mo`}</p>
-                <p className="mt-3 text-sm text-walnut-400">{`$${SUB_PER_BUNDLE} per bundle, delivered.`}</p>
-              </div>
-            ))}
+      {/* Subscriptions (hidden while SUBSCRIPTIONS_ENABLED is off) */}
+      {SUBSCRIPTIONS_ENABLED && (
+        <section className="bg-cream-300/40 py-16 sm:py-20">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <h2 className="text-center text-2xl font-extrabold tracking-tight text-walnut">
+              Monthly subscriptions
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-center text-sm text-walnut-300">
+              {`Never run out — pick any size from ${SUB_MIN_BUNDLES} to ${SUB_MAX_BUNDLES} bundles, delivered every month at $${SUB_PER_BUNDLE} a bundle.`}
+            </p>
+            <p className="mx-auto mt-1 max-w-xl text-center text-xs text-walnut-300">
+              Billed automatically to your card each month — cancel anytime.
+            </p>
+            <div className="mx-auto mt-10 grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-3">
+              {[SUB_MIN_BUNDLES, 5, SUB_MAX_BUNDLES].map((n) => (
+                <div key={n} className="rounded-2xl border border-cream-300 bg-white p-6 text-center shadow-sm">
+                  <h3 className="text-lg font-bold text-walnut">{`${n} bundles / month`}</h3>
+                  <p className="mt-2 text-3xl font-extrabold text-ember">{`$${subscriptionMonthly(n)}/mo`}</p>
+                  <p className="mt-3 text-sm text-walnut-400">{`$${SUB_PER_BUNDLE} per bundle, delivered.`}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mx-auto mt-6 max-w-xl text-center text-xs text-walnut-300">
+              Want a different size? Choose anything in between on the order form.
+            </p>
           </div>
-          <p className="mx-auto mt-6 max-w-xl text-center text-xs text-walnut-300">
-            Want a different size? Choose anything in between on the order form.
-          </p>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* CTA */}
       <section className="mx-auto max-w-5xl px-4 py-16 text-center sm:px-6 lg:px-8">

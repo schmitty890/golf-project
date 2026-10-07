@@ -177,8 +177,7 @@ function AdminOrders() {
               className="rounded-md border border-cream-300 bg-white px-3 py-1.5 text-sm text-walnut focus:outline-ember"
             >
               <option value="all">All</option>
-              <option value="bundle">Bundles</option>
-              <option value="pack">Seasonal Packs</option>
+              <option value="onetime">One-time</option>
               <option value="subscription">Subscriptions</option>
             </select>
           </div>

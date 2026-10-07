@@ -183,8 +183,9 @@ function AdminPromos() {
           {foSaved && <span className="text-sm font-semibold text-green-700">Saved ✓</span>}
         </div>
         <p className="mt-1 text-xs text-walnut-400">
-          Auto-applied to a signed-in customer&apos;s first one-time order (once per account). $15
-          makes the 3-Bundle Pack + delivery come to $30. Update the banner copy if you change this.
+          Auto-applied to a signed-in customer&apos;s first one-time order of 3+ bundles (once per
+          account). Off by default. If you turn it on, mention it in the announcement bar copy
+          (client/src/data/business.js).
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-4">
           <label className="flex items-center gap-2 pb-2 text-sm font-semibold text-walnut">

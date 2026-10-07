@@ -90,7 +90,7 @@ function TrackOrder() {
               {` · @${handle}`}
             </a>
             <p className="mt-2 text-xs font-semibold text-amber-800">
-              Still unpaid — pay now so we can set out or deliver your order.
+              Still unpaid — pay now so we can deliver your order.
             </p>
             <p className="mt-1 text-xs text-walnut-400">
               Already sent your Venmo? It can take us a little while to confirm and update this — we
