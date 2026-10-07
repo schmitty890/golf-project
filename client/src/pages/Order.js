@@ -9,7 +9,7 @@ import { PlusIcon, MinusIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../context/AuthContext';
 import business from '../data/business';
 import {
-  products, KINDLING, TIME_WINDOWS,
+  products, KINDLING,
   subscriptionMonthly, clampBundles, bundlesFromPlan,
   SUB_MIN_BUNDLES, SUB_MAX_BUNDLES, SUB_PER_BUNDLE,
   SUBSCRIPTION_WEEKS, subscriptionWeekLabel,
@@ -59,11 +59,6 @@ function Order() {
   const [subWeek, setSubWeek] = useState(reorder?.subscriptionWeek || 'any');
 
   const [preferredDate, setPreferredDate] = useState(prefill?.preferredDate || '');
-  // preferredTimes is [{from,to}]; we track the `from` ids. The prune effect below
-  // drops any window that isn't actually open for the chosen date.
-  const [windowFroms, setWindowFroms] = useState(
-    (prefill?.preferredTimes || []).map((w) => w.from),
-  );
   const [dateOverrides, setDateOverrides] = useState({});
   const [leadDays, setLeadDays] = useState(1);
   const [rushEnabled, setRushEnabled] = useState(true);
@@ -187,30 +182,20 @@ function Order() {
   const cartBundles = cartBundleCount(cart);
   const subMonthly = subscriptionMonthly(subBundles);
 
-  // --- Date / windows / rush ---
+  // --- Date / rush (customers pick a day; we deliver by business.deliverBy) ---
   const today = todayStr();
   const earliest = addDays(today, leadDays);
-  const allFroms = TIME_WINDOWS.map((w) => w.from);
-  const windowsForDate = (date) => {
-    const ov = dateOverrides[date];
-    return Array.isArray(ov) ? ov : allFroms;
-  };
+  // dateOverrides[date] = [] marks a closed day.
+  const isClosed = (date) => Array.isArray(dateOverrides[date]) && dateOverrides[date].length === 0;
   const isRushDate = (date) => date >= today && date < earliest;
   const dateIsOpen = (date) => date >= today
-    && windowsForDate(date).length > 0
+    && !isClosed(date)
     && (date >= earliest || (rushEnabled && rushRequested));
   const isRush = Boolean(preferredDate) && isRushDate(preferredDate);
-  const availableFroms = new Set(preferredDate ? windowsForDate(preferredDate) : []);
-  const selectedWindows = TIME_WINDOWS.filter((w) => windowFroms.includes(w.from));
-
-  const toggleWindow = (from) => setWindowFroms((prev) => (
-    prev.includes(from) ? prev.filter((f) => f !== from) : [...prev, from]
-  ));
 
   const getDayState = (date) => {
     if (date < today) return { disabled: true, tone: 'open' };
-    const ov = dateOverrides[date];
-    const closed = Array.isArray(ov) && ov.length === 0;
+    const closed = isClosed(date);
     const rushWindow = isRushDate(date);
     return {
       disabled: closed || (rushWindow && !(rushEnabled && rushRequested)),
@@ -219,14 +204,6 @@ function Order() {
       selected: date === preferredDate,
     };
   };
-
-  useEffect(() => {
-    setWindowFroms((prev) => {
-      const next = prev.filter((f) => availableFroms.has(f));
-      return next.length === prev.length ? prev : next;
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preferredDate, dateOverrides]);
 
   useEffect(() => {
     if (!rushRequested && preferredDate && isRushDate(preferredDate)) setPreferredDate('');
@@ -378,7 +355,6 @@ function Order() {
       contact,
       deliveryAddress: address,
       preferredDate,
-      preferredTimes: selectedWindows.map((w) => ({ from: w.from, to: w.to })),
       rush: isRush,
       code: appliedCode,
       subtotal: subtotalNum,
@@ -392,7 +368,6 @@ function Order() {
         agreedToTerms: agreedSub,
         paymentMethod: 'card',
         preferredDate: '',
-        preferredTimes: [],
       };
     }
     return {
@@ -415,13 +390,9 @@ function Order() {
       setError('Please authorize the monthly subscription to continue.');
       return;
     }
-    // Subscriptions pick a week of the month (always set); one-time orders need a date + window.
+    // Subscriptions pick a week of the month (always set); one-time orders need a date.
     if (!isSubscription && (!preferredDate || !dateIsOpen(preferredDate))) {
       setError('Please choose an available date.');
-      return;
-    }
-    if (!isSubscription && windowFroms.length === 0) {
-      setError('Please choose at least one delivery time window.');
       return;
     }
     if (!address.street.trim()) {
@@ -492,7 +463,7 @@ function Order() {
         <CheckCircleIcon className="mx-auto h-14 w-14 text-green-600" aria-hidden="true" />
         <h1 className="mt-4 text-2xl font-extrabold text-walnut">Payment received — thank you!</h1>
         <p className="mt-2 text-walnut-400">
-          Your order is paid and confirmed. We&apos;ll be in touch about your time window — follow
+          Your order is paid and confirmed. We&apos;ll confirm your delivery day shortly — follow
           along below.
         </p>
         {trackToken ? (
@@ -532,7 +503,6 @@ function Order() {
     const venmoUrl = handle
       ? `https://venmo.com/${handle}?txn=pay${amountNum ? `&amount=${amountNum}` : ''}&note=${encodeURIComponent(venmoNote)}`
       : '';
-    const windowsLabel = selectedWindows.map((w) => w.label).join(', ');
     const addressLine = [address.street, address.unit, address.neighborhood].filter(Boolean).join(', ');
     const orderLabel = isSubscription
       ? `${subBundles} bundles / month subscription`
@@ -541,7 +511,7 @@ function Order() {
       ['Order', orderLabel],
       ['When', isSubscription
         ? `${subscriptionWeekLabel(subWeek)} each month`
-        : `${formatDayLabel(preferredDate)}${windowsLabel ? ` · ${windowsLabel}` : ''}`],
+        : `${formatDayLabel(preferredDate)} · by ${business.deliverBy}`],
       ['How', 'Delivery'],
       ['Address', addressLine],
       ...(isRush ? [['Rush', `Yes (+${rushPercent}%)`]] : []),
@@ -856,43 +826,10 @@ function Order() {
             <p className="mt-1 text-xs text-walnut-300">
               {preferredDate
                 ? `Selected: ${formatDayLabel(preferredDate)}${isRush ? ' · rush order' : ''}. Greyed dates are unavailable.`
-                : 'Pick a date, then choose a time window below. Greyed dates are unavailable.'}
+                : 'Pick a delivery day. Greyed dates are unavailable.'}
             </p>
-          </div>
-        )}
-
-        {/* Time windows (one-time only) */}
-        {!isSubscription && (
-          <div>
-            <span className={labelClass}>Preferred delivery times</span>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {TIME_WINDOWS.map((w) => {
-                const active = windowFroms.includes(w.from);
-                const open = availableFroms.has(w.from);
-                return (
-                  <button
-                    type="button"
-                    key={w.from}
-                    onClick={() => toggleWindow(w.from)}
-                    disabled={!open}
-                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
-                      // eslint-disable-next-line no-nested-ternary
-                      !open
-                        ? 'cursor-not-allowed border-cream-300 bg-cream-100 text-walnut-200'
-                        : active
-                          ? 'border-ember bg-ember text-white'
-                          : 'border-cream-300 bg-white text-walnut hover:border-ember'
-                    }`}
-                  >
-                    {w.label}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-1 text-xs text-walnut-300">
-              {!preferredDate
-                ? 'Choose a date above to see available times.'
-                : 'Pick one or more times that work — we’ll fulfill within one of them.'}
+            <p className="mt-1 text-xs font-semibold text-walnut">
+              {`We deliver by ${business.deliverBy} on the day you choose.`}
             </p>
           </div>
         )}

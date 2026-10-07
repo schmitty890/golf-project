@@ -1,6 +1,7 @@
 // Human-readable description of an order's contents and status styling.
 
 import { bundlesFromPlan, subscriptionWeekLabel } from '../data/pricing';
+import business from '../data/business';
 
 export function describeOrder(order) {
   if (order.orderType === 'subscription') {
@@ -56,8 +57,9 @@ function formatWindow(w) {
   return [formatTime(w.from), formatTime(w.to)].filter(Boolean).join(' – ');
 }
 
-// Customer's chosen date + time window(s), e.g. "Sat, Jun 6 · 5:00 PM – 6:00 PM, 6:00 PM – 7:00 PM"
-// Falls back to the legacy single window, then to legacy preferred day(s).
+// Customer's chosen delivery day, e.g. "Sat, Jun 6 · by 8pm". Older orders also carry hour
+// window(s) ("Sat, Jun 6 · 5:00 PM – 6:00 PM"), which are still shown. Falls back to the legacy
+// single window, then to legacy preferred day(s).
 export function formatPreferredSchedule(order) {
   // Subscriptions: a preferred week of the month (not a specific date).
   if (order.orderType === 'subscription' && order.subscriptionWeek) {
@@ -71,7 +73,7 @@ export function formatPreferredSchedule(order) {
 
   if (order.preferredDate) {
     const datePart = formatScheduleDate(order.preferredDate);
-    return [datePart, window].filter(Boolean).join(' · ');
+    return [datePart, window || `by ${business.deliverBy}`].filter(Boolean).join(' · ');
   }
 
   // Legacy orders: preferred day(s) of week.
@@ -81,8 +83,9 @@ export function formatPreferredSchedule(order) {
   return window ? `${dayStr} · ${window}` : dayStr;
 }
 
-// Combine a {date, from, to} schedule into a readable string, e.g.
-// "Sat, Jun 6 · 9:00 AM – 5:00 PM", "after 6:00 PM", "by 5:00 PM". Empty if nothing set.
+// Combine a {date, from, to} schedule into a readable string, e.g. "Sat, Jun 6 · by 8pm" (a
+// confirmed day), or for older orders "Sat, Jun 6 · 9:00 AM – 5:00 PM", "after 6:00 PM",
+// "by 5:00 PM". Empty if nothing set.
 export function formatSchedule(schedule) {
   if (!schedule) return '';
   const datePart = formatScheduleDate(schedule.date);
@@ -92,12 +95,13 @@ export function formatSchedule(schedule) {
   if (from && to) timePart = `${from} – ${to}`;
   else if (from) timePart = `after ${from}`;
   else if (to) timePart = `by ${to}`;
+  else if (datePart) timePart = `by ${business.deliverBy}`;
   return [datePart, timePart].filter(Boolean).join(' · ');
 }
 
-// Whether the owner has confirmed a specific window for this order.
-export function isConfirmedWindow(order) {
-  return !!(order.schedule?.date && order.schedule?.from);
+// Whether the owner has confirmed the delivery day for this order.
+export function isConfirmedDay(order) {
+  return !!order.schedule?.date;
 }
 
 // The date the order actually happens on: the confirmed schedule date, else the

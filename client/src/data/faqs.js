@@ -22,7 +22,7 @@ const faqs = [
   },
   {
     q: 'Do you deliver?',
-    a: 'Yes — every order is delivered right to your door, free, here in The Vineyards. At checkout, pick a day and select the hours you’d prefer — we’ll do our best to deliver within that time.',
+    a: 'Yes — every order is delivered right to your door, free, here in The Vineyards. At checkout, just pick a day and we’ll deliver it by 8pm.',
   },
   {
     q: 'How do I pay?',
@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     q: 'How fast can I get firewood?',
-    a: 'Our schedule shifts week to week — we’re a small crew and are sometimes away or on vacation, so availability changes. When you order, the calendar shows the days and time windows we’re open, so just pick an available slot. Order at least a day ahead when you can. Need it sooner? Request a rush order at checkout — if we’re around and able to swing it, we’ll do our best to make it happen (subject to our availability).',
+    a: 'Our schedule shifts week to week — we’re a small crew and are sometimes away or on vacation, so availability changes. When you order, the calendar shows the days we’re delivering, so just pick an open day — we’ll have it at your door by 8pm. Order at least a day ahead when you can. Need it sooner? Request a rush order at checkout — if we’re around and able to swing it, we’ll do our best to make it happen (subject to our availability).',
   },
   {
     q: 'Who’s the little log in the corner?',

@@ -4,13 +4,13 @@ import { useState, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { TIME_WINDOWS } from '../data/pricing';
+import business from '../data/business';
 import MonthCalendar from './MonthCalendar';
 import { todayStr, addDays, formatDayLabel } from '../utils/dates';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-// Lets a customer re-pick a date + time window(s) for an existing order, using the same
+// Lets a customer re-pick the delivery day for an existing order, using the same
 // availability/lead-time/rush rules as the order form. Mirrors Order.js's date logic.
 function RescheduleModal({
   open, onClose, order, onRescheduled,
@@ -22,7 +22,6 @@ function RescheduleModal({
   const [rushPercent, setRushPercent] = useState(25);
   const [rushRequested, setRushRequested] = useState(false);
   const [preferredDate, setPreferredDate] = useState('');
-  const [windowFroms, setWindowFroms] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,27 +39,17 @@ function RescheduleModal({
 
   const today = todayStr();
   const earliest = addDays(today, leadDays);
-  const allFroms = TIME_WINDOWS.map((w) => w.from);
-  const windowsForDate = (date) => {
-    const ov = dateOverrides[date];
-    return Array.isArray(ov) ? ov : allFroms;
-  };
+  // dateOverrides[date] = [] marks a closed day.
+  const isClosed = (date) => Array.isArray(dateOverrides[date]) && dateOverrides[date].length === 0;
   const isRushDate = (date) => date >= today && date < earliest;
   const dateIsOpen = (date) => date >= today
-    && windowsForDate(date).length > 0
+    && !isClosed(date)
     && (date >= earliest || (rushEnabled && rushRequested));
   const isRush = Boolean(preferredDate) && isRushDate(preferredDate);
-  const availableFroms = new Set(preferredDate ? windowsForDate(preferredDate) : []);
-  const selectedWindows = TIME_WINDOWS.filter((w) => windowFroms.includes(w.from));
-
-  const toggleWindow = (from) => setWindowFroms((prev) => (
-    prev.includes(from) ? prev.filter((f) => f !== from) : [...prev, from]
-  ));
 
   const getDayState = (date) => {
     if (date < today) return { disabled: true, tone: 'open' };
-    const ov = dateOverrides[date];
-    const closed = Array.isArray(ov) && ov.length === 0;
+    const closed = isClosed(date);
     const rushWindow = isRushDate(date);
     return {
       disabled: closed || (rushWindow && !(rushEnabled && rushRequested)),
@@ -69,14 +58,6 @@ function RescheduleModal({
       selected: date === preferredDate,
     };
   };
-
-  // Prune chosen windows no longer valid for the selected date.
-  useEffect(() => {
-    setWindowFroms((prev) => {
-      const next = prev.filter((f) => availableFroms.has(f));
-      return next.length === prev.length ? prev : next;
-    });
-  }, [preferredDate, dateOverrides]);
 
   // Clear an in-window date if rush is turned off.
   useEffect(() => {
@@ -91,15 +72,10 @@ function RescheduleModal({
       setError('Please choose an available date.');
       return;
     }
-    if (windowFroms.length === 0) {
-      setError('Please choose at least one time window.');
-      return;
-    }
     setSubmitting(true);
     try {
       const res = await axios.patch(`${API_URL}/api/orders/${order._id}/reschedule`, {
         preferredDate,
-        preferredTimes: selectedWindows.map((w) => ({ from: w.from, to: w.to })),
         rush: isRush,
       }, { headers: { Authorization: `Bearer ${token}` } });
       onRescheduled(res.data);
@@ -124,7 +100,7 @@ function RescheduleModal({
         />
         <div className="relative w-full transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-xl transition-all sm:my-8 sm:max-w-lg">
           <h3 className="text-xl font-extrabold text-walnut">Reschedule order</h3>
-          <p className="mt-1 text-sm text-walnut-400">Pick a new date and time window(s).</p>
+          <p className="mt-1 text-sm text-walnut-400">{`Pick a new delivery day — we deliver by ${business.deliverBy}.`}</p>
 
           {error && <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</div>}
 
@@ -149,33 +125,8 @@ function RescheduleModal({
           <p className="mt-1 text-xs text-walnut-300">
             {preferredDate
               ? `Selected: ${formatDayLabel(preferredDate)}${isRush ? ' · rush' : ''}.`
-              : 'Pick a date, then choose time window(s).'}
+              : 'Pick a delivery day.'}
           </p>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {TIME_WINDOWS.map((w) => {
-              const activeWin = windowFroms.includes(w.from);
-              const openWin = availableFroms.has(w.from);
-              return (
-                <button
-                  type="button"
-                  key={w.from}
-                  onClick={() => toggleWindow(w.from)}
-                  disabled={!openWin}
-                  className={`rounded-xl border px-3 py-1.5 text-sm font-semibold transition-colors ${
-                    // eslint-disable-next-line no-nested-ternary
-                    !openWin
-                      ? 'cursor-not-allowed border-cream-300 bg-cream-100 text-walnut-200'
-                      : activeWin
-                        ? 'border-ember bg-ember text-white'
-                        : 'border-cream-300 bg-white text-walnut hover:border-ember'
-                  }`}
-                >
-                  {w.label}
-                </button>
-              );
-            })}
-          </div>
 
           <div className="mt-6 flex gap-3">
             <button
@@ -184,7 +135,7 @@ function RescheduleModal({
               disabled={submitting}
               className="flex-1 rounded-xl bg-ember px-4 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-ember-600 disabled:opacity-50"
             >
-              {submitting ? 'Saving…' : 'Save new time'}
+              {submitting ? 'Saving…' : 'Save new day'}
             </button>
             <button
               type="button"

@@ -43,7 +43,6 @@ export function buildOrderNavState(draft) {
     },
     prefill: {
       preferredDate: draft.preferredDate || '',
-      preferredTimes: draft.preferredTimes || [],
       contact: hasContact ? contact : null,
     },
   };
@@ -149,7 +148,7 @@ export const nodes = {
   date_optional: {
     id: 'date_optional',
     kind: 'choices',
-    message: "Have a day in mind? (You can always change it on the next page — that's where we confirm the open windows.)",
+    message: `Have a day in mind? (You can always change it on the next page — we deliver by ${business.deliverBy} on the day you choose.)`,
     options: [
       { label: 'Pick a preferred day', next: 'date_pick' },
       { label: "I'll choose on the order page", next: 'contact_or_review' },
