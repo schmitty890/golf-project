@@ -55,19 +55,19 @@ const addDaysStr = (s, n) => {
 // orders. New subscriptions cancel anytime via the Stripe Customer Portal.
 const SUBSCRIPTION_MIN_MONTHS = 3;
 
-// Validate a requested date + time windows against admin availability/lead-time rules.
-// Returns { error } on failure, or { windows, isRush, rushPercent } on success.
+// Validate a requested delivery day against admin availability/lead-time rules. Customers pick a
+// day only (we deliver by DELIVERY_BY), so there are no time windows to check.
+// Returns { error } on failure, or { windows: [], isRush, rushPercent } on success.
 // Shared by order creation and reschedule. `settings` is the availability Settings doc.
-const validateSchedule = ({ preferredDate, preferredTimes, rush }, settings) => {
-  const windows = Array.isArray(preferredTimes) ? preferredTimes.filter((w) => w && w.from) : [];
+const validateSchedule = ({ preferredDate, rush }, settings) => {
   if (!DATE_RE.test(preferredDate || '')) return { error: 'Please choose a valid date' };
   if (preferredDate < todayStr()) return { error: 'That date is in the past' };
-  if (windows.length === 0) return { error: 'Please choose at least one time window' };
 
+  // dateOverrides[date] = [] marks a closed day. (A non-empty list is a legacy "limited windows"
+  // day — with windows gone, it's simply open.)
   const override = settings?.dateOverrides?.[preferredDate];
-  if (override !== undefined
-    && (!Array.isArray(override) || !windows.every((w) => override.includes(w.from)))) {
-    return { error: 'Sorry, that date and time is no longer available' };
+  if (Array.isArray(override) && override.length === 0) {
+    return { error: "Sorry, we're not delivering that day — please pick another." };
   }
 
   const leadDays = settings?.leadDays ?? 1;
@@ -82,7 +82,7 @@ const validateSchedule = ({ preferredDate, preferredTimes, rush }, settings) => 
     }
     isRush = true;
   }
-  return { windows, isRush, rushPercent };
+  return { windows: [], isRush, rushPercent };
 };
 
 // Soft auth: if a valid Bearer token is present, attach req.userId; otherwise continue
@@ -150,7 +150,7 @@ router.post('/', optionalAuth, async (req, res) => {
   try {
     const {
       orderType, items, subscriptionBundles, subscriptionWeek,
-      contact, deliveryAddress, preferredDate, preferredTimes,
+      contact, deliveryAddress, preferredDate,
       rush, code, agreedToTerms, paymentMethod,
     } = req.body;
 
@@ -249,7 +249,7 @@ router.post('/', optionalAuth, async (req, res) => {
         return res.status(400).json({ error: 'Please choose a delivery week' });
       }
     } else {
-      const sched = validateSchedule({ preferredDate, preferredTimes, rush }, settings);
+      const sched = validateSchedule({ preferredDate, rush }, settings);
       if (sched.error) {
         return res.status(400).json({ error: sched.error });
       }
@@ -711,7 +711,7 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
     const customerEmail = order.contact?.email || '';
     if (customerEmail && order.status !== prevStatus) {
       let email = null;
-      if (order.status === 'confirmed' && order.schedule?.from) {
+      if (order.status === 'confirmed' && order.schedule?.date) {
         email = windowConfirmedEmail(order);
       } else if (order.status === 'ready') {
         email = readyEmail(order);
@@ -805,9 +805,9 @@ router.patch('/:id/reschedule', auth, async (req, res) => {
       return res.status(400).json({ error: `This order is already ${order.status}.` });
     }
 
-    const { preferredDate, preferredTimes, rush } = req.body;
+    const { preferredDate, rush } = req.body;
     const settings = await Settings.findOne({ key: 'availability' });
-    const sched = validateSchedule({ preferredDate, preferredTimes, rush }, settings);
+    const sched = validateSchedule({ preferredDate, rush }, settings);
     if (sched.error) {
       return res.status(400).json({ error: sched.error });
     }

@@ -5,22 +5,21 @@ import {
 import axios from 'axios';
 import { PhoneIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
-import { TIME_WINDOWS } from '../../data/pricing';
+import business from '../../data/business';
 import { todayStr, relativeDayLabel } from '../../utils/dates';
 import {
   describeOrder, formatSchedule,
-  effectiveDate, effectiveStart, isConfirmedWindow,
+  effectiveDate, effectiveStart, isConfirmedDay,
 } from '../../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-// Map an 'HH:MM' start to its window label (e.g. '5–6 PM') for the confirm chips.
-const windowLabel = (from, to) => {
-  const w = TIME_WINDOWS.find((x) => x.from === from && x.to === to);
-  return w ? w.label : `${from}–${to}`;
-};
+// Delivery promise for a confirmed order: "by 8pm", or an older order's confirmed hour window.
+const promiseText = (o) => (o.schedule?.from
+  ? formatSchedule({ from: o.schedule.from, to: o.schedule.to })
+  : `by ${business.deliverBy}`);
 
-// Sort deliveries into a sensible loop: by section, then street, then time window.
+// Sort deliveries into a sensible loop: by section, then street (then any legacy time window).
 const byRoute = (a, b) => {
   const na = a.deliveryAddress?.neighborhood || '';
   const nb = b.deliveryAddress?.neighborhood || '';
@@ -74,19 +73,18 @@ function AdminSchedule() {
     }
   };
 
-  const confirmWindow = (order, w) => patch(order._id, {
-    schedule: { date: order.preferredDate, from: w.from, to: w.to },
+  // Customers pick a day only, so confirming books that day (no time window).
+  const confirmDay = (order) => patch(order._id, {
+    schedule: { date: order.preferredDate, from: '', to: '' },
     status: 'confirmed',
   });
 
-  const markDelivered = (id) => patch(id, { status: 'delivered' });
+  const markDone = (id) => patch(id, { status: 'completed' });
 
   // Copy a day's delivery stops (in route order) to the clipboard for phone nav / notes.
   const copyStops = (date, deliveries) => {
     const lines = deliveries.map((o, i) => {
-      const win = isConfirmedWindow(o)
-        ? formatSchedule({ from: o.schedule.from, to: o.schedule.to })
-        : 'window TBD';
+      const win = isConfirmedDay(o) ? promiseText(o) : 'not confirmed yet';
       return `${i + 1}. ${o.contact?.name || 'Customer'} — ${addressText(o) || 'no address'} (${win})`;
     });
     const text = `${relativeDayLabel(date)} — deliveries:\n${lines.join('\n')}`;
@@ -99,10 +97,10 @@ function AdminSchedule() {
     }
   };
 
-  // Upcoming, active orders grouped by the date they happen, sorted by time.
+  // Upcoming, active orders grouped by the date they happen.
   const today = todayStr();
   const active = orders
-    .filter((o) => !['cancelled', 'delivered'].includes(o.status))
+    .filter((o) => !['cancelled', 'completed'].includes(o.status))
     .filter((o) => effectiveDate(o) && effectiveDate(o) >= today)
     .sort((a, b) => {
       const d = effectiveDate(a).localeCompare(effectiveDate(b));
@@ -118,17 +116,15 @@ function AdminSchedule() {
   });
 
   const renderCard = (order) => {
-    const confirmed = isConfirmedWindow(order);
+    const confirmed = isConfirmedDay(order);
     return (
       <li key={order._id} className="rounded-lg border border-cream-300 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             {confirmed ? (
-              <p className="text-lg font-extrabold text-walnut">
-                {formatSchedule({ from: order.schedule.from, to: order.schedule.to })}
-              </p>
+              <p className="text-sm font-bold text-green-700">{`Confirmed ✓ · ${promiseText(order)}`}</p>
             ) : (
-              <p className="text-sm font-semibold text-amber-700">Pick a window to confirm</p>
+              <p className="text-sm font-semibold text-amber-700">Not confirmed yet</p>
             )}
 
             <p className="mt-1 text-sm text-walnut">
@@ -158,30 +154,25 @@ function AdminSchedule() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => markDelivered(order._id)}
-            className="shrink-0 rounded-lg border border-cream-300 px-3 py-1.5 text-sm font-semibold text-walnut hover:border-ember"
-          >
-            Mark done
-          </button>
-        </div>
-
-        {!confirmed && (order.preferredTimes || []).length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-walnut-300">Confirm:</span>
-            {order.preferredTimes.map((w) => (
+          <div className="flex shrink-0 flex-col gap-2">
+            {!confirmed && order.preferredDate && (
               <button
                 type="button"
-                key={w.from}
-                onClick={() => confirmWindow(order, w)}
+                onClick={() => confirmDay(order)}
                 className="rounded-lg border border-ember bg-white px-3 py-1.5 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
               >
-                {windowLabel(w.from, w.to)}
+                Confirm day
               </button>
-            ))}
+            )}
+            <button
+              type="button"
+              onClick={() => markDone(order._id)}
+              className="rounded-lg border border-cream-300 px-3 py-1.5 text-sm font-semibold text-walnut hover:border-ember"
+            >
+              Mark done
+            </button>
           </div>
-        )}
+        </div>
       </li>
     );
   };
@@ -191,7 +182,8 @@ function AdminSchedule() {
       <h1 className="text-2xl font-bold text-walnut">Schedule</h1>
       <p className="mt-1 text-sm text-walnut-400">
         Your delivery day, by date — stops in route order.
-        Confirm a window with one tap; mark done once it&apos;s delivered.
+        Confirm the day with one tap (the customer gets a &ldquo;you&apos;re booked&rdquo; email);
+        mark done once it&apos;s delivered.
       </p>
 
       {loading && <p className="mt-8 text-walnut-400">Loading…</p>}

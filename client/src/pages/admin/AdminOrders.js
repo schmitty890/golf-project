@@ -5,7 +5,6 @@ import {
 import axios from 'axios';
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
-import { TIME_WINDOWS } from '../../data/pricing';
 import {
   describeOrder, statusClasses, STATUS_OPTIONS, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
@@ -132,7 +131,9 @@ function AdminOrders() {
     const order = orders.find((o) => o._id === id);
     setSchedState(id, 'saving');
     try {
-      await axios.patch(`${API_URL}/api/orders/${id}`, { schedule: order.schedule || {} }, authHeaders);
+      // Day-only scheduling: the date is the schedule (any legacy hour window is cleared).
+      const schedule = { date: order.schedule?.date || '', from: '', to: '' };
+      await axios.patch(`${API_URL}/api/orders/${id}`, { schedule }, authHeaders);
       setSchedState(id, 'saved');
       setTimeout(() => setSchedState(id, undefined), 2000);
     } catch (err) {
@@ -141,14 +142,14 @@ function AdminOrders() {
     }
   };
 
-  // One-click confirm: turn a customer's preferred window into the official schedule.
-  const confirmWindow = async (order, w) => {
+  // One-click confirm: book the customer's chosen day as the official schedule.
+  const confirmDay = async (order) => {
     try {
-      const schedule = { date: order.preferredDate, from: w.from, to: w.to };
+      const schedule = { date: order.preferredDate, from: '', to: '' };
       const res = await axios.patch(`${API_URL}/api/orders/${order._id}`, { schedule, status: 'confirmed' }, authHeaders);
       setOrders((prev) => prev.map((o) => (o._id === order._id ? { ...o, ...res.data } : o)));
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to confirm window');
+      setError(err.response?.data?.error || 'Failed to confirm day');
     }
   };
 
@@ -383,22 +384,15 @@ function AdminOrders() {
 
             {/* Schedule editor */}
             <div className="mt-4 border-t border-cream-300 pt-3">
-              {(order.preferredTimes || []).length > 0 && (
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold text-walnut-300">Confirm window:</span>
-                  {order.preferredTimes.map((w) => {
-                    const win = TIME_WINDOWS.find((x) => x.from === w.from && x.to === w.to);
-                    return (
-                      <button
-                        type="button"
-                        key={w.from}
-                        onClick={() => confirmWindow(order, w)}
-                        className="rounded-lg border border-ember bg-white px-3 py-1 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
-                      >
-                        {win ? win.label : `${w.from}–${w.to}`}
-                      </button>
-                    );
-                  })}
+              {order.preferredDate && !order.schedule?.date && (
+                <div className="mb-3">
+                  <button
+                    type="button"
+                    onClick={() => confirmDay(order)}
+                    className="rounded-lg border border-ember bg-white px-3 py-1 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
+                  >
+                    Confirm day
+                  </button>
                 </div>
               )}
               <div className="flex flex-wrap items-end gap-3">
@@ -409,26 +403,6 @@ function AdminOrders() {
                     type="date"
                     value={order.schedule?.date || ''}
                     onChange={(e) => updateScheduleField(order._id, 'date', e.target.value)}
-                    className="mt-1 rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
-                  />
-                </div>
-                <div>
-                  <label htmlFor={`from-${order._id}`} className="block text-xs font-semibold text-walnut">From</label>
-                  <input
-                    id={`from-${order._id}`}
-                    type="time"
-                    value={order.schedule?.from || ''}
-                    onChange={(e) => updateScheduleField(order._id, 'from', e.target.value)}
-                    className="mt-1 rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
-                  />
-                </div>
-                <div>
-                  <label htmlFor={`to-${order._id}`} className="block text-xs font-semibold text-walnut">To</label>
-                  <input
-                    id={`to-${order._id}`}
-                    type="time"
-                    value={order.schedule?.to || ''}
-                    onChange={(e) => updateScheduleField(order._id, 'to', e.target.value)}
                     className="mt-1 rounded-md border border-cream-300 bg-white px-2 py-1 text-sm text-walnut focus:outline-ember"
                   />
                 </div>

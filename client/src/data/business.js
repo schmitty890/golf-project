@@ -7,6 +7,9 @@ const business = {
   valueProps: ['Clean', 'Convenient', 'Local'],
   email: 'volwfirewood@gmail.com',
   serviceArea: 'The Vineyards on Lake Wylie',
+  // Customers pick a delivery day (no time windows); we promise delivery by this time that day.
+  // KEEP IN SYNC with DELIVERY_BY in server/data/catalog.js.
+  deliverBy: '8pm',
   // Social links are hidden until real accounts exist. To show them in the footer,
   // add entries here, e.g. { name: 'Instagram', href: 'https://instagram.com/...' }.
   social: [],

@@ -2,6 +2,10 @@
 // KEEP IN SYNC with client/src/data/pricing.js (products + DELIVERY_FEE). The client copy is for
 // display; this copy is the source of truth for money, so a tampered client can't change the price.
 
+// Customers pick a delivery DAY (no time windows); we promise delivery by this time that day.
+// KEEP IN SYNC with `deliverBy` in client/src/data/business.js.
+export const DELIVERY_BY = '8pm';
+
 // Delivery is free. Kept as a constant (used in charge math) so totals stay explicit.
 export const DELIVERY_FEE = 0;
 

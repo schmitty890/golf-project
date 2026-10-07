@@ -4,14 +4,12 @@ import {
 } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-import { TIME_WINDOWS } from '../../data/pricing';
 import MonthCalendar from '../../components/MonthCalendar';
 import {
   todayStr, formatDayLabel, dateRange,
 } from '../../utils/dates';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-const ALL_FROMS = TIME_WINDOWS.map((w) => w.from);
 
 function AdminAvailability() {
   const { token } = useContext(AuthContext);
@@ -21,7 +19,9 @@ function AdminAvailability() {
   const [saved, setSaved] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState(null);
-  const [draft, setDraft] = useState(new Set()); // froms enabled for the date being edited
+  // Whether the date being edited is closed. (Customers pick a day only, so a date is either open
+  // or closed: dateOverrides[date] = [] means closed; no entry means open.)
+  const [draftClosed, setDraftClosed] = useState(false);
 
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
@@ -130,33 +130,22 @@ function AdminAvailability() {
   const getDayState = (dateStr) => {
     if (dateStr < today) return { disabled: true, tone: 'open' };
     const ov = overrides[dateStr];
-    let tone = 'open';
-    if (Array.isArray(ov)) tone = ov.length === 0 ? 'closed' : 'partial';
+    const tone = Array.isArray(ov) && ov.length === 0 ? 'closed' : 'open';
     return { tone, selected: dateStr === selectedDate };
   };
 
   const openEditor = (dateStr) => {
     setSelectedDate(dateStr);
     const ov = overrides[dateStr];
-    setDraft(new Set(Array.isArray(ov) ? ov : ALL_FROMS));
+    setDraftClosed(Array.isArray(ov) && ov.length === 0);
   };
 
   const closeEditor = () => setSelectedDate(null);
 
-  const toggleDraftWindow = (from) => setDraft((prev) => {
-    const next = new Set(prev);
-    if (next.has(from)) next.delete(from);
-    else next.add(from);
-    return next;
-  });
-
   const applyEditor = () => {
     const next = { ...overrides };
-    if (draft.size === ALL_FROMS.length) {
-      delete next[selectedDate]; // fully open → no override needed
-    } else {
-      next[selectedDate] = ALL_FROMS.filter((f) => draft.has(f)); // [] = closed; subset = partial
-    }
+    if (draftClosed) next[selectedDate] = [];
+    else delete next[selectedDate]; // open → no override needed (also clears legacy partial days)
     persist(next);
     closeEditor();
   };
@@ -179,16 +168,14 @@ function AdminAvailability() {
     setRangeEnd('');
   };
 
-  const draftClosed = draft.size === 0;
-
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-walnut">Availability</h1>
           <p className="mt-1 text-sm text-walnut-400">
-            Every upcoming date is open by default. Tap a date to close it (out of town) or
-            limit its time windows. Changes save automatically.
+            Every upcoming date is open by default. Tap a date to close it (out of town).
+            Changes save automatically.
           </p>
         </div>
         {saved && <span className="text-sm font-semibold text-green-700">Saved ✓</span>}
@@ -300,10 +287,6 @@ function AdminAvailability() {
                 <span>Open</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="h-3 w-3 rounded border border-amber-300 bg-amber-50" />
-                <span>Limited</span>
-              </span>
-              <span className="flex items-center gap-1">
                 <span className="h-3 w-3 rounded border border-red-300 bg-red-50" />
                 <span>Closed</span>
               </span>
@@ -357,32 +340,11 @@ function AdminAvailability() {
                   <input
                     type="checkbox"
                     checked={draftClosed}
-                    onChange={() => setDraft(new Set(draftClosed ? ALL_FROMS : []))}
+                    onChange={() => setDraftClosed(!draftClosed)}
                     className="h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
                   />
                   Closed all day (out of town)
                 </label>
-
-                <p className="mt-4 text-sm font-semibold text-walnut">Available windows</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {TIME_WINDOWS.map((w) => {
-                    const on = draft.has(w.from);
-                    return (
-                      <button
-                        type="button"
-                        key={w.from}
-                        onClick={() => toggleDraftWindow(w.from)}
-                        className={`rounded-xl border px-3 py-1.5 text-sm font-semibold transition-colors ${
-                          on
-                            ? 'border-ember bg-ember text-white'
-                            : 'border-cream-300 bg-white text-walnut hover:border-ember'
-                        }`}
-                      >
-                        {w.label}
-                      </button>
-                    );
-                  })}
-                </div>
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   <button

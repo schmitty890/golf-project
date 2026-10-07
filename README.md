@@ -68,7 +68,7 @@ Admin pages appear in the sidebar for any user whose account `role` is `admin`.
 | Edit this file | To change |
 | --- | --- |
 | `client/src/data/business.js` | Business name, contact email, service area, promo/announcement bar, gallery photos, social links |
-| `client/src/data/pricing.js` | Bundle prices, seasonal packs + their in-season date windows, subscription plans, weekdays, and `TIME_WINDOWS` (the 1-hour slots offered) |
+| `client/src/data/pricing.js` | Bundle prices, seasonal packs + their in-season date windows, subscription plans, weekdays, and `TIME_WINDOWS` (legacy 1-hour slots, only used to display older orders). The "delivered by" time is `deliverBy` in `business.js` |
 | `client/src/data/neighborhoods.js` | The neighborhood dropdown list — **currently placeholders; replace with the real Vineyards sub-neighborhoods** |
 | `client/src/data/testimonials.js` | Fallback homepage quotes shown until real reviews are approved |
 | `client/src/data/faqs.js` | Homepage FAQ entries |

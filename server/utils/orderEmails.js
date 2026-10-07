@@ -1,7 +1,9 @@
 // Builders that turn an Order document into { subject, html, text } emails.
 // Kept dependency-free and server-local (no client imports).
 
-import { subscriptionMonthly, bundlesFromPlan, subscriptionWeekLabel } from '../data/catalog.js';
+import {
+  subscriptionMonthly, bundlesFromPlan, subscriptionWeekLabel, DELIVERY_BY,
+} from '../data/catalog.js';
 
 const BUSINESS = () => process.env.BUSINESS_NAME || 'VOLW Firewood';
 
@@ -44,14 +46,17 @@ function describeOrder(order) {
   return 'Order';
 }
 
+// Time part of "when". New orders are day-only ("by 8pm"); older orders may still carry a confirmed
+// or preferred hour window, which we keep showing.
 function windowsText(order) {
   if (order.schedule?.from) {
     return `${fmtTime(order.schedule.from)} – ${fmtTime(order.schedule.to)}`;
   }
-  return (order.preferredTimes || [])
+  const legacy = (order.preferredTimes || [])
     .map((w) => `${fmtTime(w.from)} – ${fmtTime(w.to)}`)
     .filter(Boolean)
     .join(', ');
+  return legacy || `delivered by ${DELIVERY_BY}`;
 }
 
 function fulfillmentText(order) {
@@ -184,7 +189,7 @@ export function customerConfirmationEmail(order) {
     ? `${m}-month minimum: this subscription runs ${m} months, then continues month-to-month — cancel anytime after.`
     : '';
   const subject = `We got your order — ${BUSINESS()}`;
-  const intro = "Thanks for your order! Here's what we have. We'll confirm your time window shortly.";
+  const intro = "Thanks for your order! Here's what we have. We'll confirm your delivery day shortly.";
   const commitmentHtml = commitmentText ? `<p style="margin-top:16px;color:#8a7f78;font-size:13px"><strong>${commitmentText}</strong></p>` : '';
   const html = wrap('Order received', `<p>${intro}</p>${linesToHtml(lines)}${commitmentHtml}${venmo ? `<p style="margin-top:16px">${venmo}</p>` : ''}${trackBlockHtml(order)}`);
   const text = `${intro}\n\n${linesToText(lines)}${commitmentText ? `\n\n${commitmentText}` : ''}${venmo ? `\n\n${venmo}` : ''}${trackBlockText(order)}`;
@@ -221,8 +226,8 @@ export function orderRescheduledOwnerEmail(order) {
   const lines = summaryLines(order);
   const contact = `${order.contact?.name || ''}${order.contact?.phone ? ` · ${order.contact.phone}` : ''}`;
   const subject = `Order rescheduled by customer: ${describeOrder(order)}`;
-  const html = wrap('Order rescheduled by customer', `<p>A customer changed their preferred date/time — please re-confirm a window.</p>${linesToHtml([...lines, ['Contact', contact]])}`);
-  const text = `A customer rescheduled — please re-confirm a window.\n\n${linesToText([...lines, ['Contact', contact]])}`;
+  const html = wrap('Order rescheduled by customer', `<p>A customer changed their delivery day — please re-confirm the day.</p>${linesToHtml([...lines, ['Contact', contact]])}`);
+  const text = `A customer rescheduled — please re-confirm the day.\n\n${linesToText([...lines, ['Contact', contact]])}`;
   return { subject, html, text };
 }
 
@@ -244,19 +249,21 @@ export function ownerNoticeEmail({
 export function windowConfirmedEmail(order) {
   const when = [fmtDate(order.schedule?.date || order.preferredDate), windowsText(order)].filter(Boolean).join(' · ');
   const how = fulfillmentText(order);
-  const note = "We'll do our best to deliver within that window.";
+  const note = order.schedule?.from
+    ? "We'll do our best to deliver within that window."
+    : 'Thanks for ordering — enjoy the fire!';
   const subject = `You're booked — ${when}`;
   const body = `<p>Your delivery is confirmed:</p>
     ${linesToHtml([['When', when], ['How', how], ['Order', describeOrder(order)]])}
     <p style="margin-top:12px">${note}</p>${trackBlockHtml(order)}`;
-  const html = wrap('Window confirmed', body);
+  const html = wrap('Delivery confirmed', body);
   const text = `Your delivery is confirmed.\n\nWhen: ${when}\nHow: ${how}\nOrder: ${describeOrder(order)}\n\n${note}${trackBlockText(order)}`;
   return { subject, html, text };
 }
 
 export function readyEmail(order) {
   const headline = 'Out for delivery!';
-  const note = "Your firewood is on the way — we'll get it to you as close to your preferred time as we can.";
+  const note = "Your firewood is on the way — it'll be at your door shortly.";
   const body = `<p>${note}</p>
     ${linesToHtml([['Order', describeOrder(order)], ['How', fulfillmentText(order)]])}${trackBlockHtml(order)}`;
   const html = wrap(headline, body);
@@ -266,7 +273,7 @@ export function readyEmail(order) {
 
 export function reminderEmail(order) {
   const when = [fmtDate(order.schedule?.date), windowsText(order)].filter(Boolean).join(' · ');
-  const note = "We'll do our best to deliver within your preferred time.";
+  const note = "If anything changes, just reply to this email.";
   const venmo = paymentLine(order);
   const subject = `Reminder: your firewood is set for tomorrow — ${when}`;
   const body = `<p>Quick reminder — your delivery is tomorrow:</p>
