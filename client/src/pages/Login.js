@@ -91,10 +91,15 @@ function Login() {
           </div>
 
           <div>
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label htmlFor="password" className="block text-sm/6 font-medium text-walnut">
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label htmlFor="password" className="block text-sm/6 font-medium text-walnut">
+                Password
+              </label>
+              <Link to="/forgot-password" className="text-sm font-semibold text-ember hover:text-ember-600">
+                Forgot password?
+              </Link>
+            </div>
             <div className="mt-2">
               <input
                 id="password"

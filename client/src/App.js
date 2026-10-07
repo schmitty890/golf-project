@@ -18,6 +18,8 @@ import TrackOrder from './pages/TrackOrder';
 import Receipt from './pages/Receipt';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import MyOrders from './pages/MyOrders';
 import Account from './pages/Account';
 import NotFound from './pages/NotFound';
@@ -54,6 +56,8 @@ function App() {
             {/* Auth - standalone */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
 
             {/* Authenticated app - sidebar layout */}
             <Route

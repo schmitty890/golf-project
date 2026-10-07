@@ -180,7 +180,8 @@ router.post('/validate', async (req, res) => {
           code: referrer.referralCode,
           discount: discountAmount(rc.type, rc.value, subtotal),
           label: discountLabel(rc.type, rc.value),
-          referrerName: [referrer.firstName, referrer.lastName].filter(Boolean).join(' ') || 'a neighbor',
+          // No referrer name here: codes are short and guessable, so this public endpoint must not
+          // turn them into a list of customers' names.
         });
       }
     }
