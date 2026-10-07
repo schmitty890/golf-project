@@ -1,11 +1,12 @@
 import express from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import sharp from 'sharp';
 import User from '../models/User.js';
 import auth from '../middleware/auth.js';
 import { sendMail } from '../utils/mailer.js';
-import { ownerNoticeEmail } from '../utils/orderEmails.js';
+import { ownerNoticeEmail, passwordResetEmail } from '../utils/orderEmails.js';
 
 const router = express.Router();
 
@@ -223,6 +224,84 @@ router.post('/login', async (req, res) => {
       error: 'Server error during login',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
+  }
+});
+
+// --- Forgot password ---------------------------------------------------------------------------
+const RESET_TTL_MS = 60 * 60 * 1000; // reset links work for 1 hour
+const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
+const FORGOT_MESSAGE = "If that email has an account, we've sent a link to reset your password.";
+
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Email a password-reset link (always 200, so it never reveals which emails exist)
+ *     tags: [Auth]
+ */
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').toLowerCase().trim();
+    const user = email ? await User.findOne({ email }) : null;
+    if (user) {
+      const token = crypto.randomBytes(32).toString('hex');
+      user.resetTokenHash = hashToken(token);
+      user.resetTokenExpires = new Date(Date.now() + RESET_TTL_MS);
+      await user.save();
+      const site = process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
+      sendMail({ to: user.email, ...passwordResetEmail(`${site}/reset-password/${token}`) });
+    }
+    return res.json({ message: FORGOT_MESSAGE });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return res.status(500).json({ error: 'Something went wrong — please try again.' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Set a new password using an emailed reset token; signs the user in
+ *     tags: [Auth]
+ */
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body || {};
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    const user = token ? await User.findOne({
+      resetTokenHash: hashToken(token),
+      resetTokenExpires: { $gt: new Date() },
+    }) : null;
+    if (!user) {
+      return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
+    }
+    user.password = String(password); // hashed by the User pre-save hook
+    user.resetTokenHash = '';
+    user.resetTokenExpires = null;
+    await user.save();
+
+    // Sign them straight in (same token shape as login).
+    const jwtToken = jwt.sign(
+      // eslint-disable-next-line no-underscore-dangle
+      { userId: user._id },
+      process.env.JWT_SECRET,
+    );
+    return res.json({
+      token: jwtToken,
+      user: {
+        // eslint-disable-next-line no-underscore-dangle
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        newsletterSubscribed: user.newsletterSubscribed,
+      },
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return res.status(500).json({ error: 'Something went wrong — please try again.' });
   }
 });
 

@@ -63,6 +63,9 @@ const userSchema = new mongoose.Schema({
   newsletterSubscribedAt: { type: Date, default: null },
   // Unguessable token for one-click email unsubscribe (minted lazily when first emailed).
   unsubscribeToken: { type: String, index: true, default: '' },
+  // Forgot-password: SHA-256 of the emailed reset token (the raw token is never stored) + expiry.
+  resetTokenHash: { type: String, index: true, default: '' },
+  resetTokenExpires: { type: Date, default: null },
 }, { timestamps: true });
 
 // Hash password before saving

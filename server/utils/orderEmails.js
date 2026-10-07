@@ -246,6 +246,15 @@ export function ownerNoticeEmail({
   return { subject, html, text };
 }
 
+export function passwordResetEmail(url) {
+  const note = "This link expires in 1 hour. If you didn't ask to reset your password, you can ignore this email.";
+  const html = wrap('Reset your password', `<p>Tap the button below to choose a new password.</p>
+    <p style="margin-top:16px"><a href="${url}" style="display:inline-block;background:#b5471f;color:#fff;padding:10px 18px;border-radius:8px;font-weight:bold;text-decoration:none">Reset password</a></p>
+    <p style="margin-top:16px;color:#8a7f78;font-size:13px">${note}</p>`);
+  const text = `Reset your password: ${url}\n\n${note}`;
+  return { subject: `Reset your ${BUSINESS()} password`, html, text };
+}
+
 export function windowConfirmedEmail(order) {
   const when = [fmtDate(order.schedule?.date || order.preferredDate), windowsText(order)].filter(Boolean).join(' · ');
   const how = fulfillmentText(order);
