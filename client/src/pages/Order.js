@@ -555,6 +555,7 @@ function Order() {
           <p className="mt-2 rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800">
             Please send your Venmo now — the button above is pre-filled with your total. We deliver
             your order only once payment comes through, so paying right away keeps it on schedule.
+            Paying ahead also means a contactless drop-off — no need to be home.
           </p>
         </div>
 

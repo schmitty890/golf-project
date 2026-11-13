@@ -131,6 +131,8 @@ function venmoBlock(order) {
 
 // The "how to pay" line for an order: Venmo instructions, or (for card) the auto-pay note.
 function paymentLine(order) {
+  // Already paid (card, or Venmo the owner marked paid) — no "please pay" prompt.
+  if (order.paymentStatus === 'paid' && order.orderType !== 'subscription') return '';
   if (order.paymentMethod !== 'card') return venmoBlock(order);
   if (order.orderType === 'subscription') {
     const t = orderTotal(order);
