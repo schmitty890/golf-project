@@ -30,6 +30,9 @@ const byRoute = (a, b) => {
   return effectiveStart(a).localeCompare(effectiveStart(b));
 };
 
+const isPaid = (o) => o.paymentStatus === 'paid';
+const methodLabel = (o) => (o.paymentMethod === 'card' ? 'card' : 'Venmo');
+
 const addressText = (o) => {
   const a = o.deliveryAddress || {};
   return [a.street, a.unit, a.neighborhood].filter(Boolean).join(', ');
@@ -80,12 +83,14 @@ function AdminSchedule() {
   });
 
   const markDone = (id) => patch(id, { status: 'completed' });
+  const markPaid = (id) => patch(id, { paymentStatus: 'paid' });
 
   // Copy a day's delivery stops (in route order) to the clipboard for phone nav / notes.
   const copyStops = (date, deliveries) => {
     const lines = deliveries.map((o, i) => {
       const win = isConfirmedDay(o) ? promiseText(o) : 'not confirmed yet';
-      return `${i + 1}. ${o.contact?.name || 'Customer'} — ${addressText(o) || 'no address'} (${win})`;
+      const pay = isPaid(o) ? '' : ' — UNPAID';
+      return `${i + 1}. ${o.contact?.name || 'Customer'} — ${addressText(o) || 'no address'} (${win})${pay}`;
     });
     const text = `${relativeDayLabel(date)} — deliveries:\n${lines.join('\n')}`;
     try {
@@ -132,6 +137,11 @@ function AdminSchedule() {
               {order.rush && (
                 <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">RUSH</span>
               )}
+              {isPaid(order) ? (
+                <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800">PAID</span>
+              ) : (
+                <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">{`UNPAID · ${methodLabel(order)}`}</span>
+              )}
             </p>
 
             {order.deliveryAddress?.street && (
@@ -162,6 +172,15 @@ function AdminSchedule() {
                 className="rounded-lg border border-ember bg-white px-3 py-1.5 text-sm font-semibold text-ember hover:bg-ember hover:text-white"
               >
                 Confirm day
+              </button>
+            )}
+            {!isPaid(order) && (
+              <button
+                type="button"
+                onClick={() => markPaid(order._id)}
+                className="rounded-lg border border-green-600 bg-white px-3 py-1.5 text-sm font-semibold text-green-700 hover:bg-green-600 hover:text-white"
+              >
+                Mark paid
               </button>
             )}
             <button
@@ -200,6 +219,7 @@ function AdminSchedule() {
           deliveries.length ? `${deliveries.length} deliver${deliveries.length === 1 ? 'y' : 'ies'}` : '',
           deliveries.length && streets ? `${streets} street${streets === 1 ? '' : 's'}` : '',
         ].filter(Boolean).join(' · ');
+        const unpaid = deliveries.filter((o) => !isPaid(o)).length;
 
         return (
           <section key={group.date} className="mt-8">
@@ -217,7 +237,14 @@ function AdminSchedule() {
                 </button>
               )}
             </div>
-            {summary && <p className="mt-1 text-xs text-walnut-400">{summary}</p>}
+            {(summary || unpaid > 0) && (
+              <p className="mt-1 text-xs text-walnut-400">
+                {summary}
+                {unpaid > 0 && (
+                  <span className="ml-2 font-bold text-red-700">{`· ${unpaid} unpaid`}</span>
+                )}
+              </p>
+            )}
 
             {deliveries.length > 0 && (
               <>
