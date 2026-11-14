@@ -22,7 +22,18 @@ const business = {
   },
   // Real photos: drop image files in client/public/photos/ and list them here, e.g.
   // { src: '/photos/bundle.jpg', alt: 'A VOLW firewood bundle' }. Empty = gallery hidden.
-  galleryPhotos: [],
+  galleryPhotos: [
+    {
+      src: '/photos/bundle-top.webp',
+      alt: 'A VOLW firewood bundle, shrink-wrapped and ready to carry',
+      caption: 'Wrapped tight & easy to carry',
+    },
+    {
+      src: '/photos/bundle-end.webp',
+      alt: 'End view of a VOLW firewood bundle showing split, seasoned oak',
+      caption: 'Split & seasoned oak',
+    },
+  ],
   // Delivery map shown in the Service Area section. The image lives in client/public/
   // (here: volwmap.jpg) — it appears automatically and hides gracefully if missing.
   // Set to null to hide. Edit the caption freely.

@@ -8,8 +8,10 @@ import {
   ClockIcon,
   ShoppingCartIcon,
   FireIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import business from '../data/business';
+import { products } from '../data/pricing';
 import faqs from '../data/faqs';
 import ReviewsCarousel from '../components/ReviewsCarousel';
 import FeedbackModal from '../components/FeedbackModal';
@@ -197,22 +199,65 @@ function ServiceArea() {
   );
 }
 
+// "What you get" — real photos of an actual bundle (business.galleryPhotos). Hidden if none.
 function Gallery() {
-  const photos = business.galleryPhotos || [];
+  const photos = (business.galleryPhotos || []).slice(0, 2);
   if (photos.length === 0) return null;
 
+  const single = products.find((p) => p.id === 'standard-bundle')?.price;
+  const pack = products.find((p) => p.id === 'three-bundle-pack')?.price;
+  const points = [
+    'Split, seasoned hardwood — mixed red & white oak',
+    'Wrapped tight, so it’s easy to carry out to the firepit',
+    single && pack
+      ? `$${single} a bundle, 3 for $${pack} — delivered free to your door`
+      : 'Delivered free to your door',
+  ];
+
   return (
-    <section id="gallery" className="bg-cream py-16 sm:py-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {photos.map((photo) => (
-            <img
-              key={photo.src}
-              src={photo.src}
-              alt={photo.alt}
-              loading="lazy"
-              className="h-48 w-full rounded-xl object-cover shadow-sm"
-            />
+    <section id="gallery" className="bg-cream-300/40 py-16 sm:py-20">
+      <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-14 lg:px-8">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-wide text-ember">What you get</p>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-walnut">
+            Here’s what shows up at your door
+          </h2>
+          <p className="mt-4 text-lg text-walnut-400">
+            No stock photos — this is a real VOLW bundle, just like the one we’ll drop off for you.
+          </p>
+          <ul className="mt-6 space-y-3">
+            {points.map((pt) => (
+              <li key={pt} className="flex items-start gap-3 text-walnut">
+                <CheckCircleIcon className="mt-0.5 h-6 w-6 shrink-0 text-ember" aria-hidden="true" />
+                <span>{pt}</span>
+              </li>
+            ))}
+          </ul>
+          <Link
+            to="/order"
+            className="mt-8 inline-block rounded-xl bg-ember px-6 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-ember-600"
+          >
+            Order a bundle
+          </Link>
+        </div>
+
+        <div className={`grid gap-4 ${photos.length > 1 ? 'grid-cols-2' : 'mx-auto max-w-sm grid-cols-1'}`}>
+          {photos.map((photo, i) => (
+            <figure key={photo.src} className={photos.length > 1 && i === 1 ? 'sm:mt-10' : ''}>
+              <img
+                src={photo.src}
+                alt={photo.alt}
+                loading="lazy"
+                width="900"
+                height="1200"
+                className="aspect-[3/4] w-full rounded-2xl object-cover shadow-lg ring-1 ring-walnut/10"
+              />
+              {photo.caption && (
+                <figcaption className="mt-2 text-center text-sm font-semibold text-walnut-400">
+                  {photo.caption}
+                </figcaption>
+              )}
+            </figure>
           ))}
         </div>
       </div>
