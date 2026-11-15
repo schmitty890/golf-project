@@ -66,6 +66,7 @@ const summarize = (o) => ({
   paymentStatus: o.paymentStatus,
   fulfillment: o.fulfillment,
   phone: o.contact?.phone || '',
+  name: o.contact?.name || '',
   total: orderTotal(o)?.total || 0,
   bundles: bundlesForOrder(o),
   // A "real" purchase for analytics: paid and not cancelled.
@@ -113,13 +114,19 @@ router.get('/', auth, requireAdmin, async (req, res) => {
     ]);
     const giveawaySet = new Set(gwMembers.map((m) => String(m.user)));
 
-    // Bucket orders by account id (when linked) or guest email (when not).
+    // Bucket orders by account id (when linked) or guest email (when not). A signed-out order
+    // whose email matches an account is shown under that account here (display only — the order
+    // itself stays unlinked, since account emails aren't verified).
+    const userIdByEmail = new Map(
+      users.filter((u) => u.email).map((u) => [u.email.trim().toLowerCase(), String(u._id)]),
+    );
     const byUser = new Map();
     const byGuest = new Map(); // key -> { email, name, phone, orders[] }
     orders.forEach((o) => {
       const summary = summarize(o);
-      if (o.user) {
-        const k = String(o.user);
+      const matchedUser = o.user ? null : userIdByEmail.get((o.contact?.email || '').trim().toLowerCase());
+      if (o.user || matchedUser) {
+        const k = o.user ? String(o.user) : matchedUser;
         if (!byUser.has(k)) byUser.set(k, []);
         byUser.get(k).push(summary);
       } else {
@@ -137,10 +144,13 @@ router.get('/', auth, requireAdmin, async (req, res) => {
     // Account holders — include everyone, even with zero orders.
     const accounts = users.map((u) => {
       const list = byUser.get(String(u._id)) || [];
+      // No name on the profile? Fall back to the name on their most recent order.
+      const hasName = Boolean(u.firstName || u.lastName);
+      const [orderFirst = '', ...orderRest] = hasName ? [] : (list[0]?.name || '').trim().split(/\s+/);
       return {
         userId: String(u._id),
-        firstName: u.firstName || '',
-        lastName: u.lastName || '',
+        firstName: hasName ? (u.firstName || '') : orderFirst,
+        lastName: hasName ? (u.lastName || '') : orderRest.join(' '),
         email: u.email,
         role: u.role,
         createdAt: u.createdAt,
