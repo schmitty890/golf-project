@@ -17,6 +17,7 @@ import {
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
+import PayOptions from '../components/PayOptions';
 import LowStockBanner from '../components/LowStockBanner';
 import WoodTypeBadge from '../components/WoodTypeBadge';
 import neighborhoods from '../data/neighborhoods';
@@ -71,6 +72,10 @@ function Order() {
   const [returnStatus, setReturnStatus] = useState(''); // 'paid' | 'cancelled' after Stripe redirect
   const [trackToken, setTrackToken] = useState(''); // tracking token of the just-placed order
   const [paymentCheck, setPaymentCheck] = useState('checking'); // 'checking' | 'paid' | 'pending'
+  // Order info after returning from Stripe without paying (for the "pay this order" buttons).
+  const [cancelledOrder, setCancelledOrder] = useState(null);
+  // Card was chosen but Stripe Checkout couldn't start (server alerted the owner).
+  const [cardFailed, setCardFailed] = useState(false);
 
   const [codeInput, setCodeInput] = useState('');
   const [appliedCode, setAppliedCode] = useState('');
@@ -282,6 +287,11 @@ function Order() {
     if (track) setTrackToken(track);
     // Don't trust ?status=paid on its own — confirm the payment server-side. Hitting the tracking
     // endpoint also self-heals the order if the Stripe webhook was delayed/misconfigured.
+    if (status === 'cancelled' && track) {
+      axios.get(`${API_URL}/api/orders/track/${track}`)
+        .then((res) => setCancelledOrder(res.data))
+        .catch(() => setCancelledOrder({}));
+    }
     if (status === 'paid' && track) {
       setPaymentCheck('checking');
       axios.get(`${API_URL}/api/orders/track/${track}`)
@@ -422,6 +432,7 @@ function Order() {
         return;
       }
       if (res.data.trackingToken) setTrackToken(res.data.trackingToken);
+      if (res.data.cardFailed) setCardFailed(true);
       setSubmitted(true);
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong. Please try again.');
@@ -479,19 +490,52 @@ function Order() {
     );
   }
   if (returnStatus === 'cancelled') {
+    // Back from Stripe without paying (canceled, or the card was declined). The order is saved —
+    // let them pay for the SAME order by card or Venmo instead of starting a duplicate.
+    const alreadyPaid = cancelledOrder?.paymentStatus === 'paid';
     return (
-      <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
-        <h1 className="text-2xl font-extrabold text-walnut">Payment canceled</h1>
-        <p className="mt-2 text-walnut-400">
-          No charge was made and your order is held as unpaid. You can try again or pay by Venmo.
-        </p>
-        <button
-          type="button"
-          onClick={() => setReturnStatus('')}
-          className="mt-6 inline-block rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600"
-        >
-          Start a new order
-        </button>
+      <div className="mx-auto max-w-xl px-4 py-16 sm:px-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-extrabold text-walnut">
+            {alreadyPaid ? 'You’re all paid up' : 'Your order is saved — the payment didn’t go through'}
+          </h1>
+          <p className="mt-2 text-walnut-400">
+            {alreadyPaid
+              ? 'Thanks! This order is already paid.'
+              : 'No charge was made. Finish paying below — by card or Venmo, whichever is easier.'}
+          </p>
+        </div>
+
+        {trackToken && cancelledOrder && !alreadyPaid && cancelledOrder.status !== 'cancelled' && (
+          <div className="mt-8 rounded-2xl border border-cream-300 bg-cream-100 p-6">
+            <PayOptions
+              trackingToken={trackToken}
+              amount={cancelledOrder.total ?? ''}
+              venmoHandle={cancelledOrder.venmoHandle || venmoHandle}
+              cardEnabled={Boolean(cancelledOrder.cardEnabled)}
+            />
+          </div>
+        )}
+        {trackToken && !cancelledOrder && (
+          <p className="mt-8 text-center text-walnut-400">Loading your order…</p>
+        )}
+
+        <div className="mt-6 flex flex-col items-center gap-3">
+          {trackToken && (
+            <Link to={`/track/${trackToken}`} className="text-sm font-semibold text-ember hover:text-ember-600">
+              View your order →
+            </Link>
+          )}
+          {!trackToken && (
+            <button
+              type="button"
+              onClick={() => setReturnStatus('')}
+              className="rounded-xl bg-ember px-6 py-3 text-sm font-semibold text-white hover:bg-ember-600"
+            >
+              Back to ordering
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -540,6 +584,13 @@ function Order() {
           <p className="mt-4 rounded-lg bg-white p-3 text-sm text-walnut">
             We’ll do our best to deliver within your preferred time.
           </p>
+
+          {cardFailed && (
+            <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+              Card payment isn’t available right now — please pay with Venmo below.
+              Your order is saved.
+            </p>
+          )}
 
           {venmoUrl && (
             <a

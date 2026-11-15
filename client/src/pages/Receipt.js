@@ -13,6 +13,7 @@ const fmtDate = (d) => (d
 const methodLabel = (m) => {
   if (m === 'card') return 'Card';
   if (m === 'venmo') return 'Venmo';
+  if (m === 'cash') return 'Cash';
   return '';
 };
 

@@ -5,10 +5,11 @@ import {
 import axios from 'axios';
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
+import MarkPaidControl from '../../components/MarkPaidControl';
 import {
   describeOrder, statusClasses, STATUS_OPTIONS, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
-  paymentStatusClasses, paymentLabel, statusLabel, normalizeStatus,
+  paymentStatusClasses, paymentLabel, paymentMethodLabel, statusLabel, normalizeStatus,
 } from '../../utils/orderDisplay';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -94,9 +95,10 @@ function AdminOrders() {
     }
   };
 
-  const updatePayment = async (id, paymentStatus) => {
+  const updatePayment = async (id, paymentStatus, paymentMethod) => {
     try {
-      const res = await axios.patch(`${API_URL}/api/orders/${id}`, { paymentStatus }, authHeaders);
+      const body = paymentMethod ? { paymentStatus, paymentMethod } : { paymentStatus };
+      const res = await axios.patch(`${API_URL}/api/orders/${id}`, body, authHeaders);
       setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, ...res.data } : o)));
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update payment');
@@ -310,22 +312,16 @@ function AdminOrders() {
                   ))}
                 </select>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${paymentStatusClasses[order.paymentStatus] || paymentStatusClasses.unpaid}`}>
-                  {order.paymentMethod === 'card' ? 'Card — ' : ''}
+                  {paymentMethodLabel(order.paymentMethod) ? `${paymentMethodLabel(order.paymentMethod)} — ` : ''}
                   {paymentLabel(order)}
                   {order.paymentStatus === 'paid' && order.paidAt
                     ? ` · ${new Date(order.paidAt).toLocaleDateString()}`
                     : ''}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => updatePayment(
-                    order._id,
-                    order.paymentStatus === 'paid' ? 'unpaid' : 'paid',
-                  )}
-                  className="rounded-md border border-cream-300 px-2 py-1 text-sm font-semibold text-walnut hover:border-ember"
-                >
-                  {order.paymentStatus === 'paid' ? 'Mark unpaid' : 'Mark paid'}
-                </button>
+                <MarkPaidControl
+                  paid={order.paymentStatus === 'paid'}
+                  onChange={(status, method) => updatePayment(order._id, status, method)}
+                />
                 {order.trackingToken && (
                   <a
                     href={`/receipt/${order.trackingToken}`}
