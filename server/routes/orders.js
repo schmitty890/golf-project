@@ -20,7 +20,7 @@ import {
   stripeEnabled, createOneTimeCheckout, createSubscriptionCheckout, createBillingPortalSession,
   cancelSubscription, retrieveCheckoutSession,
 } from '../utils/stripe.js';
-import { finalizeCheckoutSession } from '../utils/finalizeCheckout.js';
+import { finalizeCheckoutSession, notifyOwner, orderLines } from '../utils/finalizeCheckout.js';
 import { sendNewOrderNotices } from '../utils/orderNotices.js';
 import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
@@ -84,6 +84,28 @@ const validateSchedule = ({ preferredDate, rush }, settings) => {
   }
   return { windows: [], isRush, rushPercent };
 };
+
+// Where Stripe Checkout sends the customer back. Both carry the tracking token, so a canceled or
+// failed payment lands on a screen that can retry or switch to Venmo for the SAME order.
+function checkoutReturnUrls(req, order) {
+  const base = process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
+  return {
+    successUrl: `${base}/order?status=paid&track=${order.trackingToken}`,
+    cancelUrl: `${base}/order?status=cancelled&track=${order.trackingToken}`,
+  };
+}
+
+// Email the owner when Stripe Checkout can't even start (bad key, account restriction, outage).
+function alertCardCheckoutFailed(order, err) {
+  notifyOwner({
+    subject: `Card checkout failed: ${order.contact?.name || 'a customer'}`,
+    heading: 'Card checkout couldn’t start',
+    intro: 'A customer chose card, but Stripe refused to start checkout. The order is saved as '
+      + 'unpaid and they were offered Venmo. Check the Stripe dashboard (Developers → Logs) and the '
+      + 'STRIPE_SECRET_KEY on the server.',
+    lines: [...orderLines(order), ['Stripe error', err?.message || 'unknown']],
+  });
+}
 
 // Soft auth: if a valid Bearer token is present, attach req.userId; otherwise continue
 // as a guest. Used by the public order-create route.
@@ -338,11 +360,10 @@ router.post('/', optionalAuth, async (req, res) => {
     // Card path: create a hosted Stripe Checkout Session and return its URL so the client can
     // redirect. One-time → a one-off charge; subscription → recurring monthly (card on file).
     let stripeCheckoutUrl = '';
+    let cardFailed = false;
     if (order.paymentMethod === 'card') {
       try {
-        const base = process.env.SITE_URL || `${req.protocol}://${req.get('host')}`;
-        const successUrl = `${base}/order?status=paid&track=${order.trackingToken}`;
-        const cancelUrl = `${base}/order?status=cancelled`;
+        const { successUrl, cancelUrl } = checkoutReturnUrls(req, order);
         let session = null;
         if (order.orderType === 'subscription') {
           const monthlyCents = Math.round((order.subscriptionMonthly || 0) * 100);
@@ -363,7 +384,11 @@ router.post('/', optionalAuth, async (req, res) => {
         }
       } catch (stripeErr) {
         console.error('Stripe checkout error:', stripeErr.message);
-        // Leave the order as-is (unpaid); client falls back to the standard confirmation screen.
+        // Leave the order as-is (unpaid); the client shows the confirmation screen with a Venmo
+        // button and a "card isn't available" note. Tell the owner right away so a broken key or
+        // account problem is caught on the first try, not reported by a customer.
+        cardFailed = true;
+        alertCardCheckoutFailed(order, stripeErr);
       }
     }
 
@@ -372,7 +397,7 @@ router.post('/', optionalAuth, async (req, res) => {
     // Fire-and-forget — never block or fail the order on email issues.
     if (!stripeCheckoutUrl) sendNewOrderNotices(order);
 
-    return res.status(201).json({ ...order.toObject(), stripeCheckoutUrl });
+    return res.status(201).json({ ...order.toObject(), stripeCheckoutUrl, cardFailed });
   } catch (error) {
     console.error('Create order error:', error);
     if (error.name === 'ValidationError') {
@@ -415,8 +440,7 @@ router.get('/track/:token', async (req, res) => {
     // Self-heal a card payment whose webhook was delayed or misconfigured: if Stripe says the
     // Checkout Session is paid but this order isn't yet, finalize it here (idempotent + race-safe).
     // Gated so already-paid and Venmo orders make no Stripe call.
-    if (order.paymentStatus !== 'paid' && order.paymentMethod === 'card'
-      && order.stripeSessionId && stripeEnabled()) {
+    if (order.paymentStatus !== 'paid' && order.stripeSessionId && stripeEnabled()) {
       try {
         const session = await retrieveCheckoutSession(order.stripeSessionId);
         if (session?.payment_status === 'paid') {
@@ -449,10 +473,58 @@ router.get('/track/:token', async (req, res) => {
       customerName: (order.contact?.name || '').split(' ')[0],
       total: orderTotal(order)?.total ?? null,
       venmoHandle: process.env.VENMO_HANDLE || '',
+      cardEnabled: stripeEnabled() && order.orderType === 'onetime',
     });
   } catch (error) {
     console.error('Track order error:', error);
     return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Public "pay this order by card" — starts a fresh Stripe Checkout Session for an existing unpaid
+// one-time order. Same unguessable-token privacy model as /track/:token; returns only the URL.
+// Used after a canceled/failed card attempt, from the tracking page, and at the door (run sheet).
+router.post('/track/:token/checkout', async (req, res) => {
+  const token = String(req.params.token || '');
+  let order = null;
+  try {
+    if (!stripeEnabled()) {
+      return res.status(400).json({ error: 'Card payments aren’t available right now — please pay with Venmo.' });
+    }
+    order = token ? await Order.findOne({ trackingToken: token }) : null;
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.orderType !== 'onetime') {
+      return res.status(400).json({ error: 'This order can’t be paid by card here.' });
+    }
+    if (order.status === 'cancelled') return res.status(409).json({ error: 'This order was cancelled.' });
+    if (order.paymentStatus === 'paid') return res.status(409).json({ error: 'This order is already paid.' });
+
+    // Charge exactly what the order was placed for: the Fire Starter Pack keeps the price stamped
+    // on it at order time (falling back to the current admin price for older orders).
+    const kindlingItem = (order.items || []).find((i) => i.name === KINDLING_NAME);
+    let kindlingPrice = Number(kindlingItem?.unitPrice) || 0;
+    if (kindlingItem && !kindlingPrice) {
+      const settings = await Settings.findOne({ key: 'availability' });
+      kindlingPrice = Number(settings?.kindling?.price) || 0;
+    }
+    const amountCents = computeChargeCents(order, { [KINDLING_NAME]: kindlingPrice });
+    if (amountCents < 50) return res.status(400).json({ error: 'Nothing to charge for this order.' });
+
+    const { successUrl, cancelUrl } = checkoutReturnUrls(req, order);
+    const description = (order.items || []).map((i) => `${i.quantity}× ${i.name}`).join(', ');
+    const session = await createOneTimeCheckout(order, amountCents, {
+      successUrl, cancelUrl, description,
+    });
+    if (!session?.url) throw new Error('Stripe returned no checkout URL');
+
+    // Targeted update (not save()) so an older order missing a now-required field still works.
+    // eslint-disable-next-line no-underscore-dangle
+    await Order.updateOne({ _id: order._id }, { $set: { stripeSessionId: session.id } });
+    return res.json({ url: session.url });
+  } catch (error) {
+    console.error('Track checkout error:', error.message);
+    if (order) alertCardCheckoutFailed(order, error);
+    return res.status(502).json({ error: 'Couldn’t start card checkout — please pay with Venmo instead.' });
   }
 });
 
@@ -645,7 +717,7 @@ router.get('/:id', auth, async (req, res) => {
 router.patch('/:id', auth, requireAdmin, async (req, res) => {
   try {
     const {
-      status, adminNotes, schedule, paymentStatus, cancelReason,
+      status, adminNotes, schedule, paymentStatus, paymentMethod, cancelReason,
     } = req.body;
     const order = await Order.findById(req.params.id);
     if (!order) {
@@ -681,6 +753,13 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       if (paymentStatus !== order.paymentStatus) {
         order.paymentStatus = paymentStatus;
         order.paidAt = paymentStatus === 'paid' ? new Date() : null;
+      }
+      // Marking paid by hand can record HOW they paid (e.g. a card order settled by Venmo).
+      if (paymentStatus === 'paid' && paymentMethod !== undefined) {
+        if (!['venmo', 'card', 'cash'].includes(paymentMethod)) {
+          return res.status(400).json({ error: 'Invalid payment method' });
+        }
+        order.paymentMethod = paymentMethod;
       }
     }
     if (adminNotes !== undefined) order.adminNotes = adminNotes;

@@ -7,6 +7,7 @@ import {
   STATUS_STEPS, statusLabel, normalizeStatus, paymentStatusClasses, paymentLabel,
 } from '../utils/orderDisplay';
 import business from '../data/business';
+import PayOptions from '../components/PayOptions';
 import { subscriptionMonthly, bundlesFromPlan } from '../data/pricing';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -59,7 +60,7 @@ function TrackOrder() {
   const venmoUrl = handle
     ? `https://venmo.com/${handle}?txn=pay${amount ? `&amount=${amount}` : ''}&note=${encodeURIComponent(venmoNote)}`
     : '';
-  const showPay = order.paymentStatus !== 'paid' && !cancelled && venmoUrl;
+  const showPay = order.paymentStatus !== 'paid' && !cancelled && (venmoUrl || order.cardEnabled);
 
   return (
     <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
@@ -80,15 +81,12 @@ function TrackOrder() {
 
         {showPay && (
           <div className="mt-4 border-t border-cream-300 pt-4">
-            <a
-              href={venmoUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex w-full items-center justify-center rounded-xl bg-[#3D95CE] px-4 py-3 text-base font-semibold text-white transition-opacity hover:opacity-90"
-            >
-              {amount ? `Pay $${amount} with Venmo` : 'Pay with Venmo'}
-              {` · @${handle}`}
-            </a>
+            <PayOptions
+              trackingToken={token}
+              amount={amount}
+              venmoHandle={handle}
+              cardEnabled={Boolean(order.cardEnabled)}
+            />
             <p className="mt-2 text-xs font-semibold text-amber-800">
               Still unpaid — pay now so we can deliver your order.
             </p>

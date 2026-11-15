@@ -171,3 +171,8 @@ export const paymentStatusClasses = {
 export function paymentLabel(order) {
   return order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid';
 }
+
+// "Card" / "Venmo" / "Cash" for an order's payment method ('' if unknown).
+export function paymentMethodLabel(method) {
+  return { card: 'Card', venmo: 'Venmo', cash: 'Cash' }[method] || '';
+}

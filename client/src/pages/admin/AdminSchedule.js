@@ -5,10 +5,12 @@ import {
 import axios from 'axios';
 import { PhoneIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
+import CollectPaymentPanel from '../../components/CollectPaymentPanel';
+import MarkPaidControl from '../../components/MarkPaidControl';
 import business from '../../data/business';
 import { todayStr, relativeDayLabel } from '../../utils/dates';
 import {
-  describeOrder, formatSchedule,
+  describeOrder, formatSchedule, paymentMethodLabel,
   effectiveDate, effectiveStart, isConfirmedDay,
 } from '../../utils/orderDisplay';
 
@@ -31,7 +33,7 @@ const byRoute = (a, b) => {
 };
 
 const isPaid = (o) => o.paymentStatus === 'paid';
-const methodLabel = (o) => (o.paymentMethod === 'card' ? 'card' : 'Venmo');
+const methodLabel = (o) => paymentMethodLabel(o.paymentMethod) || 'Venmo';
 
 const addressText = (o) => {
   const a = o.deliveryAddress || {};
@@ -44,6 +46,13 @@ function AdminSchedule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState('');
+  // Order shown in the full-screen Collect payment panel (null = closed).
+  const [collectingId, setCollectingId] = useState(null);
+
+  // A card payment confirmed while the Collect payment panel is open — reflect it on the sheet.
+  const handleCollected = useCallback((id) => {
+    setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, paymentStatus: 'paid' } : o)));
+  }, []);
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -83,7 +92,10 @@ function AdminSchedule() {
   });
 
   const markDone = (id) => patch(id, { status: 'completed' });
-  const markPaid = (id) => patch(id, { paymentStatus: 'paid' });
+  const setPayment = (id, paymentStatus, paymentMethod) => patch(
+    id,
+    paymentMethod ? { paymentStatus, paymentMethod } : { paymentStatus },
+  );
 
   // Copy a day's delivery stops (in route order) to the clipboard for phone nav / notes.
   const copyStops = (date, deliveries) => {
@@ -174,14 +186,21 @@ function AdminSchedule() {
                 Confirm day
               </button>
             )}
-            {!isPaid(order) && (
+            {!isPaid(order) && order.trackingToken && (
               <button
                 type="button"
-                onClick={() => markPaid(order._id)}
-                className="rounded-lg border border-green-600 bg-white px-3 py-1.5 text-sm font-semibold text-green-700 hover:bg-green-600 hover:text-white"
+                onClick={() => setCollectingId(order._id)}
+                className="rounded-lg bg-ember px-3 py-1.5 text-sm font-semibold text-white hover:bg-ember-600"
               >
-                Mark paid
+                Collect payment
               </button>
+            )}
+            {!isPaid(order) && (
+              <MarkPaidControl
+                paid={false}
+                size="md"
+                onChange={(status, method) => setPayment(order._id, status, method)}
+              />
             )}
             <button
               type="button"
@@ -195,6 +214,8 @@ function AdminSchedule() {
       </li>
     );
   };
+
+  const collectingOrder = collectingId ? orders.find((o) => o._id === collectingId) : null;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -255,6 +276,14 @@ function AdminSchedule() {
           </section>
         );
       })}
+
+      {collectingOrder && (
+        <CollectPaymentPanel
+          order={collectingOrder}
+          onClose={() => setCollectingId(null)}
+          onPaid={handleCollected}
+        />
+      )}
     </div>
   );
 }
