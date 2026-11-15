@@ -17,6 +17,7 @@ import {
 } from '../data/pricing';
 import MonthCalendar from '../components/MonthCalendar';
 import ReferralShare from '../components/ReferralShare';
+import BundleSizeGuide from '../components/BundleSizeGuide';
 import PayOptions from '../components/PayOptions';
 import LowStockBanner from '../components/LowStockBanner';
 import WoodTypeBadge from '../components/WoodTypeBadge';
@@ -767,6 +768,11 @@ function Order() {
                 );
               })}
             </div>
+            {cartBundles > 0 && (
+              <div className="mt-3">
+                <BundleSizeGuide compact count={cartBundles} />
+              </div>
+            )}
           </div>
         )}
 

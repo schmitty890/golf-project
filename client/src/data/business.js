@@ -34,6 +34,13 @@ const business = {
       caption: 'Split & seasoned oak',
     },
   ],
+  // Size guide: the same pile photographed at each count (Pricing page + order page).
+  // Files live in client/public/photos/. Empty = guide hidden.
+  bundleSizePhotos: [1, 3, 6, 9, 12, 15].map((count) => ({
+    count,
+    src: `/photos/size-${count}.webp`,
+    alt: `${count} VOLW firewood bundle${count === 1 ? '' : 's'} stacked on a sidewalk`,
+  })),
   // Delivery map shown in the Service Area section. The image lives in client/public/
   // (here: volwmap.jpg) — it appears automatically and hides gracefully if missing.
   // Set to null to hide. Edit the caption freely.

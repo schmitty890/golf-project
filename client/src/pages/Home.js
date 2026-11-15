@@ -239,6 +239,11 @@ function Gallery() {
           >
             Order a bundle
           </Link>
+          {(business.bundleSizePhotos || []).length > 0 && (
+            <Link to="/pricing#sizes" className="mt-4 block text-sm font-semibold text-ember hover:text-ember-600">
+              See what 3, 6 or 15 bundles looks like →
+            </Link>
+          )}
         </div>
 
         <div className={`grid gap-4 ${photos.length > 1 ? 'grid-cols-2' : 'mx-auto max-w-sm grid-cols-1'}`}>

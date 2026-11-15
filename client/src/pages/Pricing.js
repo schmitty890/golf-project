@@ -7,14 +7,18 @@ import {
 } from '../data/pricing';
 import business from '../data/business';
 import WoodTypeBadge from '../components/WoodTypeBadge';
+import BundleSizeGuide from '../components/BundleSizeGuide';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-// End-view shot shows the split oak best; fall back to whatever photo exists.
-const bundlePhoto = business.galleryPhotos?.[1] || business.galleryPhotos?.[0] || null;
-
 function Pricing() {
   const [kindling, setKindling] = useState({ enabled: false, price: 0, quantity: 0 });
+  // Deep link (/pricing#sizes) — the router doesn't scroll to hashes on its own.
+  useEffect(() => {
+    if (window.location.hash === '#sizes') {
+      setTimeout(() => document.getElementById('sizes')?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }
+  }, []);
   useEffect(() => {
     axios.get(`${API_URL}/api/settings/availability`)
       .then((res) => { if (res.data.kindling) setKindling(res.data.kindling); })
@@ -66,21 +70,15 @@ function Pricing() {
         </p>
       </section>
 
-      {bundlePhoto && (
-        <section className="mx-auto max-w-5xl px-4 pb-16 sm:px-6 lg:px-8">
-          <figure className="mx-auto max-w-xs">
-            <img
-              src={bundlePhoto.src}
-              alt={bundlePhoto.alt}
-              loading="lazy"
-              width="900"
-              height="1200"
-              className="aspect-[3/4] w-full rounded-2xl object-cover shadow-lg ring-1 ring-walnut/10"
-            />
-            <figcaption className="mt-2 text-center text-sm font-semibold text-walnut-400">
-              A real VOLW bundle
-            </figcaption>
-          </figure>
+      {(business.bundleSizePhotos || []).length > 0 && (
+        <section id="sizes" className="scroll-mt-24 bg-cream-300/40 px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+          <h2 className="text-center text-2xl font-extrabold tracking-tight text-walnut">How much wood is that?</h2>
+          <p className="mx-auto mt-2 max-w-md text-center text-walnut-400">
+            Real photos from a real delivery — tap a size to see the stack.
+          </p>
+          <div className="mt-8">
+            <BundleSizeGuide initialCount={3} />
+          </div>
         </section>
       )}
 
