@@ -1,4 +1,5 @@
 import './App.css';
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AdminChatProvider } from './context/AdminChatContext';
@@ -34,6 +35,9 @@ import AdminChat from './pages/admin/AdminChat';
 import AdminGiveaway from './pages/admin/AdminGiveaway';
 import AdminNewsletter from './pages/admin/AdminNewsletter';
 import Unsubscribe from './pages/Unsubscribe';
+
+// Map page pulls in Leaflet — load it only when the owner opens it, not on customer pages.
+const AdminDeliveries = lazy(() => import('./pages/admin/AdminDeliveries'));
 
 function App() {
   return (
@@ -81,6 +85,18 @@ function App() {
               element={(
                 <RequireAuth adminOnly>
                   <SidebarLayout><AdminSchedule /></SidebarLayout>
+                </RequireAuth>
+            )}
+            />
+            <Route
+              path="/admin/deliveries"
+              element={(
+                <RequireAuth adminOnly>
+                  <SidebarLayout>
+                    <Suspense fallback={<p className="text-sm text-walnut-400">Loading map…</p>}>
+                      <AdminDeliveries />
+                    </Suspense>
+                  </SidebarLayout>
                 </RequireAuth>
             )}
             />

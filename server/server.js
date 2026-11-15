@@ -16,6 +16,7 @@ import analyticsRouter from './routes/analytics.js';
 import chatRouter from './routes/chat.js';
 import giveawayRouter from './routes/giveaway.js';
 import newsletterRouter from './routes/newsletter.js';
+import deliveriesRouter from './routes/deliveries.js';
 import initChat from './socket/chat.js';
 import { startReminderJob } from './jobs/reminders.js';
 import stripeWebhook from './routes/stripeWebhook.js';
@@ -43,6 +44,9 @@ app.use(cors());
 // Stripe webhook needs the RAW body for signature verification — must be registered BEFORE the
 // global express.json() so it isn't parsed away.
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhook);
+// Admin delivery map — photo uploads arrive as data URLs, so this router gets a larger body limit
+// (registered before the global 100kb parser, which then skips the already-parsed body).
+app.use('/api/deliveries', express.json({ limit: '8mb' }), deliveriesRouter);
 app.use(express.json());
 
 // MongoDB Connection
