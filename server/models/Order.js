@@ -106,6 +106,14 @@ const orderSchema = new mongoose.Schema({
     neighborhood: { type: String, trim: true, default: '' },
     notes: { type: String, trim: true, default: '' },
   },
+  // Map pin for the admin delivery map. Filled lazily by the Census geocoder ('census'), set by
+  // hand with "Fix pin" ('manual'), or 'failed' so a miss isn't retried on every page load.
+  geo: {
+    lat: { type: Number, default: null },
+    lng: { type: Number, default: null },
+    source: { type: String, enum: ['', 'census', 'manual', 'failed'], default: '' },
+    at: { type: Date, default: null },
+  },
   // Normalized match keys (derived in the pre-save hook below) so the first-order deal can be
   // blocked by phone or address, not just account. See utils/dedupe.js + routes/promos.js.
   phoneKey: { type: String, default: '', index: true },
