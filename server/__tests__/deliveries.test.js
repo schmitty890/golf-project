@@ -5,11 +5,14 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Order from '../models/Order.js';
 import deliveriesRouter, { MAX_PHOTOS_PER_ORDER } from '../routes/deliveries.js';
+import ordersRouter from '../routes/orders.js';
+import { ensureOrderGeo } from '../utils/geocode.js';
 
 process.env.JWT_SECRET = 'test-secret';
 
 const app = express();
 app.use('/api/deliveries', express.json({ limit: '8mb' }), deliveriesRouter);
+app.use('/api/orders', express.json(), ordersRouter);
 
 const tokenFor = (user) => `Bearer ${jwt.sign({ userId: String(user._id) }, process.env.JWT_SECRET)}`;
 const JPEG = `data:image/jpeg;base64,${Buffer.from('fake-jpeg-bytes').toString('base64')}`;
@@ -141,5 +144,35 @@ describe('admin delivery map', () => {
 
     await request(app).delete(`/api/deliveries/photos/${up.body.photoId}`).set('Authorization', auth).expect(200);
     await request(app).get(`/api/deliveries/photos/${up.body.photoId}`).set('Authorization', auth).expect(404);
+  });
+
+  test('ensureOrderGeo reuses a saved pin for the same street before geocoding', async () => {
+    const first = await makeOrder();
+    await ensureOrderGeo(first);
+    expect(censusMock.calls).toHaveLength(1);
+    const second = await makeOrder({ deliveryAddress: { street: '100 vine st.' } });
+    const geo = await ensureOrderGeo(second);
+    expect(geo).toMatchObject({ lat: 35.11, lng: -81.07, source: 'census' });
+    expect(censusMock.calls).toHaveLength(1);
+    const miss = await makeOrder({ deliveryAddress: { street: '9 Nowhere Ln' } });
+    expect(await ensureOrderGeo(miss)).toMatchObject({ source: 'failed' });
+    await ensureOrderGeo(miss);
+    expect(censusMock.calls).toHaveLength(2);
+  });
+
+  test('marking an order Delivered drops its pin in the background', async () => {
+    const order = await makeOrder({ status: 'ready', statusHistory: [] });
+    await request(app).patch(`/api/orders/${order._id}`).set('Authorization', tokenFor(admin))
+      .send({ status: 'completed' })
+      .expect(200);
+    let saved;
+    for (let i = 0; i < 20; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      saved = await Order.findById(order._id);
+      if (saved.geo?.source) break;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => { setTimeout(r, 50); });
+    }
+    expect(saved.geo).toMatchObject({ lat: 35.11, lng: -81.07, source: 'census' });
   });
 });

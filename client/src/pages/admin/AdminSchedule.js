@@ -7,6 +7,7 @@ import { PhoneIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
 import CollectPaymentPanel from '../../components/CollectPaymentPanel';
 import MarkPaidControl from '../../components/MarkPaidControl';
+import DeliveryPhotoPrompt from '../../components/DeliveryPhotoPrompt';
 import business from '../../data/business';
 import { todayStr, relativeDayLabel } from '../../utils/dates';
 import {
@@ -48,6 +49,8 @@ function AdminSchedule() {
   const [copied, setCopied] = useState('');
   // Order shown in the full-screen Collect payment panel (null = closed).
   const [collectingId, setCollectingId] = useState(null);
+  // Just-delivered order whose "add a photo?" prompt is open (null = closed).
+  const [photoOrder, setPhotoOrder] = useState(null);
 
   // A card payment confirmed while the Collect payment panel is open — reflect it on the sheet.
   const handleCollected = useCallback((id) => {
@@ -80,8 +83,10 @@ function AdminSchedule() {
       const res = await axios.patch(`${API_URL}/api/orders/${id}`, body, authHeaders);
       setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, ...res.data } : o)));
       setError('');
+      return res.data;
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update order');
+      return null;
     }
   };
 
@@ -91,7 +96,11 @@ function AdminSchedule() {
     status: 'confirmed',
   });
 
-  const markDone = (id) => patch(id, { status: 'completed' });
+  // Mark delivered, then offer to snap a photo of the drop-off for the Delivery map.
+  const markDone = async (id) => {
+    const updated = await patch(id, { status: 'completed' });
+    if (updated) setPhotoOrder(updated);
+  };
   const setPayment = (id, paymentStatus, paymentMethod) => patch(
     id,
     paymentMethod ? { paymentStatus, paymentMethod } : { paymentStatus },
@@ -283,6 +292,9 @@ function AdminSchedule() {
           onClose={() => setCollectingId(null)}
           onPaid={handleCollected}
         />
+      )}
+      {photoOrder && (
+        <DeliveryPhotoPrompt order={photoOrder} token={token} onClose={() => setPhotoOrder(null)} />
       )}
     </div>
   );

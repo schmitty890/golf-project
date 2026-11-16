@@ -11,11 +11,11 @@ import {
 import 'leaflet/dist/leaflet.css';
 import { AuthContext } from '../../context/AuthContext';
 import { paymentMethodLabel, paymentStatusClasses, statusLabel } from '../../utils/orderDisplay';
+import { MAX_DELIVERY_PHOTOS, uploadDeliveryPhotos } from '../../utils/deliveryPhotos';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 // The Vineyards on Lake Wylie — where the map opens before any pins exist.
 const HOME_CENTER = [35.105, -81.06];
-const MAX_PHOTOS = 6;
 
 const btn = 'rounded-md border border-cream-300 bg-white px-2.5 py-1 text-xs font-semibold text-walnut transition-colors hover:border-ember';
 
@@ -58,29 +58,6 @@ function pinIcon(count, upcomingOnly) {
     iconSize: [30, 30],
     iconAnchor: [15, 15],
     popupAnchor: [0, -14],
-  });
-}
-
-// Resize to ≤1600px and re-encode as JPEG. Drawing to a canvas also drops EXIF (incl. GPS) and
-// bakes in the phone's rotation, so the stored photo is small, upright and metadata-free.
-function resizePhoto(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.naturalWidth * scale);
-      canvas.height = Math.round(img.naturalHeight * scale);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("This browser can't read that photo — try a JPEG or take it with the camera."));
-    };
-    img.src = url;
   });
 }
 
@@ -191,6 +168,7 @@ function AdminDeliveries() {
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [showUpcoming, setShowUpcoming] = useState(false);
   const [month, setMonth] = useState('all');
   const [fixing, setFixing] = useState(null); // delivery whose pin is being placed
@@ -203,18 +181,43 @@ function AdminDeliveries() {
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
+  // Load the list. A network error or 404 usually means the server is mid-deploy (the site can
+  // update a minute before the API), so retry once on its own before showing a Try again button.
   const load = useCallback(() => {
-    if (!token) return;
-    setError('');
-    axios.get(`${API_URL}/api/deliveries`, {
-      headers, params: showUpcoming ? { include: 'upcoming' } : {},
-    })
-      .then((res) => setDeliveries(res.data.deliveries || []))
-      .catch(() => setError('Could not load deliveries.'))
-      .finally(() => setLoading(false));
+    if (!token) return undefined;
+    let live = true;
+    let timer = null;
+    const attempt = (n) => {
+      axios.get(`${API_URL}/api/deliveries`, {
+        headers, params: showUpcoming ? { include: 'upcoming' } : {},
+      })
+        .then((res) => {
+          if (!live) return;
+          setDeliveries(res.data.deliveries || []);
+          setLoadError('');
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (!live) return;
+          const code = err.response?.status;
+          const updating = !code || code === 404 || code >= 502;
+          if (updating && n === 0) {
+            timer = setTimeout(() => attempt(1), 3000);
+            return;
+          }
+          if (code === 401 || code === 403) setLoadError('Sign in again as the admin to see deliveries.');
+          else if (updating) setLoadError('The server is updating — try again in a minute.');
+          else setLoadError(err.response?.data?.error || 'Could not load deliveries.');
+          setLoading(false);
+        });
+    };
+    setLoading(true);
+    setLoadError('');
+    attempt(0);
+    return () => { live = false; clearTimeout(timer); };
   }, [token, headers, showUpcoming]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => load(), [load]);
 
   const months = useMemo(() => {
     const keys = new Set(deliveries.map((d) => monthKey(d.date || d.createdAt)).filter(Boolean));
@@ -285,13 +288,12 @@ function AdminDeliveries() {
     setBusyId(d._id);
     setError('');
     try {
-      const dataUrl = await resizePhoto(file);
-      const res = await axios.post(`${API_URL}/api/deliveries/${d._id}/photos`, { dataUrl }, { headers });
+      const ids = await uploadDeliveryPhotos(d._id, [file], token);
       setDeliveries((prev) => prev.map((x) => (
-        x._id === d._id ? { ...x, photoIds: [...x.photoIds, res.data.photoId] } : x
+        x._id === d._id ? { ...x, photoIds: [...x.photoIds, ...ids] } : x
       )));
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Upload failed.');
+      setError(err.message || 'Upload failed.');
     } finally {
       setBusyId('');
     }
@@ -349,6 +351,14 @@ function AdminDeliveries() {
         ))}
       </div>
 
+      {loadError && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>{loadError}</span>
+          <button type="button" onClick={() => load()} className="rounded-md bg-white px-3 py-1 font-semibold text-red-700 ring-1 ring-red-200 hover:ring-red-400">
+            Try again
+          </button>
+        </div>
+      )}
       {error && <p className="mt-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
 
       {fixing && (
@@ -411,6 +421,22 @@ function AdminDeliveries() {
         {`${visible.length} ${showUpcoming ? 'orders' : 'deliveries'}`}
       </h2>
       {loading && <p className="mt-3 text-sm text-walnut-400">Loading…</p>}
+      {!loading && !loadError && !visible.length && (
+        <div className="mt-3 rounded-xl border border-dashed border-cream-300 bg-white p-5 text-sm text-walnut-400">
+          <p className="font-semibold text-walnut">No delivered orders yet.</p>
+          <p className="mt-1">
+            Mark an order
+            {' '}
+            <span className="font-semibold text-walnut">Delivered</span>
+            {' '}
+            on the Schedule and it shows up here, pinned on the map. Turn on
+            {' '}
+            <span className="font-semibold text-walnut">Show upcoming</span>
+            {' '}
+            to see orders that are still scheduled.
+          </p>
+        </div>
+      )}
       <ul className="mt-3 space-y-3">
         {visible.map((d) => (
           <li key={d._id} className="rounded-xl border border-cream-300 bg-white p-4">
@@ -432,7 +458,7 @@ function AdminDeliveries() {
                   <span className="self-center text-xs text-amber-700">No pin yet</span>
                 )}
                 <button type="button" className={btn} onClick={() => startFix(d)}>{d.geo ? 'Move pin' : 'Fix pin'}</button>
-                {d.photoIds.length < MAX_PHOTOS && (
+                {d.photoIds.length < MAX_DELIVERY_PHOTOS && (
                   <button type="button" className={btn} disabled={busyId === d._id} onClick={() => pickPhoto(d)}>
                     {busyId === d._id ? 'Uploading…' : 'Add photo'}
                   </button>
