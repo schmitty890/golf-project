@@ -1,6 +1,10 @@
+/* eslint-disable no-underscore-dangle */
 // Street address -> { lat, lng } via the free US Census geocoder (no API key). Used only by the
 // admin delivery map. Only the street line plus the town suffix is sent — never names, phones or
 // emails. Returns null when there's no match or the service is unreachable.
+
+import Order from '../models/Order.js';
+import { streetKey } from './dedupe.js';
 
 const CENSUS_URL = 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress';
 
@@ -30,6 +34,37 @@ export async function geocodeStreet(
   } catch (err) {
     return null;
   }
+}
+
+const hasPin = (geo) => Number.isFinite(geo?.lat) && Number.isFinite(geo?.lng);
+
+// Make sure an order has a map pin (or a recorded miss). Reuses a pin already saved for the same
+// street — from `cache` or another order — before asking the geocoder, so each address is looked
+// up once. Saves with updateOne so older orders missing newer required fields still get a pin.
+// Returns the order's geo. `cache` is an optional Map(streetKey -> geo) shared across a batch.
+export async function ensureOrderGeo(order, { cache = null, fetchImpl } = {}) {
+  if (!order || order.geo?.source) return order?.geo || null;
+  const street = order.deliveryAddress?.street;
+  const key = order.streetKey || streetKey(street);
+  if (!key) return null;
+
+  let geo = cache?.get(key) || null;
+  if (!geo) {
+    const twin = await Order.findOne({ streetKey: key, 'geo.lat': { $ne: null } }).select('geo').lean();
+    if (hasPin(twin?.geo)) geo = twin.geo;
+  }
+  if (!geo) {
+    const hit = await geocodeStreet(street, fetchImpl ? { fetchImpl } : {});
+    geo = hit ? { ...hit, source: 'census' } : { lat: null, lng: null, source: 'failed' };
+  }
+  const next = {
+    lat: geo.lat, lng: geo.lng, source: geo.source, at: new Date(),
+  };
+  await Order.updateOne({ _id: order._id }, { $set: { geo: next } });
+  // eslint-disable-next-line no-param-reassign
+  order.geo = next;
+  if (cache && hasPin(next)) cache.set(key, next);
+  return next;
 }
 
 export default geocodeStreet;

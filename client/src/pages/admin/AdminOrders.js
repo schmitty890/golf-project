@@ -6,6 +6,7 @@ import axios from 'axios';
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
 import MarkPaidControl from '../../components/MarkPaidControl';
+import DeliveryPhotoPrompt from '../../components/DeliveryPhotoPrompt';
 import {
   describeOrder, statusClasses, STATUS_OPTIONS, fulfillmentLabel, formatSchedule,
   statusTimeline, statusEventLabel, formatPreferredSchedule,
@@ -26,6 +27,8 @@ function AdminOrders() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  // Just-delivered order whose "add a photo?" prompt is open (null = closed).
+  const [photoOrder, setPhotoOrder] = useState(null);
   const [scheduleState, setScheduleState] = useState({});
   const [cancel, setCancel] = useState(null); // { id, reason } while cancelling
   const [exportFrom, setExportFrom] = useState('');
@@ -88,8 +91,10 @@ function AdminOrders() {
 
   const updateStatus = async (id, status) => {
     try {
-      await axios.patch(`${API_URL}/api/orders/${id}`, { status }, authHeaders);
+      const res = await axios.patch(`${API_URL}/api/orders/${id}`, { status }, authHeaders);
       setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, status } : o)));
+      // Just delivered: offer to snap a photo of the drop-off for the Delivery map.
+      if (status === 'completed') setPhotoOrder(res.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update order');
     }
@@ -450,6 +455,9 @@ function AdminOrders() {
           </li>
         ))}
       </ul>
+      {photoOrder && (
+        <DeliveryPhotoPrompt order={photoOrder} token={token} onClose={() => setPhotoOrder(null)} />
+      )}
     </div>
   );
 }

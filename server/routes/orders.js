@@ -22,6 +22,7 @@ import {
 } from '../utils/stripe.js';
 import { finalizeCheckoutSession, notifyOwner, orderLines } from '../utils/finalizeCheckout.js';
 import { sendNewOrderNotices } from '../utils/orderNotices.js';
+import { ensureOrderGeo } from '../utils/geocode.js';
 import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
   SUBSCRIPTION_WEEK_VALUES, orderBundleCount, FIRST_ORDER_MIN_BUNDLES, KINDLING_NAME,
@@ -784,6 +785,11 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
     } else if (prevStatus === 'cancelled' && order.status !== 'cancelled'
       && order.paymentStatus === 'paid') {
       await applyOrderInventory(order);
+    }
+
+    // Just delivered: drop its pin on the admin Delivery map now, in the background.
+    if (order.status === 'completed' && prevStatus !== 'completed' && !order.geo?.source) {
+      ensureOrderGeo(order).catch((geoErr) => console.error('Geocode error:', geoErr.message));
     }
 
     // Notify the customer on key transitions (fire-and-forget).

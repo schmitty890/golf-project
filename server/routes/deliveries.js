@@ -5,7 +5,7 @@ import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 import Order from '../models/Order.js';
 import DeliveryPhoto from '../models/DeliveryPhoto.js';
-import { geocodeStreet } from '../utils/geocode.js';
+import { ensureOrderGeo } from '../utils/geocode.js';
 import { streetKey } from '../utils/dedupe.js';
 import { orderTotal } from '../utils/orderEmails.js';
 import { orderBundleCount } from '../data/catalog.js';
@@ -74,8 +74,8 @@ router.get('/', async (req, res) => {
     : DELIVERED;
   const orders = await Order.find({ status: { $in: statuses } }).sort({ createdAt: -1 });
 
-  // Geocode addresses that have never been looked up — once per address, reusing any pin a
-  // previous order at the same street already has. Sequential on purpose (tiny volume, polite).
+  // Pin any address never looked up — once per address, reusing a pin another order at the same
+  // street already has. Sequential on purpose (tiny volume, polite to the free geocoder).
   const known = new Map();
   orders.forEach((o) => {
     const key = o.streetKey || streetKey(o.deliveryAddress?.street);
@@ -83,23 +83,8 @@ router.get('/', async (req, res) => {
   });
   // eslint-disable-next-line no-restricted-syntax
   for (const o of orders) {
-    const key = o.streetKey || streetKey(o.deliveryAddress?.street);
-    if (!o.geo?.source && key) {
-      let geo = known.get(key);
-      if (!geo) {
-        // eslint-disable-next-line no-await-in-loop
-        const hit = await geocodeStreet(o.deliveryAddress?.street);
-        geo = hit ? { ...hit, source: 'census' } : { lat: null, lng: null, source: 'failed' };
-        if (hit) known.set(key, geo);
-      }
-      const next = {
-        lat: geo.lat, lng: geo.lng, source: geo.source, at: new Date(),
-      };
-      // updateOne (not save) so older orders missing newer required fields still get a pin.
-      // eslint-disable-next-line no-await-in-loop
-      await Order.updateOne({ _id: o._id }, { $set: { geo: next } });
-      o.geo = next;
-    }
+    // eslint-disable-next-line no-await-in-loop
+    if (!o.geo?.source) await ensureOrderGeo(o, { cache: known });
   }
 
   const photos = await DeliveryPhoto.find({ order: { $in: orders.map((o) => o._id) } })
