@@ -32,6 +32,7 @@ function buildReorder(order) {
     subscriptionWeek: order.subscriptionWeek,
     fulfillment: order.fulfillment,
     deliveryAddress: order.deliveryAddress || {},
+    cutShort: Boolean(order.cutShort),
   };
 }
 
@@ -179,6 +180,9 @@ function MyOrders() {
                     <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
                       Rush
                     </span>
+                  )}
+                  {order.cutShort && (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800" title="Cut every piece to 16 inches or shorter">✂ ≤16″</span>
                   )}
                 </p>
                 <p className="mt-1 text-sm text-walnut-400">

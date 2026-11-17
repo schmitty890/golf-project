@@ -53,6 +53,9 @@ const orderSchema = new mongoose.Schema({
   rush: { type: Boolean, default: false },
   // Snapshot of the rush surcharge % applied at order time (0 when not a rush order).
   rushPercent: { type: Number, default: 0 },
+  // Customer asked for every piece cut to 16" or shorter (Solo Stove / small fire pit). Standard
+  // pieces run 15–19". Free; the owner trims the longer pieces before delivery.
+  cutShort: { type: Boolean, default: false },
   // How the customer pays: 'venmo' (manual) or 'card' (Stripe).
   paymentMethod: { type: String, default: 'venmo' },
   // Whether payment was received — set by the Stripe webhook for cards, or by hand for Venmo.

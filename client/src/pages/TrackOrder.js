@@ -71,6 +71,9 @@ function TrackOrder() {
 
       <div className="mt-6 rounded-2xl border border-cream-300 bg-white p-5 shadow-sm">
         <p className="font-semibold text-walnut">{describeOrder(order)}</p>
+        {order.cutShort && (
+          <p className="mt-1 text-sm font-semibold text-walnut">✂ Every piece cut to 16″ or shorter</p>
+        )}
         <p className="mt-1 text-sm text-walnut-400">
           {fulfillmentLabel(order)}
           {when ? ` · ${when}` : ''}

@@ -96,6 +96,7 @@ function summaryLines(order) {
     ['How', fulfillmentText(order)],
   ];
   if (order.rush) lines.push(['Rush', `Yes (+${order.rushPercent || 0}%) — subject to availability`]);
+  if (order.cutShort) lines.push(['Wood length', 'Every piece cut to 16″ or shorter']);
   const t = orderTotal(order);
   if (t) {
     if (t.delivery) lines.push(['Delivery', `$${t.delivery}`]);
@@ -206,7 +207,7 @@ function paymentStatusText(order) {
 export function ownerAlertEmail(order) {
   const lines = [...summaryLines(order), ['Payment', paymentStatusText(order)]];
   const contact = `${order.contact?.name || ''}${order.contact?.phone ? ` · ${order.contact.phone}` : ''}${order.contact?.email ? ` · ${order.contact.email}` : ''}`;
-  const subject = `New order: ${describeOrder(order)}${order.rush ? ' [RUSH]' : ''}`;
+  const subject = `New order: ${describeOrder(order)}${order.rush ? ' [RUSH]' : ''}${order.cutShort ? ' [CUT ≤16″]' : ''}`;
   const html = wrap('New order', `${linesToHtml([...lines, ['Contact', contact]])}`);
   const text = `New order\n\n${linesToText([...lines, ['Contact', contact]])}`;
   return { subject, html, text };
