@@ -385,12 +385,21 @@ export function orderCancelledCustomerEmail(order, reason = '') {
   return { subject, html, text };
 }
 
-export function deliveredEmail(order) {
+// Content-ID for the Nth inline delivery photo (utils/deliveredNotice.js attaches the bytes).
+export const deliveryPhotoCid = (i) => `delivery-${i}@volw`;
+
+export function deliveredEmail(order, photoCount = 0) {
   const site = process.env.SITE_URL;
   const fb = site ? `<p><a href="${site}" style="color:#b5471f">Leave a quick review</a> — it helps your neighbors.</p>` : '';
   const subject = `Thanks from ${BUSINESS()}!`;
-  const html = wrap('All done — thank you!', `<p>Your firewood is delivered. Thanks for supporting a local neighbor!</p>${fb}`);
-  const text = `Your firewood is delivered. Thanks!${site ? `\n\nLeave a review: ${site}` : ''}`;
+  const photos = photoCount > 0
+    ? `<p>Here's your firewood, delivered:</p>${Array.from({ length: photoCount }, (_, i) => `<img src="cid:${deliveryPhotoCid(i)}" alt="Your firewood delivery${photoCount > 1 ? ` (${i + 1})` : ''}" width="520" style="display:block;width:100%;max-width:520px;height:auto;border-radius:10px;margin:0 0 12px">`).join('')}`
+    : '';
+  const html = wrap('All done — thank you!', `<p>Your firewood is delivered. Thanks for supporting a local neighbor!</p>${photos}${fb}`);
+  const photoNote = photoCount > 0
+    ? `\n\nWe attached ${photoCount === 1 ? 'a photo' : `${photoCount} photos`} of your delivery.`
+    : '';
+  const text = `Your firewood is delivered. Thanks!${photoNote}${site ? `\n\nLeave a review: ${site}` : ''}`;
   return { subject, html, text };
 }
 

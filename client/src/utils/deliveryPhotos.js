@@ -53,3 +53,19 @@ export async function uploadDeliveryPhotos(orderId, files, token, onProgress = (
   }
   return ids;
 }
+
+// Email the customer the "delivered" note with this delivery's photos inline.
+// resend: true sends again even if it already went out.
+// Resolves { sent, photoCount, sentAt, reason }.
+export async function emailDeliveryPhotos(orderId, token, { resend = false } = {}) {
+  try {
+    const res = await axios.post(
+      `${API_URL}/api/deliveries/${orderId}/email`,
+      { resend },
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    return res.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.error || "Couldn't send the email — check your connection.");
+  }
+}

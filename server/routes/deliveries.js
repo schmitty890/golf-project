@@ -6,6 +6,7 @@ import requireAdmin from '../middleware/requireAdmin.js';
 import Order from '../models/Order.js';
 import DeliveryPhoto from '../models/DeliveryPhoto.js';
 import { ensureOrderGeo } from '../utils/geocode.js';
+import { sendDeliveredEmail } from '../utils/deliveredNotice.js';
 import { streetKey } from '../utils/dedupe.js';
 import { orderTotal } from '../utils/orderEmails.js';
 import { orderBundleCount } from '../data/catalog.js';
@@ -53,6 +54,8 @@ function toRecord(order, photoIds) {
     total: total ? total.total : null,
     paymentStatus: order.paymentStatus,
     paymentMethod: order.paymentMethod,
+    hasEmail: Boolean(order.contact?.email),
+    deliveredEmailSentAt: order.deliveredEmailSentAt || null,
     geo: hasPin(order.geo)
       ? { lat: order.geo.lat, lng: order.geo.lng, source: order.geo.source }
       : null,
@@ -138,6 +141,26 @@ router.post('/:orderId/photos', async (req, res) => {
     order: req.params.orderId, contentType: match[1], data,
   });
   return res.status(201).json({ photoId: photo._id });
+});
+
+// Email the customer the "delivered" note with this delivery's photos inline. Called by the photo
+// prompt after Save/Skip (releasing the email held at Mark delivered), and by "Email photos" on
+// the map. Sends once unless { resend: true }.
+router.post('/:orderId/email', async (req, res) => {
+  if (!isId(req.params.orderId)) return res.status(404).json({ error: 'Order not found' });
+  const order = await Order.findById(req.params.orderId);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  if (!order.contact?.email) return res.status(400).json({ error: 'No email on this order' });
+  if (!DELIVERED.includes(order.status)) {
+    return res.status(409).json({ error: 'Mark the order Delivered first' });
+  }
+  const result = await sendDeliveredEmail(order, { force: req.body?.resend === true });
+  return res.json({
+    sent: result.sent,
+    photoCount: result.photoCount,
+    sentAt: result.sentAt || order.deliveredEmailSentAt || null,
+    reason: result.reason || '',
+  });
 });
 
 // The image bytes (admin-only — the page fetches with the auth header and shows a blob URL).
