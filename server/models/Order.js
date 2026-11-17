@@ -88,6 +88,10 @@ const orderSchema = new mongoose.Schema({
   // When the "running low? reorder" nudge was sent (null = not yet). Idempotency guard for the
   // post-delivery reorder reminder — one per one-time order. See jobs/reminders.js.
   reorderReminderSentAt: { type: Date, default: null },
+  // The "delivered — thank you" email (with drop-off photos). Held while the owner adds photos
+  // after marking Delivered; jobs/reminders.js sends any held too long. See utils/deliveredNotice.js.
+  deliveredEmailSentAt: { type: Date, default: null },
+  deliveredEmailHeldAt: { type: Date, default: null },
   // How the customer receives the order. The site is delivery-only; kept for back-compat with
   // any legacy 'pickup' orders, but new orders are always 'delivery'.
   fulfillment: {

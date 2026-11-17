@@ -11,7 +11,7 @@ import {
 import 'leaflet/dist/leaflet.css';
 import { AuthContext } from '../../context/AuthContext';
 import { paymentMethodLabel, paymentStatusClasses, statusLabel } from '../../utils/orderDisplay';
-import { MAX_DELIVERY_PHOTOS, uploadDeliveryPhotos } from '../../utils/deliveryPhotos';
+import { MAX_DELIVERY_PHOTOS, emailDeliveryPhotos, uploadDeliveryPhotos } from '../../utils/deliveryPhotos';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 // The Vineyards on Lake Wylie — where the map opens before any pins exist.
@@ -173,6 +173,8 @@ function AdminDeliveries() {
   const [month, setMonth] = useState('all');
   const [fixing, setFixing] = useState(null); // delivery whose pin is being placed
   const [busyId, setBusyId] = useState('');
+  const [mailingId, setMailingId] = useState('');
+  const [notice, setNotice] = useState('');
   const [viewer, setViewer] = useState(null); // { photoId, d }
   const mapRef = useRef(null);
   const markerRefs = useRef({});
@@ -299,6 +301,31 @@ function AdminDeliveries() {
     }
   };
 
+  // Send (or re-send) the customer's delivered email with this delivery's photos inline.
+  const emailPhotos = async (d) => {
+    const n = d.photoIds.length;
+    const first = (d.name || 'the customer').split(' ')[0];
+    const what = `the delivery email with ${n} photo${n === 1 ? '' : 's'}`;
+    const again = d.deliveredEmailSentAt ? ' again' : '';
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(`Send ${first} ${what}${again}?`)) return;
+    setMailingId(d._id);
+    setError('');
+    setNotice('');
+    try {
+      const r = await emailDeliveryPhotos(d._id, token, { resend: true });
+      if (!r.sent) throw new Error("The email didn't go out — try again in a minute.");
+      setDeliveries((prev) => prev.map((x) => (
+        x._id === d._id ? { ...x, deliveredEmailSentAt: r.sentAt } : x
+      )));
+      setNotice(`Emailed ${first} with ${r.photoCount} photo${r.photoCount === 1 ? '' : 's'}.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setMailingId('');
+    }
+  };
+
   const deletePhoto = async () => {
     if (!viewer) return;
     // eslint-disable-next-line no-alert
@@ -360,6 +387,7 @@ function AdminDeliveries() {
         </div>
       )}
       {error && <p className="mt-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
+      {notice && <p className="mt-4 rounded-lg bg-green-50 px-4 py-2 text-sm text-green-800">{notice}</p>}
 
       {fixing && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-ember px-4 py-3 text-sm font-semibold text-white">
@@ -450,6 +478,9 @@ function AdminDeliveries() {
                   {[addressLine(d), d.neighborhood].filter(Boolean).join(' · ') || 'No address'}
                 </p>
                 <div className="mt-1"><Summary d={d} /></div>
+                {d.delivered && d.deliveredEmailSentAt && (
+                  <p className="mt-1 text-xs text-green-700">{`✉ Thank-you emailed ${formatDay(d.deliveredEmailSentAt)}`}</p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {d.geo ? (
@@ -461,6 +492,11 @@ function AdminDeliveries() {
                 {d.photoIds.length < MAX_DELIVERY_PHOTOS && (
                   <button type="button" className={btn} disabled={busyId === d._id} onClick={() => pickPhoto(d)}>
                     {busyId === d._id ? 'Uploading…' : 'Add photo'}
+                  </button>
+                )}
+                {d.delivered && d.hasEmail && d.photoIds.length > 0 && (
+                  <button type="button" className={btn} disabled={mailingId === d._id} onClick={() => emailPhotos(d)}>
+                    {mailingId === d._id ? 'Sending…' : 'Email photos'}
                   </button>
                 )}
               </div>

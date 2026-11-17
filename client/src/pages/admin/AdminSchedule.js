@@ -98,7 +98,8 @@ function AdminSchedule() {
 
   // Mark delivered, then offer to snap a photo of the drop-off for the Delivery map.
   const markDone = async (id) => {
-    const updated = await patch(id, { status: 'completed' });
+    // Hold the customer's thank-you email; the photo prompt sends it with the photos.
+    const updated = await patch(id, { status: 'completed', holdDeliveredEmail: true });
     if (updated) setPhotoOrder(updated);
   };
   const setPayment = (id, paymentStatus, paymentMethod) => patch(

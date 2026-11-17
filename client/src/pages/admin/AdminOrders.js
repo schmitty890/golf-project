@@ -91,7 +91,9 @@ function AdminOrders() {
 
   const updateStatus = async (id, status) => {
     try {
-      const res = await axios.patch(`${API_URL}/api/orders/${id}`, { status }, authHeaders);
+      // Delivered: hold the customer's thank-you email; the photo prompt sends it with the photos.
+      const body = status === 'completed' ? { status, holdDeliveredEmail: true } : { status };
+      const res = await axios.patch(`${API_URL}/api/orders/${id}`, body, authHeaders);
       setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, status } : o)));
       // Just delivered: offer to snap a photo of the drop-off for the Delivery map.
       if (status === 'completed') setPhotoOrder(res.data);

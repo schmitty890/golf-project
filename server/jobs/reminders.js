@@ -3,6 +3,7 @@ import Settings from '../models/Settings.js';
 import GiveawayMember from '../models/GiveawayMember.js';
 import { sendMail } from '../utils/mailer.js';
 import { reminderEmail, giveawayReminderEmail, reorderReminderEmail } from '../utils/orderEmails.js';
+import { sendOverdueDeliveredEmails } from '../utils/deliveredNotice.js';
 
 // Local 'YYYY-MM-DD' / 'YYYY-MM' helpers (avoid UTC shift from toISOString).
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -117,6 +118,12 @@ export function startReminderJob() {
   };
   setInterval(tick, 60 * 60 * 1000); // hourly
   tick(); // run once on boot (covers an evening restart)
+
+  // Delivery emails held for photos that the owner never released (closed the tab mid-prompt):
+  // check every 5 minutes so the customer's thank-you is at most ~25 minutes late.
+  const heldTick = () => sendOverdueDeliveredEmails()
+    .catch((err) => console.error('Held delivery email error:', err.message));
+  setInterval(heldTick, 5 * 60 * 1000);
 }
 
 export default { startReminderJob };

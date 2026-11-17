@@ -26,11 +26,18 @@ function getTransport() {
   return transport;
 }
 
+// Tests only: swap in a stub transport (e.g. one that records messages). null resets to env.
+export function setTransportForTests(t) {
+  transport = t;
+  initialized = t !== null;
+}
+
 // Send an email. Returns true on success, false on failure/no-op — so batch senders can tally
 // delivery. Resolves silently (logging) when unconfigured or when `to` is empty. Never throws.
 // `headers` lets callers add e.g. a List-Unsubscribe header for newsletter deliverability.
+// `attachments` are nodemailer attachments (inline images use a `cid`).
 export async function sendMail({
-  to, subject, html, text, replyTo, headers,
+  to, subject, html, text, replyTo, headers, attachments,
 }) {
   if (!to) return false;
   const t = getTransport();
@@ -47,6 +54,7 @@ export async function sendMail({
       html,
       ...(replyTo ? { replyTo } : {}),
       ...(headers ? { headers } : {}),
+      ...(attachments?.length ? { attachments } : {}),
     });
     return true;
   } catch (err) {

@@ -8,7 +8,7 @@ import auth from '../middleware/auth.js';
 import requireAdmin from '../middleware/requireAdmin.js';
 import { sendMail } from '../utils/mailer.js';
 import {
-  windowConfirmedEmail, deliveredEmail,
+  windowConfirmedEmail,
   orderCancelledOwnerEmail, orderRescheduledOwnerEmail, paymentReceivedEmail,
   readyEmail, orderTotal, orderCancelledCustomerEmail,
 } from '../utils/orderEmails.js';
@@ -23,6 +23,7 @@ import {
 import { finalizeCheckoutSession, notifyOwner, orderLines } from '../utils/finalizeCheckout.js';
 import { sendNewOrderNotices } from '../utils/orderNotices.js';
 import { ensureOrderGeo } from '../utils/geocode.js';
+import { sendDeliveredEmail } from '../utils/deliveredNotice.js';
 import {
   computeChargeCents, subscriptionMonthly, SUB_MIN_BUNDLES, SUB_MAX_BUNDLES,
   SUBSCRIPTION_WEEK_VALUES, orderBundleCount, FIRST_ORDER_MIN_BUNDLES, KINDLING_NAME,
@@ -719,6 +720,7 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
   try {
     const {
       status, adminNotes, schedule, paymentStatus, paymentMethod, cancelReason,
+      holdDeliveredEmail,
     } = req.body;
     const order = await Order.findById(req.params.id);
     if (!order) {
@@ -801,7 +803,15 @@ router.patch('/:id', auth, requireAdmin, async (req, res) => {
       } else if (order.status === 'ready') {
         email = readyEmail(order);
       } else if (order.status === 'completed') {
-        email = deliveredEmail(order);
+        // The admin photo prompt holds this email and sends it (with the drop-off photos) once
+        // the owner saves or skips — POST /api/deliveries/:id/email. Otherwise send it now.
+        if (holdDeliveredEmail === true && !order.deliveredEmailSentAt) {
+          order.deliveredEmailHeldAt = new Date();
+          await order.save();
+        } else {
+          sendDeliveredEmail(order)
+            .catch((mailErr) => console.error('Delivered email error:', mailErr.message));
+        }
       } else if (order.status === 'cancelled') {
         email = orderCancelledCustomerEmail(order, order.cancelReason);
       }
