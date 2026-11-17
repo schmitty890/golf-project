@@ -348,6 +348,7 @@ router.post('/', optionalAuth, async (req, res) => {
       preferredTimes: windows.map((w) => ({ from: w.from || '', to: w.to || '' })),
       rush: isRush,
       rushPercent: isRush ? rushPercent : 0,
+      cutShort: req.body.cutShort === true,
       promoCode,
       discount,
       referredBy,
@@ -471,6 +472,7 @@ router.get('/track/:token', async (req, res) => {
       discount: order.discount || 0,
       rush: order.rush,
       rushPercent: order.rushPercent || 0,
+      cutShort: Boolean(order.cutShort),
       createdAt: order.createdAt,
       customerName: (order.contact?.name || '').split(' ')[0],
       total: orderTotal(order)?.total ?? null,
@@ -546,6 +548,7 @@ router.get('/reorder/:token', async (req, res) => {
       subscriptionWeek: order.subscriptionWeek,
       fulfillment: order.fulfillment,
       deliveryAddress: order.deliveryAddress,
+      cutShort: Boolean(order.cutShort),
     });
   } catch (error) {
     console.error('Reorder lookup error:', error);

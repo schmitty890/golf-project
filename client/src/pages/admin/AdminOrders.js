@@ -260,6 +260,9 @@ function AdminOrders() {
                       {`RUSH +${order.rushPercent || 0}%`}
                     </span>
                   )}
+                  {order.cutShort && (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800" title="Cut every piece to 16 inches or shorter">✂ ≤16″</span>
+                  )}
                   {order.promoCode && (
                     <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800">
                       {`${order.promoCode} −$${order.discount || 0}`}

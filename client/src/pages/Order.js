@@ -66,6 +66,8 @@ function Order() {
   const [rushEnabled, setRushEnabled] = useState(true);
   const [rushPercent, setRushPercent] = useState(25);
   const [rushRequested, setRushRequested] = useState(false);
+  // Every piece cut to 16" or shorter (Solo Stove / small pit). Off by default; standard is 15–19".
+  const [cutShort, setCutShort] = useState(Boolean(reorder?.cutShort));
   const [venmoHandle, setVenmoHandle] = useState('');
   const [cardEnabled, setCardEnabled] = useState(false);
   const [kindling, setKindling] = useState({ enabled: false, price: 0, quantity: 0 });
@@ -319,6 +321,7 @@ function Order() {
             });
             if (Object.keys(q).length) setQty(q);
           }
+          if (data.cutShort) setCutShort(true);
           if (data.deliveryAddress) {
             setAddress({
               street: data.deliveryAddress.street || '',
@@ -367,6 +370,7 @@ function Order() {
       deliveryAddress: address,
       preferredDate,
       rush: isRush,
+      cutShort,
       code: appliedCode,
       subtotal: subtotalNum,
     };
@@ -560,6 +564,7 @@ function Order() {
       ['How', 'Delivery'],
       ['Address', addressLine],
       ...(isRush ? [['Rush', `Yes (+${rushPercent}%)`]] : []),
+      ...(cutShort ? [['Wood length', 'Cut to 16″ or shorter']] : []),
       ...(discount > 0 ? [[discountRowLabel, `−$${discount}`]] : []),
       [isSubscription ? 'Price' : 'Estimated total', isSubscription ? `$${subMonthly}/mo` : `$${finalTotalNum}`],
     ].filter(([, v]) => v);
@@ -823,6 +828,30 @@ function Order() {
             </label>
           </div>
         )}
+
+        {/* Wood length: standard by default; opt in to have every piece cut short */}
+        <label
+          htmlFor="cut-short"
+          className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${
+            cutShort ? 'border-ember bg-cream-100' : 'border-cream-300 bg-white'
+          }`}
+        >
+          <input
+            id="cut-short"
+            type="checkbox"
+            checked={cutShort}
+            onChange={(e) => setCutShort(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-cream-300 text-ember focus:ring-ember"
+          />
+          <span className="text-sm text-walnut">
+            <span className="font-semibold">Cut every piece to 16″ or shorter</span>
+            <span className="mt-0.5 block text-xs text-walnut-400">
+              {cutShort
+                ? '✂ Got it — we’ll trim any longer pieces before delivery. No extra charge.'
+                : 'For a Solo Stove or other small fire pit. Our standard pieces run 15–19″ and fit most pits — leave this unchecked unless yours is small.'}
+            </span>
+          </span>
+        </label>
 
         {/* Subscription: preferred week of the month (we deliver within that week) */}
         {isSubscription && (
